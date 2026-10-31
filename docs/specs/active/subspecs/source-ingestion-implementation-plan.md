@@ -24,7 +24,9 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 - `packages/contracts/src/index.ts`: typed cross-application HTTP wire schemas.
 - Focused API/adapter/UI tests are in source; **their execution is not inferred** until tool output is recorded.
 
-**Not yet implemented:** source-specific municipal adapters, licensed/verified Saturn integration, job runner, document storage/normalization, spatial notice API, overlay UI, operator review workflow, real import history, authenticated admin operations. New files below are **proposals**, not verified owners.
+**Not yet implemented:** source-specific municipal adapters, licensed/verified Saturn integration, job runner, document storage/normalization, spatial notice API, overlay UI, operator review workflow, real import history, authenticated admin operations. Remaining new files below are **proposals**, not verified owners.
+
+**Incremental groundwork (2026-10-31, pending developer integration):** `apps/api/src/modules/sources/{contracts,destinationPolicy}.ts` and its `contract.md` now define internal domain schemas and an offline destination allowlist preflight, with deterministic tests in `apps/api/test/sourcePolicy.test.ts`. This does not implement step 2 (real source permissions), a database-backed approved registry, DNS/redirect defenses, HTTP fetching or any published notice. Later batches must integrate these contracts with verified source records, and expand the deliberately text-only candidate schema only after geometry validation is implemented. Baseline migration `001_source_core.sql` remains unchanged.
 
 **Module boundary rule:** Every proposed `modules/sources/`, `modules/geo/` or future business module MUST introduce a root `contract.md` with owned data, public entry points, dependencies and invariants. Reuse shared Zod HTTP schemas from `packages/contracts`; put source-specific parsing and persistence inside their owning modules. No cross-module private-table or implementation imports.
 

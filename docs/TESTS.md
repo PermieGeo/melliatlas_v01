@@ -26,6 +26,7 @@ The E2E configuration starts `pnpm dev` automatically. It intercepts source/weat
 
 - API routes and failures: `apps/api/test/app.test.ts`.
 - Weather adapter: `apps/api/test/openMeteo.test.ts`.
+- Source-ingestion contracts and offline destination policy: `apps/api/test/sourcePolicy.test.ts` (no network/real-source permission evidence).
 - Browser components: `apps/web/src/App.test.tsx`.
 - Browser response decoding and errors: `apps/web/src/api/client.test.ts`.
 - Desktop/mobile map interaction: `tests/e2e/map.spec.ts`.
