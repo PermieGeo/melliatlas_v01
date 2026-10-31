@@ -4,13 +4,13 @@ title: Source Ingestion and Evidence Map
 spec_status: draft
 owner: SRC
 selected_stage: SRC-01
-parent: ../spec-melliatlas-mvp.md
-implementation_plan: ../source-ingestion-implementation-plan.md
+parent: ../spec-umbrella-melliatlas.md
+implementation_plan: source-ingestion-implementation-plan.md
 ---
 
 # SRC-01 — Source Ingestion and Evidence Map
 
-**Parent:** [MelliAtlas MVP](../spec-melliatlas-mvp.md) · **Plan:** [SRC-01 implementation plan](../source-ingestion-implementation-plan.md) · **State:** [STATE.json](../../STATE.json).
+**Parent:** [MelliAtlas MVP](../spec-umbrella-melliatlas.md) · **Plan:** [SRC-01 implementation plan](source-ingestion-implementation-plan.md) · **State:** [STATE.json](../../STATE.json).
 
 ## 1. User outcome
 

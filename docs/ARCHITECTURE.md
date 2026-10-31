@@ -13,7 +13,15 @@ MelliAtlas starts as one repository with **separately buildable and deployable a
 | Background workers   | Dedicated Node.js process (planned in `SRC-01`)                | Scheduled fetch, parsing, normalization and idempotent persistence                                     |
 | AI provider          | Configurable server-side model adapter (planned in `AGENT-01`) | Tool-using extraction, cited explanation, constrained structured output                                |
 
-The web app never imports API internals. The API imports only the contracts package. Database credentials and AI/source credentials remain on the server. Both apps have independent local and production build commands.
+The web app never imports API internals. Both applications share HTTP schemas through `packages/contracts` and keep their runtime dependencies separate. Database credentials and AI/source credentials remain on the server. Both apps have independent local and production build commands.
+
+## Architecture decisions and module ownership
+
+The pnpm monorepo is one change/SDD/review unit with independently buildable API and web apps. Node.js is the initial I/O-oriented backend runtime; PostGIS handles indexed spatial operations. A dedicated worker can reuse backend modules in a separate process once ingestion is implemented. Rust may be introduced for a measured CPU-intensive geospatial workload, not as a second default service runtime. This section is the canonical record of these decisions.
+
+The API is a modular monolith. Functional modules live under `apps/api/src/modules/<capability>/`, own complete business capabilities and communicate through documented public entry points. Database infrastructure remains under `apps/api/src/db/`; HTTP composition remains in `app.ts`/`server.ts`. Browser functionality is similarly isolated behind client and component boundaries.
+
+Each owned module has a `contract.md` describing its published interface, data, permitted dependencies, invariants and extension points. Read [IMPLEMENTATION](IMPLEMENTATION.md) for the exact current module list. Shared HTTP schemas live once in `packages/contracts`; there are no direct FE-to-BE implementation imports, circular capability dependencies or direct cross-owner table queries. Prefer focused reuse over copied validation or speculative cross-cutting abstractions.
 
 ## Ingestion and evidence model
 

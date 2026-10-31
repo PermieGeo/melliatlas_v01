@@ -1,9 +1,12 @@
-# Wire-Contract Instructions
+# Shared Wire-Contract Rules
 
-Extends [root AGENTS.md](../../AGENTS.md).
+Extends [root AGENTS.md](../../AGENTS.md). Read [contract.md](contract.md) first.
 
-- Export strict, serializable request and response schemas and inferred TypeScript types.
-- Keep schema changes backward compatible within `/api/v1` or introduce a versioned endpoint deliberately.
-- Do not import Node.js, React, database or source-provider libraries.
-- Distinguish raw provider data, normalized observations, uncertainty and validated public claims.
-- Document date/time units, coordinate reference system (WGS84), source provenance and nullable fields.
+- Own `/api/v1` JSON request/response schemas and inferred TypeScript types. Keep them independent of FE/BE implementation and external providers.
+- Use strict Zod schemas with explicit nullability, UTC time formats, WGS84 coordinates, source provenance and review status.
+- Preserve compatibility within a published API version; breaking changes require an explicitly versioned endpoint.
+- One public schema owner: never copy schemas independently into backend and frontend.
+- Update corresponding API/web consumers and contract tests together.
+- Do not import React, Express, Node APIs, database code or provider-specific clients.
+- Keep `contract.md` current when adding a public schema.
+- Documentation and comments are English.

@@ -38,7 +38,7 @@ Primary user: an individual beekeeper, including owners of mobile apiaries. Seco
 
 *A focused day is approximately eight hours of solo engineering using the user's SDD workflow, including implementation, tests and review preparation. These are planning ranges, **not delivery commitments**; source access, scientific field validation, legal review, and external coordination are additional uncertainties. Dependencies overlap, so summing all upper bounds is intentionally conservative.
 
-**Selected now:** [SRC-01 source ingestion](subspecs/source-ingestion.md), with its [current implementation plan](source-ingestion-implementation-plan.md). Only this child is authored at bootstrap; future children are created just in time.
+**Selected now:** [SRC-01 source ingestion](subspecs/source-ingestion.md), with its [current implementation plan](subspecs/source-ingestion-implementation-plan.md). Only this child is authored at bootstrap; future children are created just in time.
 
 ## 4. Sources and evidence
 
@@ -85,13 +85,13 @@ Tool input and outputs are independently validated. Web content is untrusted and
 
 ## 6. Architecture and data contracts
 
-- One repository with `apps/web` (React/TypeScript/Leaflet), `apps/api` (Node.js/TypeScript) and `packages/contracts` (versioned Zod schemas); separately deployable apps.
+- One repository with `apps/web` (React/TypeScript/Leaflet), `apps/api` (Node.js/TypeScript) and `packages/contracts` (versioned Zod schemas); separately deployable apps and capability-owned modules with a root `contract.md`.
 - PostgreSQL/PostGIS stores spatial data, source runs, versions, provenance and private user records. Provider-specific connectors run server-side; later background jobs reuse the backend modules in a separate process.
 - HTTP endpoints are versioned under `/api/v1`, validate input/output, expose structured error codes and include request IDs.
 - Time values are RFC 3339 UTC with an explicit source timezone when originally known; coordinates are WGS84; distance checks use PostGIS meter-based geography operations.
 - Client map layers include attribution, freshness and loading/failure states. Mobile uses responsive touch-aware UI; a native shell is an optional delivery mechanism after product validation.
 
-See [Architecture](../../ARCHITECTURE.md) and [ADR-0001](../../adr/0001-monorepo-and-runtime.md).
+See [Architecture](../../ARCHITECTURE.md) and the current [module implementation guide](../../IMPLEMENTATION.md).
 
 ## 7. Privacy, security and reliability
 

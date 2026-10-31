@@ -2,7 +2,7 @@
 
 MelliAtlas is a source-backed geospatial workspace for beekeepers. The initial pilot covers Smolensk Oblast, Russia.
 
-This repository is an independently deployable web/API monorepo. Its first runnable feature is inspection of a map location with current, attributed weather from Open-Meteo. Source ingestion, verified treatment notices, satellite phenology, private apiaries, and the AI agent are defined in the [MVP umbrella specification](docs/specs/active/spec-melliatlas-mvp.md) and the [selected source-ingestion sub-specification](docs/specs/active/subspecs/source-ingestion.md).
+This repository is an independently deployable web/API monorepo. Its first runnable feature is inspection of a map location with current, attributed weather from Open-Meteo. Source ingestion, verified treatment notices, satellite phenology, private apiaries, and the AI agent are defined in the [umbrella specification](docs/specs/active/spec-umbrella-melliatlas.md) and [selected source-ingestion sub-specification](docs/specs/active/subspecs/source-ingestion.md).
 
 ## Repository layout
 
@@ -11,10 +11,10 @@ This repository is an independently deployable web/API monorepo. Its first runna
 | `apps/web`           | React/TypeScript, responsive map-first UI                             |
 | `apps/api`           | Node.js/TypeScript API, source adapters, PostgreSQL/PostGIS ownership |
 | `packages/contracts` | Public request/response schemas and shared types                      |
-| `docs`               | Architecture, roadmap, SDD specs and engineering decisions            |
+| `docs`               | Architecture, installation, usage, feature catalog and specifications |
 | `tests/e2e`          | Browser-level acceptance tests                                        |
 
-## Quick start
+## Quick start (macOS/Linux/WSL)
 
 Prerequisites: Node.js 22+, pnpm 11, Docker with Compose.
 
@@ -39,4 +39,18 @@ python3 tools/specs/validate_state.py
 python3 tools/feature_context.py SRC-01
 ```
 
-The [architecture](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md), [specification index](docs/specs/README.md), and root [agent instructions](AGENTS.md) define engineering boundaries and the selected SDD workflow. All external source terms and their operational access must be verified before a connector is enabled for production use.
+## Documentation
+
+| For                                     | Read                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------ |
+| Installation on macOS, Linux or Windows | [INSTALLATION](docs/INSTALLATION.md)                                           |
+| Using the UI and current HTTP API       | [USAGE](docs/USAGE.md)                                                         |
+| Developer workflow                      | [INSTRUCTIONS](docs/INSTRUCTIONS.md)                                           |
+| Current versus planned capabilities     | [FEATURES](docs/FEATURES.md)                                                   |
+| Environment and operations              | [CONFIGURATION](docs/CONFIGURATION.md), [DIAGNOSTIC](docs/DIAGNOSTIC.md)       |
+| Code structure                          | [ARCHITECTURE](docs/ARCHITECTURE.md), [IMPLEMENTATION](docs/IMPLEMENTATION.md) |
+| Verification                            | [TESTS](docs/TESTS.md), [QUALITY](docs/QUALITY.md)                             |
+| Future milestones and SDD               | [ROADMAP](docs/ROADMAP.md), [specification index](docs/specs/README.md)        |
+| LLM and contributor boundaries          | [AGENTS.md](AGENTS.md) and nested instructions                                 |
+
+External source terms and access rights require verification before production ingestion.
