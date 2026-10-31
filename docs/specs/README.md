@@ -1,23 +1,23 @@
 # MelliAtlas Specifications
 
-MelliAtlas uses a **human-readable umbrella -> selected normative sub-spec -> detailed advisory implementation plan** workflow. One developer-selected stage is active at a time. Product requirements are not declared accepted by the generation of code, documents, tests or release packages.
+MelliAtlas uses one umbrella specification, one selected normative sub-specification and a separate advisory implementation plan **beside that sub-specification**. Developer acceptance controls lifecycle changes.
 
-## Selected work
+## Current scope
 
-| Role            | File                                                                                   | State                                                  |
-| --------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Umbrella        | [MelliAtlas MVP](active/spec-melliatlas-mvp.md)                                        | Draft; current focus `SRC-01`                          |
-| Normative child | [Source ingestion and evidence](active/subspecs/source-ingestion.md)                   | Selected; `SRC-01`                                     |
-| Advisory plan   | [Source ingestion implementation plan](active/source-ingestion-implementation-plan.md) | Baseline proposed steps; refresh before implementation |
-| Checkpoint      | [STATE.json](STATE.json) and [schema](state.schema.json)                               | `READY_FOR_IMPLEMENTATION`                             |
-| Feature mapping | [feature-ids.json](feature-ids.json)                                                   | Implemented bootstrap symbols only                     |
+| Role                        | Document                                                                                        | State                                          |
+| --------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Umbrella                    | [MelliAtlas MVP](active/spec-umbrella-melliatlas.md)                                            | Draft; current focus `SRC-01`                  |
+| Selected sub-spec           | [Source ingestion and evidence](active/subspecs/source-ingestion.md)                            | `SRC-01`                                       |
+| Advisory plan               | [Source ingestion implementation plan](active/subspecs/source-ingestion-implementation-plan.md) | Refresh against actual source before execution |
+| Checkpoint                  | [STATE.json](STATE.json) and [schema](state.schema.json)                                        | `READY_FOR_IMPLEMENTATION`                     |
+| Implemented ownership index | [feature-ids.json](feature-ids.json)                                                            | Bootstrap `SRC-01` owners/tests only           |
 
-## Workflow
+## Lifecycle
 
-1. Review the [architecture](../ARCHITECTURE.md), [roadmap](../ROADMAP.md), selected sub-spec, active plan and verified code.
-2. Reconcile the selected plan against the actual current repository and incoming source evidence.
-3. Execute testable batches; record migration, provider failure, browser and restart evidence.
-4. Request developer acceptance of the complete selected scope.
-5. After approval, move the normative child **and** its plan together to [`archive/subspecs/`](archive/README.md), update indexes/checkpoint, then select the next scope.
+1. Inspect the selected sub-spec, its same-directory plan, owning module contracts and actual code.
+2. Refresh the plan, then implement bounded steps with independent tests and source evidence.
+3. Request developer review and acceptance. Passing tests, ZIP generation or a merged PR alone does not accept a stage.
+4. After explicit acceptance, move **both** the child and its plan to [archive/subspecs](archive/README.md) and update the checkpoint/index/umbrella together.
+5. Create the next sub-spec and matching plan only when that scope is selected.
 
-Run `python3 tools/specs/validate_state.py` for structure, state, links and selected-stage consistency. This validator does **not** verify live provider access, scientific validity or developer acceptance.
+Run `python3 tools/specs/validate_state.py` to check checkpoint consistency and relative links. The validator does not certify live sources, scientific accuracy or acceptance. Stable capability IDs are listed in [FEATURES](../FEATURES.md); spec-specific requirements and test scenarios remain inside each sub-spec.

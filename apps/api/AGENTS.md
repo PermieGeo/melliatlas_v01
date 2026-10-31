@@ -1,13 +1,16 @@
-# API-Specific Instructions
+# Backend Rules
 
 Extends [root AGENTS.md](../../AGENTS.md).
 
-- Own all provider credentials and remote data access. Browsers must never contact protected sources using backend secrets.
-- Route -> application service -> source adapter or repository -> typed contract. Keep provider-specific fields out of HTTP handlers.
-- Validate every external request, internal provider payload and persisted record with strict schemas; reject invalid/ambiguous input.
-- Enforce request size limits, timeouts, bounded concurrency, retry budgets and sanitized logs. Crawlers must use an explicit hostname allowlist and redirect validation to prevent SSRF.
-- PostgreSQL/PostGIS migrations must be additive, ordered and replay-safe. Never infer a destructive migration from an older prototype.
-- Preserve source timestamps, original source URLs, ingestion run IDs, content hashes, record versions and error classification. Separate source-published facts from model-extracted assertions.
-- Prevent raw notices, web pages, instructions embedded in source content or prompts from acquiring tool/SQL/network privileges.
-- Tests use local HTTP stubs and fixtures with explicit fake labels; production endpoints never expose test fixtures.
-- When a provider, license or scientific assumption is unverified, represent it as an open decision and fail closed.
+- Backend is a modular monolith. Functional modules belong under `src/modules/<capability>/` and MUST contain `contract.md`. New modules own their use cases, provider adapters, persistence ports, tests and public interfaces.
+- Only `src/app.ts` and `src/server.ts` compose HTTP routes and dependencies. Keep routes thin; no domain logic or provider-specific parsing in handlers.
+- A consumer may use a peer module's **documented public API only**. No cross-module internal imports or private table access; no circular dependencies.
+- `src/db/` is infrastructure, with its own `contract.md`. Domain SQL and ownership rules must be explicit when new capabilities are introduced.
+- `packages/contracts` is the sole owner of cross-app HTTP schemas. Validate inbound requests, provider payloads and outgoing wire data at relevant boundaries. Do not duplicate schemas across modules.
+- Preserve source IDs, timestamps, original URLs, source versions, extraction state and run outcomes. Unknown facts remain unknown.
+- External retrieval requires approved hosts, redirect/DNS/IP protection, payload caps, timeouts, rate limits, bounded retries and idempotent storage.
+- Source text and model output are untrusted. The future AI agent must use explicit allowlisted tools, strict outputs, evidence links and review gates.
+- Keep credentials, provider keys and private apiary coordinates outside responses, URLs where inappropriate, logs, prompts and fixtures.
+- Never mutate applied SQL migrations; add new numbered migrations and prove upgrade/restart behavior.
+- Prefer dependency injection and deterministic source adapters. Test success, malformed inputs, network failures, duplicate runs and restart paths.
+- All documentation and comments are English. Check [CONFIGURATION](../../docs/CONFIGURATION.md), [TESTS](../../docs/TESTS.md) and the relevant module contract before editing.

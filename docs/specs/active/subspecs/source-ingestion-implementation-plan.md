@@ -3,13 +3,13 @@ type: ImplementationPlan
 title: SRC-01 Source Ingestion Implementation Plan
 plan_status: advisory
 selected_stage: SRC-01
-normative_spec: subspecs/source-ingestion.md
+normative_spec: source-ingestion.md
 baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference files; not a Git checkout or test certificate
 ---
 
 # SRC-01 — Detailed Implementation Plan
 
-**Normative specification:** [Source ingestion](subspecs/source-ingestion.md) · **Umbrella:** [MelliAtlas MVP](spec-melliatlas-mvp.md) · **Checkpoint:** [STATE.json](../STATE.json).
+**Normative specification:** [Source ingestion](source-ingestion.md) · **Umbrella:** [MelliAtlas MVP](../spec-umbrella-melliatlas.md) · **Checkpoint:** [STATE.json](../../STATE.json).
 
 **Status:** Proposed implementation sequence. Refresh file paths, source access, dependencies and test commands against the actual checkout **before execution**. `SRC-01` remains `READY_FOR_IMPLEMENTATION`. This document grants no completion or acceptance.
 
@@ -25,6 +25,8 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 - Focused API/adapter/UI tests are in source; **their execution is not inferred** until tool output is recorded.
 
 **Not yet implemented:** source-specific municipal adapters, licensed/verified Saturn integration, job runner, document storage/normalization, spatial notice API, overlay UI, operator review workflow, real import history, authenticated admin operations. New files below are **proposals**, not verified owners.
+
+**Module boundary rule:** Every proposed `modules/sources/`, `modules/geo/` or future business module MUST introduce a root `contract.md` with owned data, public entry points, dependencies and invariants. Reuse shared Zod HTTP schemas from `packages/contracts`; put source-specific parsing and persistence inside their owning modules. No cross-module private-table or implementation imports.
 
 ## B. Requirements-to-evidence matrix
 

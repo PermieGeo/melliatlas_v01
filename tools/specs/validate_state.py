@@ -71,7 +71,7 @@ def main() -> None:
         child_text = spec_path.read_text(encoding="utf-8")
         check(re.search(r"^#{1,3}\s+" + re.escape(stream["stageId"]) + r"\b", child_text, re.MULTILINE) is not None, "Child stage header missing")
 
-    umbrella = SPEC_DIR / "active" / "spec-melliatlas-mvp.md"
+    umbrella = SPEC_DIR / "active" / "spec-umbrella-melliatlas.md"
     umbrella_text = umbrella.read_text(encoding="utf-8")
     stage_id = selected[0]["stageId"]
     check(f"current_focus: {stage_id}" in umbrella_text, "Umbrella focus disagrees with checkpoint")
@@ -82,6 +82,7 @@ def main() -> None:
     check(len(plan_matches) == 1, "Selected child must link one implementation plan")
     plan = (child.parent / plan_matches[0]).resolve()
     check(plan.is_file(), "Selected implementation plan is missing")
+    check(plan.parent == child.parent, "Implementation plan must be beside its sub-specification")
     check(f"selected_stage: {stage_id}" in plan.read_text(encoding="utf-8"), "Plan stage mismatch")
     check(child.name in plan.read_text(encoding="utf-8"), "Implementation plan must link back to its spec")
 
