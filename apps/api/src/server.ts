@@ -4,6 +4,7 @@ import { loadConfig } from "./config.js";
 import { createDatabasePool } from "./db/pool.js";
 import { SourceRepository } from "./db/sourceRepository.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
+import { describeStartupFailure } from "./startupDiagnostics.js";
 
 async function start(): Promise<void> {
   const config = loadConfig();
@@ -38,9 +39,7 @@ async function start(): Promise<void> {
   }
 }
 
-start().catch(() => {
-  console.error(
-    "API startup failed; verify DATABASE_URL, migrations and PostgreSQL readiness",
-  );
+start().catch((error: unknown) => {
+  console.error("API startup failed: " + describeStartupFailure(error));
   process.exitCode = 1;
 });
