@@ -4,7 +4,7 @@ Use this checklist before changing code to fix a startup or source-access failur
 
 | Symptom                           | Inspect                                                                | Likely resolution                                                                              |
 | --------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| API exits immediately             | `docker compose ps`, `DATABASE_URL`, PostgreSQL logs                   | Start the database, align credentials/port and apply migrations                                |
+| API exits immediately             | Startup hint, `apps/api/.env`, `docker compose ps`, PostgreSQL logs    | Correct the reported configuration/connection error; apply migrations when required            |
 | Readiness returns HTTP 503        | `curl -i http://127.0.0.1:3001/health/ready`                           | Check database availability and pool connectivity                                              |
 | Web UI cannot load sources        | Browser network request to `/api/v1/sources` and API status            | Start API and verify Vite proxy on port 5173                                                   |
 | Weather panel reports unavailable | `/api/v1/locations/inspect`, provider connectivity, configured timeout | Inspect Open-Meteo availability and local connectivity; no synthetic fallback                  |
