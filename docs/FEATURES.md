@@ -4,14 +4,14 @@ This catalog describes **what the product can do or is intended to do**. It is o
 
 ## Sources and trustworthy evidence
 
-| Feature ID                  | Capability                                        | State       | Notes                                                                                                                  |
-| --------------------------- | ------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `SOURCES.CATALOG`           | Inspect and maintain the source registry          | **Partial** | PostgreSQL-backed catalog and read API exist. Operator controls, access review and detailed run status remain planned. |
-| `SOURCES.DOCUMENT_HISTORY`  | Fetch and retain revisions of source documents    | Planned     | Scheduled ingestion, immutable payloads, checksums, deduplication and restart recovery.                                |
-| `SOURCES.SAFE_FETCH`        | Retrieve external evidence within approved limits | Planned     | Host/redirect controls, rate limits, timeouts, payload caps and actionable failures.                                   |
-| `NOTICES.EXTRACTION`        | Turn published notices into reviewable records    | Planned     | Preserve text evidence, conflicting editions, dates and unknown fields; extraction alone is not publication.           |
-| `NOTICES.SPATIAL_PRECISION` | Explain exactly how well a notice is located      | Planned     | Distinguish published field polygons, approximate areas and text-only place names.                                     |
-| `NOTICES.MAP_OVERLAY`       | See genuine agricultural notices on the map       | Planned     | Time/area filters, review state, original-document links and accessible map/list views.                                |
+| Feature ID                  | Capability                                        | State       | Notes                                                                                                                          |
+| --------------------------- | ------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `SOURCES.CATALOG`           | Inspect and maintain the source registry          | **Partial** | PostgreSQL-backed catalog and read API exist. Operator controls, access review and detailed run status remain planned.         |
+| `SOURCES.DOCUMENT_HISTORY`  | Fetch and retain revisions of source documents    | Planned     | Metadata and run schemas exist; no fetching, immutable payload storage, deduplication or restart recovery yet.                 |
+| `SOURCES.SAFE_FETCH`        | Retrieve external evidence within approved limits | **Partial** | Offline destination preflight enforces reviewed hosts and paths; DNS, redirects, transport limits and fetching remain planned. |
+| `NOTICES.EXTRACTION`        | Turn published notices into reviewable records    | Planned     | Initial text-only candidate schema exists; no parser, geometry validation, publication or review workflow yet.                 |
+| `NOTICES.SPATIAL_PRECISION` | Explain exactly how well a notice is located      | Planned     | Distinguish published field polygons, approximate areas and text-only place names.                                             |
+| `NOTICES.MAP_OVERLAY`       | See genuine agricultural notices on the map       | Planned     | Time/area filters, review state, original-document links and accessible map/list views.                                        |
 
 ## Mapping and weather
 
