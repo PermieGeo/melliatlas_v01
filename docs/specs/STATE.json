@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "mode": "SINGLE",
+  "selectedWorkstreamId": "source-ingestion",
+  "workstreams": [
+    {
+      "id": "source-ingestion",
+      "specPath": "docs/specs/active/subspecs/source-ingestion.md",
+      "stageId": "SRC-01",
+      "phase": "READY_FOR_IMPLEMENTATION"
+    }
+  ]
+}

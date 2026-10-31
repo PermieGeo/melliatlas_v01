@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Test results and coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.idea/
+.apatch/
+
+# Temporary files and caches
+.cache/
+.vite/
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Local database files
+*.sqlite
+*.sqlite3
+*.db
+
+# apatch runtime state
+.apatch/params.json
+.apatch/created_patches.txt
+.apatch/cache/
+.apatch/logs/
+.apatch/tmp/
+.apatch/*.lock
+
+# OS-generated files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.iml
+
+# Local test artifacts
+*.prof
+*.cpuprofile
+*.heapprofile

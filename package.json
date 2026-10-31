@@ -1,0 +1,24 @@
+{
+  "name": "melliatlas",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @melliatlas/contracts build && pnpm --parallel --filter @melliatlas/api --filter @melliatlas/web dev",
+    "build": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api build && pnpm --filter @melliatlas/web build",
+    "typecheck": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api typecheck && pnpm --filter @melliatlas/web typecheck",
+    "test": "pnpm --filter @melliatlas/api test && pnpm --filter @melliatlas/web test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api db:migrate",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.2"
+  }
+}

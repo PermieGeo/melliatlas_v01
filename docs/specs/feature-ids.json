@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "features": [
+    {
+      "id": "SRC-01",
+      "specPath": "docs/specs/active/subspecs/source-ingestion.md",
+      "implementedBootstrapOwners": [
+        "apps/api/src/modules/weather/openMeteo.ts",
+        "apps/api/src/db/sourceRepository.ts",
+        "apps/web/src/api/client.ts",
+        "apps/web/src/components/MapCanvas.tsx"
+      ],
+      "tests": [
+        "apps/api/test/openMeteo.test.ts",
+        "apps/api/test/app.test.ts",
+        "apps/web/src/App.test.tsx"
+      ]
+    }
+  ]
+}
