@@ -29,7 +29,9 @@ Before changes, read the owning module's `contract.md`, nearest `AGENTS.md`, sel
 - Preserve source URL, timestamps, provenance, uncertainty, revision and human-review state. Never present synthetic observations as real evidence.
 - Protect private apiary coordinates, credentials and raw private source data. Untrusted pages and LLM output never grant network, SQL or execution privileges.
 - Keep migrations additive and immutable after application. Bounded retries, idempotency and restart behavior require tests.
-- Tests must independently cover positive, negative, boundary and regression behavior; use local provider stubs and controlled clocks. Do not weaken tests to obtain PASS.
+- Derive positive, negative, boundary and regression assertions independently from the spec or a reproduced defect. On failure classify product defect, invalid expectation or unavailable environment; fix code when a valid assertion fails. MUST NOT weaken, skip, delete, mock away or silently retry tests merely for PASS. Justify test changes with spec evidence and preserve regression purpose.
+- Keep tests deterministic: local provider stubs, controlled clocks, no public network or production credentials. Verify persistence against real PostGIS and user journeys with Playwright desktop/mobile. Stubbed browser tests do not prove full-stack behavior. Unresolved/flaky tests leave verification incomplete.
+- Stable semantic Feature IDs (`DOMAIN.CAPABILITY`) belong to [FEATURES](docs/FEATURES.md) and [feature-cross-ref.yaml](docs/specs/feature-cross-ref.yaml), separate from stages and numbered requirements.
 - Run focused tests, then the relevant checks from [TESTS.md](docs/TESTS.md). Formatting is a separate step; check commands must not edit files.
 - Do not change acceptance/archive state without explicit developer approval; never imply Git/PR/deployment operations were performed.
 

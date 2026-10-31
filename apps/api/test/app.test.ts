@@ -35,6 +35,47 @@ describe("MelliAtlas public API", () => {
     expect(response.body.point).toEqual({ lat: 54.78, lon: 32.05 });
     expect(response.body.provenance.sourceId).toBe("test-fixture");
     expect(response.headers["x-request-id"]).toBeTruthy();
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("returns an empty source catalog without claiming a successful ingest", async () => {
+    const response = await request(createApp(services)).get("/api/v1/sources");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ sources: [] });
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("fails readiness when storage is unavailable", async () => {
+    const response = await request(
+      createApp({ ...services, checkReadiness: async () => false }),
+    ).get("/health/ready");
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ status: "unavailable" });
+  });
+
+  it("does not disclose internal failures when listing sources", async () => {
+    const response = await request(
+      createApp({
+        ...services,
+        listSources: async () => {
+          throw new Error("private database connection string");
+        },
+      }),
+    ).get("/api/v1/sources");
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_ERROR");
+    expect(JSON.stringify(response.body)).not.toContain(
+      "private database connection string",
+    );
+  });
+
+  it("reports unknown API routes as typed 404 errors", async () => {
+    const response = await request(createApp(services)).get("/api/v1/unknown");
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("NOT_FOUND");
+    expect(response.body.error.requestId).toEqual(
+      response.headers["x-request-id"],
+    );
   });
 
   it.each([

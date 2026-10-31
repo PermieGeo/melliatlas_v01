@@ -1,4 +1,4 @@
-// Feature IDs: SRC-01
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST
 import {
   apiErrorSchema,
   inspectionResponseSchema,

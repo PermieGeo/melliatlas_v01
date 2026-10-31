@@ -36,7 +36,7 @@ pnpm typecheck
 pnpm test
 pnpm build
 python3 tools/specs/validate_state.py
-python3 tools/feature_context.py SRC-01
+python3 tools/feature_context.py WEATHER.POINT_FORECAST
 ```
 
 ## Documentation

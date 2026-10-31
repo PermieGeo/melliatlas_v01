@@ -1,0 +1,162 @@
+schema_version: 1
+features:
+  - id: SOURCES.CATALOG
+    stage_ids:
+      - SRC-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R01
+      - SRC-R10
+    code_paths:
+      - apps/api/src/db/sourceRepository.ts
+      - apps/api/src/app.ts
+    test_paths:
+      - apps/api/test/app.test.ts
+  - id: SOURCES.DOCUMENT_HISTORY
+    stage_ids:
+      - SRC-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R02
+      - SRC-R03
+      - SRC-R06
+    code_paths: []
+    test_paths: []
+  - id: SOURCES.SAFE_FETCH
+    stage_ids:
+      - SRC-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R09
+    code_paths: []
+    test_paths: []
+  - id: NOTICES.EXTRACTION
+    stage_ids:
+      - SRC-01
+      - AGENT-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R04
+      - SRC-R06
+    code_paths: []
+    test_paths: []
+  - id: NOTICES.SPATIAL_PRECISION
+    stage_ids:
+      - SRC-01
+      - SAT-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R05
+      - SRC-R07
+    code_paths: []
+    test_paths: []
+  - id: NOTICES.MAP_OVERLAY
+    stage_ids:
+      - SRC-01
+      - MOBILE-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R07
+      - SRC-R08
+    code_paths: []
+    test_paths: []
+  - id: WEATHER.POINT_FORECAST
+    stage_ids:
+      - SRC-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R11
+    code_paths:
+      - apps/api/src/modules/weather/openMeteo.ts
+      - apps/api/src/app.ts
+      - apps/web/src/api/client.ts
+      - apps/web/src/App.tsx
+    test_paths:
+      - apps/api/test/openMeteo.test.ts
+      - apps/api/test/app.test.ts
+      - apps/web/src/api/client.test.ts
+      - apps/web/src/App.test.tsx
+      - tests/e2e/map.spec.ts
+  - id: MAP.POINT_SELECTION
+    stage_ids:
+      - SRC-01
+      - MOBILE-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R08
+      - SRC-R11
+    code_paths:
+      - apps/web/src/components/MapCanvas.tsx
+      - apps/web/src/App.tsx
+    test_paths:
+      - apps/web/src/App.test.tsx
+      - tests/e2e/map.spec.ts
+  - id: APIARIES.PRIVATE_LOCATIONS
+    stage_ids:
+      - BEE-01
+    spec_paths:
+      - docs/specs/active/spec-umbrella-melliatlas.md
+    requirements: []
+    code_paths: []
+    test_paths: []
+  - id: AGENT.NOTICE_READING
+    stage_ids:
+      - AGENT-01
+    spec_paths:
+      - docs/specs/active/spec-umbrella-melliatlas.md
+    requirements: []
+    code_paths: []
+    test_paths: []
+  - id: AGENT.CITED_EXPLANATION
+    stage_ids:
+      - AGENT-01
+    spec_paths:
+      - docs/specs/active/spec-umbrella-melliatlas.md
+    requirements: []
+    code_paths: []
+    test_paths: []
+  - id: LANDCOVER.EVIDENCE
+    stage_ids:
+      - SAT-01
+    spec_paths:
+      - docs/specs/active/spec-umbrella-melliatlas.md
+    requirements: []
+    code_paths: []
+    test_paths: []
+  - id: PHENOLOGY.BLOOM_WINDOWS
+    stage_ids:
+      - SAT-01
+    spec_paths:
+      - docs/specs/active/spec-umbrella-melliatlas.md
+    requirements: []
+    code_paths: []
+    test_paths: []
+  - id: ALERTS.AREA_SUBSCRIPTIONS
+    stage_ids:
+      - ALERT-01
+    spec_paths:
+      - docs/specs/active/spec-umbrella-melliatlas.md
+    requirements: []
+    code_paths: []
+    test_paths: []
+  - id: UX.MOBILE_MAP
+    stage_ids:
+      - SRC-01
+      - MOBILE-01
+    spec_paths:
+      - docs/specs/active/subspecs/source-ingestion.md
+    requirements:
+      - SRC-R08
+    code_paths:
+      - apps/web/src/components/MapCanvas.tsx
+      - apps/web/src/App.tsx
+    test_paths:
+      - tests/e2e/map.spec.ts

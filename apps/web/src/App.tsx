@@ -1,3 +1,4 @@
+// Feature IDs: MAP.POINT_SELECTION, SOURCES.CATALOG, UX.MOBILE_MAP, WEATHER.POINT_FORECAST
 import type {
   Coordinates,
   InspectionResponse,

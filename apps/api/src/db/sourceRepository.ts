@@ -1,4 +1,4 @@
-// Feature IDs: SRC-01
+// Feature IDs: SOURCES.CATALOG
 import {
   sourceCatalogResponseSchema,
   type SourceCatalogEntry,
