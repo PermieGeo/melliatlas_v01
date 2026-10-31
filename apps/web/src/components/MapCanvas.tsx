@@ -1,4 +1,4 @@
-// Feature IDs: SRC-01
+// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP
 import type { Coordinates } from "@melliatlas/contracts";
 import { useEffect } from "react";
 import {

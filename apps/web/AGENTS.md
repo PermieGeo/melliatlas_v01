@@ -10,5 +10,5 @@ Extends [root AGENTS.md](../../AGENTS.md).
 - Never imply forecast weather proves pesticide risk, flowering state, official spraying or satellite observations.
 - Do not send precise private apiary coordinates to third parties, analytics, map URLs or error trackers.
 - Keep provider attribution on map layers. Verify external map tile/data usage restrictions before production launch.
-- Use component tests and Playwright desktop/mobile E2E for user-visible behavior; avoid tests against live external providers.
+- Use component and Playwright desktop/mobile tests for success, empty, failure, retry, source links, selection changes and accessibility. Stub only external boundaries, not the logic being tested. Verify real FE/BE integration separately from browser-only fixtures.
 - All documentation and comments are English; localized interface strings are allowed. See [USAGE](../../docs/USAGE.md) and [TESTS](../../docs/TESTS.md).

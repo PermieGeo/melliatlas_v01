@@ -1,4 +1,4 @@
-// Feature IDs: SRC-01
+// Feature IDs: WEATHER.POINT_FORECAST
 import type { Coordinates, InspectionResponse } from "@melliatlas/contracts";
 import { inspectionResponseSchema } from "@melliatlas/contracts";
 import { z } from "zod";

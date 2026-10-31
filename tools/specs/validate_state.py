@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from feature_cross_ref import load_cross_ref
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_DIR = ROOT / "docs" / "specs"
@@ -86,17 +88,29 @@ def main() -> None:
     check(f"selected_stage: {stage_id}" in plan.read_text(encoding="utf-8"), "Plan stage mismatch")
     check(child.name in plan.read_text(encoding="utf-8"), "Implementation plan must link back to its spec")
 
-    feature_index = load_json(SPEC_DIR / "feature-ids.json")
-    check(feature_index["schemaVersion"] == 1, "Unexpected feature index version")
-    for feature in feature_index["features"]:
-        check(feature["id"] == stage_id, "Bootstrap registry may index selected stages only")
-        check((ROOT / feature["specPath"]).is_file(), "Feature spec does not exist")
-        for owner in feature["implementedBootstrapOwners"]:
-            owner_path = ROOT / owner
-            check(owner_path.is_file(), f"Missing implemented owner: {owner}")
-            check(f"Feature IDs: {feature['id']}" in owner_path.read_text(encoding="utf-8"), f"Missing owner feature marker: {owner}")
-        for test in feature["tests"]:
-            check((ROOT / test).is_file(), f"Missing indexed test: {test}")
+    catalog = (ROOT / "docs" / "FEATURES.md").read_text(encoding="utf-8")
+    features = load_cross_ref(SPEC_DIR / "feature-cross-ref.yaml")
+    for feature in features:
+        name = str(feature["id"])
+        check(f"`{name}`" in catalog, f"Feature missing from FEATURES.md: {name}")
+        specs, stages = feature["spec_paths"], feature["stage_ids"]
+        reqs, owners, tests = feature["requirements"], feature["code_paths"], feature["test_paths"]
+        check(all(isinstance(v, list) for v in (specs, stages, reqs, owners, tests)),
+              f"Invalid feature lists: {name}")
+        check(bool(specs), f"Feature lacks spec references: {name}")
+        for path in [*specs, *owners, *tests]:
+            resolved = (ROOT / path).resolve()
+            check(resolved.is_relative_to(ROOT) and resolved.is_file(), f"Missing feature path: {name} / {path}")
+        spec_text = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in specs)
+        for req in reqs:
+            check(re.search(r"\b" + re.escape(req) + r"\b", spec_text) is not None,
+                  f"Requirement not found for feature: {name} / {req}")
+        for path in owners:
+            marker = re.search(r"^// Feature IDs: (.+)$", (ROOT / path).read_text(encoding="utf-8"), re.MULTILINE)
+            check(marker is not None and name in marker.group(1).split(", "),
+                  f"Missing owner feature marker: {name} / {path}")
+        for stage in stages:
+            check(stage in umbrella_text, f"Feature stage missing from umbrella: {name} / {stage}")
 
     for document in SPEC_DIR.rglob("*.md"):
         validate_links(document)

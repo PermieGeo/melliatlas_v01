@@ -12,5 +12,5 @@ Extends [root AGENTS.md](../../AGENTS.md).
 - Source text and model output are untrusted. The future AI agent must use explicit allowlisted tools, strict outputs, evidence links and review gates.
 - Keep credentials, provider keys and private apiary coordinates outside responses, URLs where inappropriate, logs, prompts and fixtures.
 - Never mutate applied SQL migrations; add new numbered migrations and prove upgrade/restart behavior.
-- Prefer dependency injection and deterministic source adapters. Test success, malformed inputs, network failures, duplicate runs and restart paths.
+- Prefer dependency injection and deterministic adapters. Test success, malformed input, network failures, duplicate runs and restart paths. Stub repositories cannot prove real PostGIS transaction and migration invariants; test those against an isolated database. Never weaken a valid assertion for a green check.
 - All documentation and comments are English. Check [CONFIGURATION](../../docs/CONFIGURATION.md), [TESTS](../../docs/TESTS.md) and the relevant module contract before editing.

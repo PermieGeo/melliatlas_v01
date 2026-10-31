@@ -1,3 +1,4 @@
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST
 import { randomUUID } from "node:crypto";
 import {
   apiErrorSchema,
