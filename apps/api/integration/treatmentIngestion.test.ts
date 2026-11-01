@@ -74,6 +74,7 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       "005_treatment_source_approval.sql",
       "006_optional_provider_api_key.sql",
       "007_treatment_observation_dedupe.sql",
+      "008_manual_treatment_fetch.sql",
     ]) {
       await pool.query(
         await readFile(
@@ -103,7 +104,10 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     }
   });
 
-  it("blocks an unreviewed source before any network operation", async () => {
+  it("blocks an unconfigured source before any network operation", async () => {
+    await pool.query(
+      "UPDATE source_catalog SET lifecycle='disabled' WHERE id='treatment-feed'",
+    );
     let calls = 0;
     const service = new TreatmentIngestionService(pool, {
       fetch: async () => {
@@ -112,16 +116,19 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       },
     });
     await expect(service.syncOnePage()).rejects.toMatchObject({
-      code: "SOURCE_NOT_APPROVED",
+      code: "SOURCE_NOT_CONFIGURED",
     });
     expect(calls).toBe(0);
     expect(await service.status()).toMatchObject({
-      accessDecision: "pending",
+      sourceConfigured: false,
       latestRun: null,
       pendingReview: 0,
       pendingWithGeometry: 0,
       verifiedWithGeometry: 0,
     });
+    await pool.query(
+      "UPDATE source_catalog SET lifecycle='configured' WHERE id='treatment-feed'",
+    );
   });
 
   it("stores raw evidence, requires manual review, and remains idempotent", async () => {
@@ -136,12 +143,6 @@ describe("real PostGIS provider ingestion and publication gates", () => {
         };
       },
     });
-    await service.approveAccess({
-      reviewer: "Test operator",
-      evidenceUrl: "https://plans.example.org/terms",
-      permissionBasis:
-        "Synthetic permission evidence in isolated PostGIS test only.",
-    });
     const first = await service.syncOnePage();
     expect(first).toMatchObject({ received: 1, stored: 1, nextPage: 0 });
     expect(JSON.parse(requests[0])).toMatchObject({
@@ -153,7 +154,7 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     expect(candidates).toHaveLength(1);
     expect(candidates[0].geometryAvailable).toBe(true);
     expect(await service.status()).toMatchObject({
-      accessDecision: "approved",
+      sourceConfigured: true,
       pendingReview: 1,
       pendingWithGeometry: 1,
       verifiedWithGeometry: 0,
@@ -185,11 +186,11 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     );
     expect(reviews.rows[0].count).toBe("1");
     await pool.query(
-      "UPDATE source_catalog SET access_decision='pending', lifecycle='under_review' WHERE id='treatment-feed'",
+      "UPDATE source_catalog SET lifecycle='disabled' WHERE id='treatment-feed'",
     );
     expect(await service.published()).toEqual([]);
     await expect(service.syncOnePage()).rejects.toMatchObject({
-      code: "SOURCE_NOT_APPROVED",
+      code: "SOURCE_NOT_CONFIGURED",
     });
   });
 });

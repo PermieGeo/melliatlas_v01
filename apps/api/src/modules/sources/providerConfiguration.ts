@@ -65,7 +65,7 @@ export type ProviderRequest = {
   body?: string;
 };
 
-/** Pure request builder; a caller must enforce reviewed access and DNS/transport policy before sending. */
+/** Pure request builder; the caller must enforce operator authorization and DNS/transport policy. */
 export function buildProviderRequest(
   endpoint: string,
   settings: ProviderRequestSettings,
@@ -106,7 +106,6 @@ type ProviderRow = {
   api_request_config: unknown;
   registry_revision: string;
   name: string;
-  access_decision: "pending" | "approved" | "denied";
 };
 
 function parseRow(row: ProviderRow): ProviderConfiguration {
@@ -116,7 +115,6 @@ function parseRow(row: ProviderRow): ProviderConfiguration {
     endpoint: connection.endpoint,
     request: connection.request,
     revision: row.registry_revision,
-    accessDecision: row.access_decision,
     collectionEnabled: false,
   });
 }
@@ -127,7 +125,7 @@ export class ProviderConfigurationRepository {
 
   async get(): Promise<ProviderConfiguration> {
     const result = await this.pool.query<ProviderRow>(
-      "SELECT name, api_request_config, registry_revision, access_decision FROM source_catalog WHERE id = 'treatment-feed'",
+      "SELECT name, api_request_config, registry_revision FROM source_catalog WHERE id = 'treatment-feed'",
     );
     if (!result.rows[0]) {
       throw new ApiFailure(
@@ -146,12 +144,12 @@ export class ProviderConfigurationRepository {
     const settings = providerRequestSettingsSchema.parse(input.request);
     const result = await this.pool.query<ProviderRow>(
       `UPDATE source_catalog SET name = $1, url = $2, api_request_config = $3::jsonb,
-         lifecycle = 'under_review', access_decision = 'pending', terms_review = 'pending', api_key = NULL, source_cursor = NULL,
+         lifecycle = 'configured', access_decision = 'pending', terms_review = 'pending', api_key = NULL, source_cursor = NULL,
          allowed_locations = '[]'::jsonb, fetch_policy = NULL,
          reviewed_by = NULL, reviewed_at = NULL,
          permission_evidence_url = NULL, permission_basis = NULL, parser_version = NULL
        WHERE id = 'treatment-feed' AND registry_revision = $4::bigint
-       RETURNING name, api_request_config, registry_revision, access_decision`,
+       RETURNING name, api_request_config, registry_revision`,
       [
         input.providerName,
         endpoint,

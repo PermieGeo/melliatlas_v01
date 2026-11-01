@@ -97,20 +97,18 @@ describe("treatment feed policy migration against PostGIS", () => {
     });
     const repo = new ProviderConfigurationRepository(client as unknown as Pool);
     const current = await repo.get();
-    expect(current.accessDecision).toBe("approved");
     const updated = await repo.update({
       providerName: "Another provider",
       endpoint: "https://other.example.org/api/plans",
       request: current.request,
       expectedRevision: current.revision,
     });
-    expect(updated.accessDecision).toBe("pending");
     await expect(registry.getApproved("treatment-feed")).resolves.toBeNull();
     const rows = await client.query(
       "SELECT lifecycle, access_decision, reviewed_by, allowed_locations, fetch_policy FROM source_catalog WHERE id='treatment-feed'",
     );
     expect(rows.rows[0]).toMatchObject({
-      lifecycle: "under_review",
+      lifecycle: "configured",
       access_decision: "pending",
       reviewed_by: null,
       allowed_locations: [],

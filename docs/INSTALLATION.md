@@ -18,7 +18,7 @@ pnpm dev
 
 The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the two development servers but leaves the database running.
 
-**Only configuring the external treatment provider?** The map/weather view does not need a token. Editing the provider settings requires the optional server-side `SOURCE_OPERATOR_TOKEN`, described in [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md). Manual, permission-gated plan import and review are available, but saving an API URL does not trigger a fetch or publish map polygons.
+**Only configuring the external treatment provider?** The map/weather view does not need a token. Editing the provider settings requires the optional server-side `SOURCE_OPERATOR_TOKEN`, described in [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md). Manual, operator-triggered plan import and separate polygon review are available, but saving an API URL does not trigger a fetch or publish map polygons.
 
 ## Requirements and ports
 
@@ -228,9 +228,9 @@ After migrations, populate the existing `source_catalog` row using the repositor
 pnpm provider:seed:saturn
 ```
 
-This loads `apps/api/config/providers/fgis-saturn.json`: provider name, `treatment` type, full HTTPS endpoint, `POST` request settings and **no external API key** (`api_key` is SQL `NULL`). It does not contact the provider, approve access, or import treatment plans. The reference endpoint and region filter are taken from the historical prototype and are **not independently verified** for automated collection.
+This loads `apps/api/config/providers/fgis-saturn.json`: provider name, `treatment` type, full HTTPS endpoint, `POST` request settings and **no external API key** (`api_key` is SQL `NULL`). It does not contact the provider or import treatment plans. The reference endpoint and region filter are taken from the historical prototype and are **not independently verified** for automated collection.
 
-The command is repeatable. It updates only the untouched migration placeholder; subsequent runs are no-ops, while operator-modified settings are preserved. To intentionally reset to the preset, run `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace`. This clears any saved provider key and revokes prior access approval. See [Usage](USAGE.md#initialize-the-reference-provider-from-the-command-line) for details.
+The command is repeatable. It updates only the untouched migration placeholder; subsequent runs are no-ops, while operator-modified settings are preserved. To intentionally reset to the preset, run `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace`. This clears any saved provider key and resets the ingestion cursor and legacy approval metadata. See [Usage](USAGE.md#initialize-the-reference-provider-from-the-command-line) for details.
 
 ### 5. Start API and web together
 
@@ -338,9 +338,9 @@ pnpm provider:seed:saturn
 pnpm dev
 ```
 
-The seed updates a pristine candidate only; it does not approve an API or initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, use the authenticated source settings UI. Enter `SOURCE_OPERATOR_TOKEN` in `apps/api/.env` (at least 32 characters) and restart the API to enable operator-only routes; this is an application administrator token, **not** a token required by the public reference provider.
+The seed updates a pristine candidate only; it does not initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, use the authenticated source settings UI. Enter `SOURCE_OPERATOR_TOKEN` in `apps/api/.env` (at least 32 characters) and restart the API to enable operator-only routes; this is an application administrator token, **not** a token required by the public reference provider.
 
-The map remains empty until permission has been independently reviewed, an operator explicitly fetches a page, and individual polygon candidates are verified. Never fabricate permission evidence or automatically mark public content as verified.
+The map remains empty until an operator explicitly fetches a page and reviews candidate polygons for data quality. Configuring the URL alone does not download records or invent missing geometry.
 
 ## Running the complete check suite locally
 

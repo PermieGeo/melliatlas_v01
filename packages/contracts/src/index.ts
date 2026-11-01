@@ -168,7 +168,6 @@ export const providerConfigurationSchema = z
     endpoint: z.string(),
     request: providerRequestSettingsSchema,
     revision: z.string().regex(/^[1-9][0-9]{0,17}$/),
-    accessDecision: z.enum(["pending", "approved", "denied"]),
     collectionEnabled: z.literal(false),
   })
   .strict();
@@ -229,7 +228,7 @@ export type MapTreatment = z.infer<typeof mapTreatmentSchema>;
 // Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 export const providerCollectionStatusSchema = z
   .object({
-    accessDecision: z.enum(["pending", "approved", "denied"]),
+    sourceConfigured: z.boolean(),
     latestRun: z
       .object({
         status: z.enum(["started", "succeeded", "failed", "partial"]),

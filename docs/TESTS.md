@@ -12,7 +12,7 @@ Run commands from the repository root after [installation](INSTALLATION.md). For
 | `python3 tools/feature_context.py WEATHER.POINT_FORECAST` | One capability's owners/tests                                                                                                  | Python 3 (standard library)                          |
 | `python3 tools/feature_context.py SRC-01`                 | Features within a delivery stage                                                                                               | Python 3 (standard library)                          |
 | `pnpm db:migrate`                                         | Apply checksummed SQL migrations to PostgreSQL                                                                                 | Running PostGIS database                             |
-| `pnpm --dir apps/api test:db`                             | Run independent real-PostGIS tests covering migrations `001`–`006`, including approval/history and treatment-source revocation | Running PostGIS database and `DATABASE_URL`          |
+| `pnpm --dir apps/api test:db`                             | Run independent real-PostGIS tests covering migrations `001`–`008`, including approval/history and treatment-source revocation | Running PostGIS database and `DATABASE_URL`          |
 | `pnpm e2e`                                                | Playwright desktop/mobile Chromium browser flows                                                                               | Running PostGIS; installed Chromium browser binaries |
 
 Install browsers once where required:
@@ -42,7 +42,7 @@ New behavior needs independently derived positive, negative, boundary and regres
 
 - Restricted outbound transport: `apps/api/test/httpFetcher.test.ts` uses synthetic public/private DNS answers and injected HTTPS responses; real network/TLS behavior is not established by these fakes.
 - Treatment approval migration and revocation: `apps/api/integration/treatmentAccessMigration.test.ts` requires an isolated real PostGIS connection and checks migration `005` after `001`–`004`.
-- Provider seed contract and overwrite guards: `apps/api/test/providerSeed.test.ts`; secret-excluding revision snapshots, database seeding and credential reset: `apps/api/integration/providerSeedMigration.test.ts` (real PostGIS, migrations `001`–`006`).
+- Provider seed contract and overwrite guards: `apps/api/test/providerSeed.test.ts`; secret-excluding revision snapshots, database seeding and credential reset: `apps/api/integration/providerSeedMigration.test.ts` (real PostGIS, migrations `001`–`008`).
 
 ### Useful post-installation sequence
 
@@ -65,7 +65,7 @@ Playwright requires a Chromium installation (`pnpm exec playwright install chrom
 
 ### SRC-01/S3a provider ingestion checks
 
-`apps/api/test/treatmentIngestion.test.ts` checks geometry evidence and negative cases. `apps/api/integration/treatmentIngestion.test.ts` requires a disposable PostGIS database in `DATABASE_URL` and runs migrations 001–007 inside an isolated schema with a stubbed HTTPS fetcher. It verifies approval gating, immutable documents, review-only publication, deduplication and bbox filtering. Run `pnpm --dir apps/api test:db` after `pnpm db:migrate`. The tests must never access a live provider or use production credentials. Full checks must include formatting, TypeScript, unit tests, build, and Playwright; passing focused tests alone does not prove production readiness or access rights.
+`apps/api/test/treatmentIngestion.test.ts` checks geometry evidence and negative cases. `apps/api/integration/treatmentIngestion.test.ts` requires a disposable PostGIS database in `DATABASE_URL` and runs migrations 001–008 inside an isolated schema with a stubbed HTTPS fetcher. It verifies configured-source manual fetching, immutable documents, review-only publication, deduplication and bbox filtering. Run `pnpm --dir apps/api test:db` after `pnpm db:migrate`. The tests must never access a live provider or use production credentials. Full checks must include formatting, TypeScript, unit tests, build, and Playwright; passing focused tests alone does not prove production readiness or access rights.
 
 ## Canonical check runner (`apatch CHK`)
 
@@ -98,4 +98,8 @@ Provider-specific coverage includes `apps/api/test/beekeeperPlanPage.test.ts`
 collection, duplicate handling and publication), and
 `apps/web/src/components/ProviderSettings.test.tsx` (visible import status).
 No unit or CI test establishes the availability, contract or reuse rights of a
-live external API; the only supported live fetch remains explicit and approved.
+live external API; the only supported live fetch remains explicit and operator-authenticated.
+
+### Manual configured treatment feed regressions
+
+`apps/api/test/httpFetcher.test.ts` proves a configured manual treatment source can use the restricted transport, but a merely configured municipal source cannot bypass its separate approval policy. `apps/api/test/app.test.ts` verifies the removed approval route and bearer-protected one-page sync. `apps/web/src/components/ProviderSettings.test.tsx` verifies that sync is immediately available after opening configured settings, with no permission form. The real-PostGIS ingestion test applies migrations 001–008 and uses a stubbed provider response to verify the full raw-document, candidate and verified-publication path. These tests run under the existing `run-tests.sh` / `apatch CHK`; they do not call the live reference provider.

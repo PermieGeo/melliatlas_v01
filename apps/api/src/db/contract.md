@@ -12,3 +12,7 @@
 - **Extension:** Future capability-owned repositories should keep SQL/data ownership explicit and expose narrow repository interfaces. Add numbered migrations for schema changes.
 
 - Migration `007_treatment_observation_dedupe.sql` creates record-per-document deduplication and immutable operator-review evidence. The treatment ingestion module owns writes; other features must not mutate these records directly.
+
+- **Migration 008:** An existing matching treatment endpoint is promoted to `configured` for manual operator fetching. This is not an approval/terms assertion. Earlier migrations and immutable audit history are left intact.
+
+- **Migration 009:** Corrects the exact untouched migration-004 treatment-feed bootstrap, whose historical `url` held only the portal homepage. It aligns that URL with the already configured full endpoint and makes only this known legacy source manually fetchable. It does not alter checked migration 008, user-customized provider rows, disabled registrations, credentials, or historical permission evidence.

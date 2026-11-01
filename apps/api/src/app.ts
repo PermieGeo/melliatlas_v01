@@ -15,7 +15,6 @@ import express, { type ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { ApiFailure } from "./lib/errors.js";
-import { providerAccessReviewSchema } from "./modules/sources/treatmentIngestion.js";
 
 export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;
@@ -23,11 +22,6 @@ export type ApiServices = {
   checkReadiness(): Promise<boolean>;
   treatmentFeed?: {
     status(): Promise<ProviderCollectionStatus>;
-    approveAccess(input: {
-      reviewer: string;
-      evidenceUrl: string;
-      permissionBasis: string;
-    }): Promise<void>;
     syncOnePage(): Promise<{
       runId: string;
       pageNumber: number;
@@ -245,33 +239,6 @@ export function createApp(
       try {
         res.setHeader("Cache-Control", "no-store");
         res.json(await services.treatmentFeed.status());
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  app.post(
-    "/api/v1/operator/provider/approve",
-    requireOperator,
-    async (req, res, next) => {
-      if (!services.treatmentFeed)
-        return next(
-          new ApiFailure(503, "NOTICES_UNAVAILABLE", "Ingestion unavailable"),
-        );
-      const parsed = providerAccessReviewSchema.safeParse(req.body);
-      if (!parsed.success)
-        return next(
-          new ApiFailure(
-            400,
-            "INVALID_ACCESS_REVIEW",
-            "Valid reviewer and permission evidence required",
-          ),
-        );
-      try {
-        await services.treatmentFeed.approveAccess(parsed.data);
-        res.setHeader("Cache-Control", "no-store");
-        res.json({ status: "reviewed" });
       } catch (error) {
         next(error);
       }

@@ -25,3 +25,5 @@
   it does not trigger retrieval or include credentials/raw data.
 - **Malformed geometry:** Invalid provider geometry is retained as a text-only
   candidate without fabricating a polygon or aborting unrelated valid records.
+
+- **Manual treatment policy (migration 008):** A configured `treatment-feed` may be fetched once per authenticated operator action without documentary permission evidence. The destination whitelist is derived from the validated persisted endpoint (no arbitrary request URL). Approved municipal registrations retain their separate review policy. Historical `access_decision` fields are not prerequisites for manual treatment fetches; individual polygon verification and SSRF/DNS/TLS limits remain mandatory. The old approval route is removed.

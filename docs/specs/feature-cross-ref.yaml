@@ -39,6 +39,7 @@ features:
       - apps/api/test/providerConfiguration.test.ts
       - apps/api/test/providerSeed.test.ts
       - apps/api/integration/providerSeedMigration.test.ts
+      - apps/api/integration/manualTreatmentMigration.test.ts
       - apps/api/test/beekeeperPlanPage.test.ts
       - apps/api/test/app.test.ts
       - apps/api/integration/providerConfigurationMigration.test.ts

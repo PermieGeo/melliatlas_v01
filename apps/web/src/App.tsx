@@ -100,11 +100,17 @@ function SourceCard({ source }: { source: SourceCatalogEntry }) {
       </div>
       <dl className="mt-5 space-y-2.5 text-xs">
         <div className="flex justify-between gap-4">
-          <dt className="text-slate-500">Условия использования</dt>
+          <dt className="text-slate-500">
+            {source.kind === "treatment"
+              ? "Режим загрузки"
+              : "Условия использования"}
+          </dt>
           <dd className="text-right font-semibold text-slate-700">
-            {source.termsReview === "reviewed"
-              ? "Проверены"
-              : "Ожидают проверки"}
+            {source.kind === "treatment"
+              ? "Ручной запуск"
+              : source.termsReview === "reviewed"
+                ? "Проверены"
+                : "Ожидают проверки"}
           </dd>
         </div>
         <div className="flex justify-between gap-4">

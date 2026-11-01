@@ -94,7 +94,7 @@ describe("provider seed upgrade and credential isolation (PostGIS)", () => {
       url: preset.url,
       api_key: null,
       access_decision: "pending",
-      lifecycle: "under_review",
+      lifecycle: "configured",
     });
     const repo = new ProviderConfigurationRepository(client as unknown as Pool);
     const publicConfig = await repo.get();

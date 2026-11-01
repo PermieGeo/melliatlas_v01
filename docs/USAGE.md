@@ -26,7 +26,7 @@ After `docker compose up -d db` and `pnpm db:migrate`, run from the repository r
 pnpm provider:seed:saturn
 ```
 
-This is a one-time or repeatable database seed, **not a live download**. Its preset is `apps/api/config/providers/fgis-saturn.json`, containing the source name, type `treatment`, full HTTPS URL, API request settings, and no API key (`NULL`). The endpoint and numeric region code reproduce the prototype's request and require separate verification before use. There is no external token for this preset. `SOURCE_OPERATOR_TOKEN` is separately used to protect editing through the web UI.
+This is a one-time or repeatable database seed, **not a live download**. Its preset is `apps/api/config/providers/fgis-saturn.json`, containing the source name, type `treatment`, full HTTPS URL, API request settings, and no API key (`NULL`). The endpoint and numeric region code reproduce the reference prototype request; actual responses may differ. There is no external token for this preset. `SOURCE_OPERATOR_TOKEN` is separately used to protect editing through the web UI.
 
 A customized row is not overwritten. For deliberate replacement, use:
 
@@ -34,7 +34,7 @@ A customized row is not overwritten. For deliberate replacement, use:
 pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace
 ```
 
-The `--replace` flag resets prior access approval, removes any saved API key and returns the source to review. Other provider files can be supplied to `pnpm --dir apps/api provider:seed <preset.json>`; the current seed supports one `treatment-feed` record and `treatment` type. Optional third-party keys must be passed through `apiKeyEnv` in the preset and the matching server environment variable, **not** as plaintext in checked-in JSON. Keys are stored in the database and are excluded from HTTP responses and registry revision snapshots; production credential encryption and least-privilege DB access remain operational responsibilities.
+The `--replace` flag clears stored credentials, the ingestion cursor, and historical access metadata; the configured source remains available for explicit manual fetching. Other provider files can be supplied to `pnpm --dir apps/api provider:seed <preset.json>`; the current seed supports one `treatment-feed` record and `treatment` type. Optional third-party keys must be passed through `apiKeyEnv` in the preset and the matching server environment variable, **not** as plaintext in checked-in JSON. Keys are stored in the database and are excluded from HTTP responses and registry revision snapshots; production credential encryption and least-privilege DB access remain operational responsibilities.
 
 ### Prepare operator access
 
@@ -80,7 +80,7 @@ This is **synthetic configuration guidance**, not an assertion that an external 
 
 Click **Сохранить конфигурацию** to persist the settings. The API uses optimistic `expectedRevision` matching: if another tab/operator saved first, the API returns `409 PROVIDER_REVISION_CONFLICT`. Reload, review the latest settings, and retry. The token remains in the component's memory and is sent in an Authorization header; it is not returned by the API.
 
-**After any edit, prior source approval is revoked.** The source returns to `pending` / `under_review` and automatic collection remains disabled. A reviewer must independently confirm source access, API contract, allowed hosts and request policy before a future ingestion adapter can use it. No external provider token is currently required by the generic settings editor; this does **not** establish whether a particular provider requires authentication.
+After an edit, the source remains configured for **manual operator-triggered fetching**. Existing legacy access-approval metadata is cleared, but no documentary approval is needed to fetch a page. No automatic collection starts. Changes to the endpoint invalidate the prior fetch cursor, while HTTPS validation and network safety policy still apply.
 
 ## 3. Use the current HTTP API
 
@@ -117,10 +117,10 @@ The full editable JSON schema is owned by `packages/contracts/src/index.ts` (`pr
 ## 4. Programmatic configuration and source-fetch boundary
 
 - `buildProviderRequest(endpoint, settings)` in `apps/api/src/modules/sources/providerConfiguration.ts` is a pure request builder for `GET`/`POST`, including a nested region filter. It returns a request description and **does not send it**.
-- `RestrictedSourceFetcher` in `apps/api/src/modules/sources/httpFetcher.ts` can fetch only when supplied an independently approved source definition and permitted destination. It is intended for injected/synthetic tests and future adapter wiring.
+- `RestrictedSourceFetcher` permits a configured manual `treatment` source or a separately approved municipal source; in both cases it verifies the destination, DNS/IP safety, TLS and response limits.
 - `parseBeekeeperPlanPage` in `apps/api/src/modules/sources/beekeeperPlanPage.ts` parses the reference response format without making network calls.
 
-The operator-triggered ingest, PostGIS document/observation storage and public reviewed-polygon endpoint are implemented. They require manual authorization and review; there is no background worker or automatic source approval. Source payloads and expected formats still require provider-specific verification before live use. See [Implementation](IMPLEMENTATION.md) and [source-ingestion requirements](specs/active/subspecs/source-ingestion.md).
+The operator-triggered ingest, PostGIS document/observation storage and public reviewed-polygon endpoint are implemented. They require an operator token to trigger a fetch and separate polygon review before publication; there is no background worker or documentary access-approval form. Source payloads and expected formats still require provider-specific verification before live use. See [Implementation](IMPLEMENTATION.md) and [source-ingestion requirements](specs/active/subspecs/source-ingestion.md).
 
 ## 5. What the information does not mean
 
@@ -131,37 +131,23 @@ The operator-triggered ingest, PostGIS document/observation storage and public r
 
 For errors, see [Diagnostics](DIAGNOSTIC.md). For installed dependencies, database setup and restarting the app, see [Installation](INSTALLATION.md).
 
-## Structured treatment-feed ingestion (operator reviewed)
+## Structured treatment-feed ingestion (manual operator workflow)
 
-The source name and endpoint come from the database, not from the map implementation. The reference seed configures a historical portal request shape (`content`, `beeAcreage`, `allPatList`); other providers must use a compatible JSON response adapter. An arbitrary configured endpoint is **not** automatically approved or called.
+The provider endpoint and JSON request settings are stored in `source_catalog`; the reference preset uses `content`, `beeAcreage` and `allPatList`. The backend supports one page per operator action and never invents missing shapes.
 
-1. Run all database migrations, including `007_treatment_observation_dedupe.sql`. Configure the source with the existing preset command or through the operator editor. Set `SOURCE_OPERATOR_TOKEN` in `apps/api/.env`, restart the API, then open the **Source settings** tab and authenticate.
-2. Before any access approval, independently obtain and inspect documentary evidence permitting the specific automated API retrieval and reuse. Public browsing without login is not sufficient evidence. Enter the reviewer, the HTTPS permission evidence URL, and a detailed permission basis; explicitly approve. This step grants a local access decision, not an assertion by MelliAtlas that the provider authorized scraping.
-3. Select **Fetch one page**. Requests are manual, bounded by the configured policy (60 seconds between attempts), and use the request parameters saved in the database. A successful fetch stores immutable raw JSON and pending candidates; it **does not** add polygons to the public map.
-4. Check the **Collection status** panel. If the run failed, inspect its stable error code; if `received=0`, no candidates were returned; if `pendingWithGeometry=0`, there is no publishable polygon yet. Then select **Show pending observations**. Compare candidate identifiers, treatment details and geographic evidence with the original provider publication. Enter the reviewer and a substantial evidence note, then **Verify and publish** only source-supplied, topologically valid polygons. Reject mismatches. Pending, rejected and text-only records never appear as exact polygons.
-5. Open the **Map** tab and select **Refresh layer**. Orange polygons represent individually reviewed, source-derived geometries. Click a shape for its source URL, fetch time and source-reported attributes; they are not pesticide-risk or safety verdicts.
+1. Apply migrations **001–008** with `pnpm db:migrate`. Optionally initialize the provider using `pnpm provider:seed:saturn` (repeat runs preserve customizations). Set `SOURCE_OPERATOR_TOKEN` in `apps/api/.env`, restart `pnpm dev`, open **Настройки источника**, enter the token and click **Открыть настройки**.
+2. Click **Загрузить одну страницу**. No reviewer name, permission document, URL or justification is requested at the source-connection stage. The backend constructs a bounded request from the saved endpoint; there is no scheduled polling. A successful response stores raw JSON and pending candidates without publishing them.
+3. Check **Состояние импорта** for the last run, errors and counts. Use **Показать ожидающие проверки записи** to inspect source-reported coordinates and attributes. Verify/reject individual candidate polygons with a reviewer name and an evidence note. This is a **data-quality review**, not a permission-to-fetch approval.
+4. Open the **Карта** tab and click **Обновить слой**. Only manually verified valid source polygons are displayed, with provenance and timestamps; there are no fabricated fallback geometries.
 
-The public API `GET /api/v1/notices` returns up to 200 verified polygons. An optional `bbox=west,south,east,north` limits the query. The read-only diagnostic endpoint `GET /api/v1/operator/provider/status` exposes the latest run status/error code, review counts and verified-geometry counts to the operator. The protected operator endpoints are `POST /api/v1/operator/provider/approve`, `POST /api/v1/operator/provider/sync`, `GET /api/v1/operator/notices` and `POST /api/v1/operator/notices/:id/review` (all use `Authorization: Bearer <SOURCE_OPERATOR_TOKEN>`). The review endpoint takes `decision`, `reviewer`, and `evidenceNote` as JSON. The source API itself may not have a browser-friendly GET page; use the provider's official publication UI for independent checks.
+The public API `GET /api/v1/notices` returns up to 200 verified polygons; `bbox=west,south,east,north` optionally limits the query. Operator-only endpoints are `GET /api/v1/operator/provider/status`, `POST /api/v1/operator/provider/sync`, `GET /api/v1/operator/notices`, and `POST /api/v1/operator/notices/:id/review`. The former permission-approval route was removed; all operator endpoints require a bearer token. Provider tokens are separate and optional; the reference preset does not define one.
 
-**Limitations:** No recurring worker or automatic polling. One page per manual sync, at most 100 items, advancing a stored cursor until the reported end of the feed. Dates and hazard attributes may be null if absent or not verified. No live probe of the reference endpoint or confirmation of automated reuse rights was performed when preparing this feature. A source remaining `pending` is an intentional safety gate, not a connection failure.
+**Limits:** The upstream API is not automatically contacted on application start. One page is fetched per click with a minimum interval of 60 seconds in the current process, a maximum of 100 configured items per request, and a bounded stored cursor. Actual provider responses and external rights were not verified by this PATCH. Displaying a verified polygon is not an environmental safety verdict.
 
-### Why a configured provider can still produce an empty map
+### Diagnose an empty map
 
-Use the **Collection status** panel in the source settings tab after operator
-sign-in. It distinguishes four independent states:
-
-1. **Access pending:** no outbound request is authorized. A public website or
-   empty API key is not equivalent to permission for automated reuse.
-2. **No successful fetch:** the latest run is absent or reports a failure code.
-   Inspect the code and check endpoint/request compatibility without repeatedly
-   polling a site whose access has not been verified.
-3. **Pending review:** a successful fetch saved candidates; only candidates
-   with validated source polygons can be individually verified and published.
-4. **Published polygons:** verified records exist. Return to the map and use
-   **Refresh layer**. If the map still displays zero, inspect
-   `GET /api/v1/notices`, browser network errors and the ingestion status counts.
-
-This diagnostic does **not** call the provider, change source approval or
-expose a provider key. The source may be publicly browsable without a login,
-but an undocumented HTTP endpoint and automated reuse require independent
-verification.
+- **No last run:** Open the operator settings and manually fetch one page.
+- **Run failed:** Inspect `latestRun.errorCode`, URL, POST parameters and API response compatibility.
+- **Run succeeded with zero candidates:** The provider returned an empty page for the configured region/filter.
+- **Candidates lack geometry:** Inspect the provider's actual geometry format; missing/invalid shapes remain `text_only`.
+- **Candidates await review:** Verify valid polygons individually, then refresh the map. The public notices endpoint intentionally excludes pending observations.
