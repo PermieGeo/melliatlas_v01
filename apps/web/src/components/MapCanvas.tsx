@@ -71,7 +71,12 @@ export function MapCanvas({
             positions={rings.map((ring) =>
               ring.map(([lon, lat]) => [lat, lon] as [number, number]),
             )}
-            pathOptions={{ color: "#c2410c", weight: 2, fillOpacity: 0.22 }}
+            pathOptions={{
+              color: notice.reviewStatus === "pending" ? "#d97706" : "#c2410c",
+              weight: 2,
+              dashArray: notice.reviewStatus === "pending" ? "5 5" : undefined,
+              fillOpacity: notice.reviewStatus === "pending" ? 0.12 : 0.22,
+            }}
           >
             <Popup>
               <div className="max-w-xs space-y-1 text-xs">
@@ -98,7 +103,11 @@ export function MapCanvas({
                 >
                   Открыть источник
                 </a>
-                <p>Проверено оператором. Не является оценкой безопасности.</p>
+                <p>
+                  {notice.reviewStatus === "pending"
+                    ? "Не проверено: предварительная геометрия источника. Не является оценкой безопасности."
+                    : "Проверено оператором. Не является оценкой безопасности."}
+                </p>
               </div>
             </Popup>
           </Polygon>

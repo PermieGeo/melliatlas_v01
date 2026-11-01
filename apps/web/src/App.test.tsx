@@ -1,5 +1,12 @@
 // Feature IDs: MAP.POINT_SELECTION, SOURCES.CATALOG, WEATHER.POINT_FORECAST
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -49,7 +56,9 @@ it("renders a map-centered empty state without fictional observations", async ()
       async (url: string) =>
         new Response(
           JSON.stringify(
-            url === "/api/v1/notices" ? { notices: [] } : { sources: [] },
+            url === "/api/v1/operator/notices/map-preview"
+              ? { notices: [] }
+              : { sources: [] },
           ),
           { status: 200 },
         ),
@@ -71,7 +80,7 @@ it("shows a source failure and recovers after user retry without fallback values
       if (url === "/api/v1/sources") {
         return new Response(JSON.stringify({ sources: [] }));
       }
-      if (url === "/api/v1/notices") {
+      if (url === "/api/v1/operator/notices/map-preview") {
         return new Response(JSON.stringify({ notices: [] }));
       }
       attempts += 1;
@@ -141,38 +150,85 @@ it("shows the seeded treatment provider publicly without operator credentials", 
     termsReview: "pending",
     lastSuccessfulIngestAt: null,
   };
-  const fetcher = vi.fn(
-    async (url: string) =>
-      new Response(
-        JSON.stringify(
-          url === "/api/v1/notices" ? { notices: [] } : { sources: [source] },
-        ),
-        { status: 200 },
-      ),
-  );
+  const configuration = {
+    providerName: source.name,
+    endpoint: source.url,
+    request: {
+      method: "POST",
+      regionParameter: "subject",
+      regionCode: 55,
+      parameters: { pageNumber: 0, pageSize: 40 },
+    },
+    revision: "1",
+    collectionEnabled: false,
+  };
+  const status = {
+    sourceConfigured: true,
+    latestRun: null,
+    pendingReview: 0,
+    pendingWithGeometry: 0,
+    verifiedWithGeometry: 0,
+    missingGeometry: 0,
+  };
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === "/api/v1/sources") {
+      return new Response(JSON.stringify({ sources: [source] }));
+    }
+    if (url === "/api/v1/operator/notices/map-preview") {
+      return new Response(JSON.stringify({ notices: [] }));
+    }
+    if (url === "/api/v1/operator/provider") {
+      return new Response(JSON.stringify(configuration));
+    }
+    if (url === "/api/v1/operator/provider/status") {
+      return new Response(JSON.stringify(status));
+    }
+    return new Response(null, { status: 404 });
+  });
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
   // The map warning belongs to the map tab and must be checked before navigation.
   expect(
-    await screen.findByText(/Наличие URL в настройках не запускает импорт/),
+    await screen.findByText(/На карте пока нет загруженных полигонов/),
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
   expect(await screen.findByText("Fixture treatment feed")).toBeTruthy();
   expect(screen.getByText(source.url)).toBeTruthy();
   expect(screen.getByText("На проверке")).toBeTruthy();
   expect(screen.getByText("Не выполнялась")).toBeTruthy();
+  // Both the source summary and editor describe manual fetching; scope the assertion.
   expect(
-    screen.getByText(
-      /После проверки доступа оператор может загрузить и проверить записи/,
-    ),
+    within(
+      screen.getByRole("region", { name: "Сохранённый источник" }),
+    ).getByText(/Сохранение запускает загрузку одной страницы/),
   ).toBeTruthy();
-  expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
+  expect(await screen.findByDisplayValue(source.url)).toBeTruthy();
   expect(
-    screen.queryByText(/Наличие URL в настройках не запускает импорт/),
+    screen.getByRole("button", { name: "Сохранить и загрузить страницу" }),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText("Токен оператора")).toBeNull();
+  expect(
+    screen.queryByText(/На карте пока нет загруженных полигонов/),
   ).toBeNull();
-  expect(fetcher).toHaveBeenCalledTimes(2);
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
   expect(fetcher).toHaveBeenCalledWith("/api/v1/sources", expect.any(Object));
-  expect(fetcher).toHaveBeenCalledWith("/api/v1/notices", expect.any(Object));
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/v1/operator/notices/map-preview",
+    expect.any(Object),
+  );
+  expect(fetcher).toHaveBeenCalledWith("/api/v1/operator/provider", {
+    cache: "no-store",
+  });
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/v1/operator/provider/status",
+    expect.any(Object),
+  );
+  // Opening settings does not trigger a provider collection run.
+  expect(
+    fetcher.mock.calls.some(
+      ([url]) => url === "/api/v1/operator/provider/sync",
+    ),
+  ).toBe(false);
 });
 
 it("shows a missing treatment provider instead of inventing settings", async () => {
@@ -182,7 +238,9 @@ it("shows a missing treatment provider instead of inventing settings", async () 
       async (url: string) =>
         new Response(
           JSON.stringify(
-            url === "/api/v1/notices" ? { notices: [] } : { sources: [] },
+            url === "/api/v1/operator/notices/map-preview"
+              ? { notices: [] }
+              : { sources: [] },
           ),
         ),
     ),
@@ -192,7 +250,6 @@ it("shows a missing treatment provider instead of inventing settings", async () 
   expect(
     await screen.findByText(/Источник обработок не найден в реестре/),
   ).toBeTruthy();
-  expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
 });
 
 it("explains the missing public map overlay without suggesting sample data", async () => {
@@ -202,14 +259,16 @@ it("explains the missing public map overlay without suggesting sample data", asy
       async (url: string) =>
         new Response(
           JSON.stringify(
-            url === "/api/v1/notices" ? { notices: [] } : { sources: [] },
+            url === "/api/v1/operator/notices/map-preview"
+              ? { notices: [] }
+              : { sources: [] },
           ),
         ),
     ),
   );
   render(<App />);
   expect(
-    await screen.findByText(/Наличие URL в настройках не запускает импорт/),
+    await screen.findByText(/На карте пока нет загруженных полигонов/),
   ).toBeTruthy();
-  expect(screen.getByText(/Проверенных полигонов: 0/)).toBeTruthy();
+  expect(screen.getByText(/Полигонов на карте: 0/)).toBeTruthy();
 });

@@ -395,7 +395,7 @@ export default function App() {
                 <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-700">
                   <span role="status">
                     {treatmentState.status === "loaded"
-                      ? `Проверенных полигонов: ${treatmentState.value.length}`
+                      ? `Полигонов на карте: ${treatmentState.value.length}`
                       : treatmentState.status === "error"
                         ? `Ошибка слоя: ${treatmentState.message}`
                         : "Загрузка планов…"}
@@ -414,10 +414,18 @@ export default function App() {
                       role="status"
                       className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"
                     >
-                      На карте пока нет опубликованных полигонов. Наличие URL в
-                      настройках не запускает импорт: проверьте разрешение
-                      источника, выполните загрузку страницы и подтвердите
-                      кандидатов с геометрией во вкладке «Настройки источника».
+                      На карте пока нет загруженных полигонов. Откройте
+                      настройки источника, сохраните параметры для загрузки
+                      одной страницы и обновите слой.
+                    </p>
+                  )}
+                {treatmentState.status === "loaded" &&
+                  treatmentState.value.some(
+                    (t) => t.reviewStatus === "pending",
+                  ) && (
+                    <p className="mb-2 text-xs text-amber-800">
+                      Пунктирные полигоны — получены из источника, но ещё не
+                      проверены.
                     </p>
                   )}
                 <MapCanvas
@@ -680,10 +688,10 @@ export default function App() {
                 </dl>
               )}
               <p className="text-xs leading-relaxed text-slate-600">
-                Эти общедоступные сведения берутся из каталога. Подробные
-                параметры запроса можно открыть ниже с токеном оператора. После
-                проверки доступа оператор может загрузить и проверить записи. На
-                карте отображаются только подтверждённые геометрии.
+                Параметры подключения доступны ниже без дополнительного токена.
+                Сохранение запускает загрузку одной страницы. Полученные
+                полигоны отображаются на карте с отметкой «не проверено» до
+                подтверждения.
               </p>
             </section>
             <ProviderSettings

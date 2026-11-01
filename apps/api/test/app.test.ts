@@ -121,8 +121,7 @@ describe("MelliAtlas public API", () => {
   });
 });
 
-describe("Provider operator configuration HTTP boundary", () => {
-  const operatorToken = "a-long-development-test-token-at-least-32-bytes";
+describe("local administrator configuration HTTP boundary", () => {
   const configuration = {
     providerName: "Example Provider",
     endpoint: "https://example.org/plans",
@@ -147,65 +146,42 @@ describe("Provider operator configuration HTTP boundary", () => {
     },
   };
 
-  it("does not allow public or invalid-credential access", async () => {
-    const app = createApp(adminServices, { operatorToken });
-    const anonymous = await request(app).get("/api/v1/operator/provider");
-    expect(anonymous.status).toBe(401);
-    expect(anonymous.body.error.code).toBe("UNAUTHORIZED");
-    const invalid = await request(app)
-      .put("/api/v1/operator/provider")
-      .set("Authorization", "Bearer wrong")
-      .send({ endpoint: "https://example.org/plans" });
-    expect(invalid.status).toBe(401);
-    expect(invalid.headers["cache-control"]).not.toBe("public");
-    const unconfigured = await request(createApp(adminServices)).get(
-      "/api/v1/operator/provider",
-    );
-    expect(unconfigured.status).toBe(503);
-  });
-
-  it("returns a revisioned configuration and accepts a valid operator edit", async () => {
-    const app = createApp(adminServices, { operatorToken });
-    const loaded = await request(app)
-      .get("/api/v1/operator/provider")
-      .set("Authorization", `Bearer ${operatorToken}`);
+  it("opens settings and saves a revision without a bearer token", async () => {
+    const app = createApp(adminServices);
+    const loaded = await request(app).get("/api/v1/operator/provider");
     expect(loaded.status).toBe(200);
     expect(loaded.body).toEqual(configuration);
     expect(loaded.headers["cache-control"]).toBe("no-store");
-    const changed = await request(app)
-      .put("/api/v1/operator/provider")
-      .set("Authorization", `Bearer ${operatorToken}`)
-      .send({
-        providerName: "Updated Provider",
-        endpoint: "https://example.org/new-plans",
-        request: configuration.request,
-        expectedRevision: "1",
-      });
+    const changed = await request(app).put("/api/v1/operator/provider").send({
+      providerName: "Updated Provider",
+      endpoint: "https://example.org/new-plans",
+      request: configuration.request,
+      expectedRevision: "1",
+    });
     expect(changed.status).toBe(200);
     expect(changed.body.endpoint).toBe("https://example.org/new-plans");
-    expect(changed.body.collectionEnabled).toBe(false);
   });
 
-  it("rejects schema violations before persisting", async () => {
-    const app = createApp(adminServices, { operatorToken });
-    const invalid = await request(app)
+  it("still validates settings and refuses a missing administrator service", async () => {
+    const invalid = await request(createApp(adminServices))
       .put("/api/v1/operator/provider")
-      .set("Authorization", `Bearer ${operatorToken}`)
       .send({
-        providerName: "Example Provider",
+        providerName: "Provider",
         endpoint: "https://example.org/plans",
         request: configuration.request,
         expectedRevision: "0",
-        unexpected: true,
       });
     expect(invalid.status).toBe(400);
     expect(invalid.body.error.code).toBe("INVALID_PROVIDER_CONFIG");
+    const unavailable = await request(createApp(services)).get(
+      "/api/v1/operator/provider",
+    );
+    expect(unavailable.status).toBe(503);
   });
 });
 
-describe("treatment evidence HTTP boundaries", () => {
-  const token = "test-operator-token-12345678901234567890123456789";
-  const calls = { sync: 0, reviewed: 0 };
+describe("local administrator treatment evidence HTTP boundaries", () => {
+  let syncCount = 0;
   const treatmentFeed: NonNullable<ApiServices["treatmentFeed"]> = {
     status: async () => ({
       sourceConfigured: true,
@@ -216,7 +192,7 @@ describe("treatment evidence HTTP boundaries", () => {
       missingGeometry: 0,
     }),
     syncOnePage: async () => {
-      calls.sync++;
+      syncCount++;
       return {
         runId: "fixture",
         pageNumber: 0,
@@ -226,79 +202,77 @@ describe("treatment evidence HTTP boundaries", () => {
       };
     },
     pending: async () => [],
-    review: async () => {
-      calls.reviewed++;
-    },
+    review: async () => {},
     published: async () => [],
+    preview: async () => [
+      {
+        id: "preview",
+        reviewStatus: "pending",
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [32, 54],
+              [33, 54],
+              [33, 55],
+              [32, 54],
+            ],
+          ],
+        },
+      },
+    ],
   };
 
-  it("does not allow anonymous network-triggering or review actions", async () => {
-    const app = createApp(
-      { ...services, treatmentFeed },
-      { operatorToken: token },
+  it("starts one explicit sync and returns pending preview only via administrator route", async () => {
+    const app = createApp({ ...services, treatmentFeed });
+    const before = syncCount;
+    const synced = await request(app).post("/api/v1/operator/provider/sync");
+    expect(synced.status).toBe(200);
+    expect(syncCount).toBe(before + 1);
+    const preview = await request(app).get(
+      "/api/v1/operator/notices/map-preview",
     );
-    const before = calls.sync;
+    expect(preview.status).toBe(200);
+    expect(preview.headers["cache-control"]).toBe("no-store");
+    expect(preview.body.notices[0].reviewStatus).toBe("pending");
+    const publicMap = await request(app).get("/api/v1/notices");
+    expect(publicMap.body).toEqual({ notices: [] });
+  });
+
+  it("rejects cross-origin browser writes to local admin routes", async () => {
+    const app = createApp({ ...services, treatmentFeed });
+    const before = syncCount;
+    const blocked = await request(app)
+      .post("/api/v1/operator/provider/sync")
+      .set("Origin", "https://attacker.example.org");
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error.code).toBe("FORBIDDEN_ORIGIN");
+    expect(syncCount).toBe(before);
+    const local = await request(app)
+      .post("/api/v1/operator/provider/sync")
+      .set("Origin", "http://localhost:5173");
+    expect(local.status).toBe(200);
+  });
+
+  it("keeps the discontinued permission route absent and exposes read-only status", async () => {
+    const app = createApp({ ...services, treatmentFeed });
     expect(
-      (await request(app).post("/api/v1/operator/provider/sync")).status,
-    ).toBe(401);
-    expect(calls.sync).toBe(before);
-    expect((await request(app).get("/api/v1/notices")).body).toEqual({
-      notices: [],
-    });
+      (await request(app).post("/api/v1/operator/provider/approve")).status,
+    ).toBe(404);
+    const response = await request(app).get("/api/v1/operator/provider/status");
+    expect(response.status).toBe(200);
+    expect(response.body.sourceConfigured).toBe(true);
   });
 
-  it("requires operator authentication to inspect import diagnostics", async () => {
-    const app = createApp(
-      { ...services, treatmentFeed },
-      { operatorToken: token },
-    );
-    const denied = await request(app).get("/api/v1/operator/provider/status");
-    expect(denied.status).toBe(401);
-    const allowed = await request(app)
-      .get("/api/v1/operator/provider/status")
-      .set("Authorization", `Bearer ${token}`);
-    expect(allowed.status).toBe(200);
-    expect(allowed.headers["cache-control"]).toBe("no-store");
-    expect(allowed.body).toEqual({
-      sourceConfigured: true,
-      latestRun: null,
-      pendingReview: 0,
-      pendingWithGeometry: 0,
-      verifiedWithGeometry: 0,
-      missingGeometry: 0,
-    });
-  });
-
-  it("requires valid WGS84 bbox and returns no unverified placeholders", async () => {
-    const app = createApp(
-      { ...services, treatmentFeed },
-      { operatorToken: token },
-    );
+  it("rejects invalid public bbox without fetching or leaking pending observations", async () => {
+    const app = createApp({ ...services, treatmentFeed });
     for (const bbox of ["0,0,0,1", "190,0,200,1", "x,0,2,3", "1,2,3,4,5"]) {
       const result = await request(app).get(`/api/v1/notices?bbox=${bbox}`);
       expect(result.status).toBe(400);
       expect(result.body.error.code).toBe("INVALID_BBOX");
     }
-    const success = await request(app).get("/api/v1/notices?bbox=30,53,35,56");
-    expect(success.status).toBe(200);
-    expect(success.body.notices).toEqual([]);
-  });
-
-  it("removes the old permission-approval route while keeping manual sync operator-only", async () => {
-    const app = createApp(
-      { ...services, treatmentFeed },
-      { operatorToken: token },
-    );
-    const legacy = await request(app)
-      .post("/api/v1/operator/provider/approve")
-      .set("Authorization", `Bearer ${token}`)
-      .send({});
-    expect(legacy.status).toBe(404);
-    const before = calls.sync;
-    const authorized = await request(app)
-      .post("/api/v1/operator/provider/sync")
-      .set("Authorization", `Bearer ${token}`);
-    expect(authorized.status).toBe(200);
-    expect(calls.sync).toBe(before + 1);
+    expect(
+      (await request(app).get("/api/v1/notices?bbox=30,53,35,56")).body.notices,
+    ).toEqual([]);
   });
 });

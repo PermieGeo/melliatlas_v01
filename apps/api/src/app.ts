@@ -1,5 +1,5 @@
 // Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   apiErrorSchema,
   providerConfigurationEditSchema,
@@ -53,6 +53,7 @@ export type ApiServices = {
       evidenceNote: string,
     ): Promise<void>;
     published(bbox?: [number, number, number, number]): Promise<unknown[]>;
+    preview(): Promise<unknown[]>;
   };
   providerConfiguration?: {
     get(): Promise<ProviderConfiguration>;
@@ -60,10 +61,7 @@ export type ApiServices = {
   };
 };
 
-export function createApp(
-  services: ApiServices,
-  options: { operatorToken?: string } = {},
-): express.Express {
+export function createApp(services: ApiServices): express.Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -115,32 +113,48 @@ export function createApp(
     }
   });
 
-  // The operator token is supplied only through the backend environment and never returned to browsers.
-  const requireOperator: express.RequestHandler = (req, _res, next) => {
-    if (
-      !options.operatorToken ||
-      (!services.providerConfiguration && !services.treatmentFeed)
-    ) {
+  // Reject cross-origin browser requests to the local administrator routes.
+  app.use("/api/v1/operator", (req, _res, next) => {
+    const origin = req.header("origin");
+    if (origin) {
+      try {
+        const url = new URL(origin);
+        if (
+          url.protocol !== "http:" ||
+          !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
+          !["5173", "3001"].includes(url.port)
+        ) {
+          return next(
+            new ApiFailure(
+              403,
+              "FORBIDDEN_ORIGIN",
+              "Administrator access is local only",
+            ),
+          );
+        }
+      } catch {
+        return next(
+          new ApiFailure(
+            403,
+            "FORBIDDEN_ORIGIN",
+            "Administrator access is local only",
+          ),
+        );
+      }
+    }
+    next();
+  });
+
+  // Administrator routes are served by the loopback-bound admin application.
+  // Network exposure must be controlled at deployment, not with browser-held tokens.
+  const requireOperator: express.RequestHandler = (_req, _res, next) => {
+    if (!services.providerConfiguration && !services.treatmentFeed) {
       return next(
         new ApiFailure(
           503,
           "OPERATOR_UNAVAILABLE",
-          "Operator configuration is unavailable",
+          "Administrator functions unavailable",
         ),
-      );
-    }
-    const authorization = req.header("authorization");
-    const supplied = authorization?.startsWith("Bearer ")
-      ? authorization.slice("Bearer ".length)
-      : "";
-    const digest = (token: string) =>
-      createHash("sha256").update(token).digest();
-    if (
-      !supplied ||
-      !timingSafeEqual(digest(supplied), digest(options.operatorToken))
-    ) {
-      return next(
-        new ApiFailure(401, "UNAUTHORIZED", "Operator authentication required"),
       );
     }
     next();
@@ -227,6 +241,23 @@ export function createApp(
       next(error);
     }
   });
+
+  app.get(
+    "/api/v1/operator/notices/map-preview",
+    requireOperator,
+    async (_req, res, next) => {
+      if (!services.treatmentFeed)
+        return next(
+          new ApiFailure(503, "NOTICES_UNAVAILABLE", "Map preview unavailable"),
+        );
+      try {
+        res.setHeader("Cache-Control", "no-store");
+        res.json({ notices: await services.treatmentFeed.preview() });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   app.get(
     "/api/v1/operator/provider/status",

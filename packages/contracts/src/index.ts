@@ -218,6 +218,7 @@ export const mapTreatmentSchema = z
     ),
     geometry: treatmentGeometrySchema,
     spatialPrecision: z.literal("exact_polygon"),
+    reviewStatus: z.enum(["pending", "verified"]).optional(),
   })
   .strict();
 export const mapTreatmentsResponseSchema = z
