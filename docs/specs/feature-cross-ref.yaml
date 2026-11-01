@@ -54,8 +54,10 @@ features:
       - SRC-R06
     code_paths:
       - apps/api/src/modules/sources/contracts.ts
+      - apps/api/src/modules/sources/treatmentIngestion.ts
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
+      - apps/api/integration/treatmentIngestion.test.ts
   - id: SOURCES.SAFE_FETCH
     stage_ids:
       - SRC-01
@@ -85,8 +87,11 @@ features:
       - SRC-R06
     code_paths:
       - apps/api/src/modules/sources/contracts.ts
+      - apps/api/src/modules/sources/beekeeperPlanPage.ts
+      - apps/api/src/modules/sources/treatmentIngestion.ts
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
+      - apps/api/test/treatmentIngestion.test.ts
   - id: NOTICES.SPATIAL_PRECISION
     stage_ids:
       - SRC-01
@@ -96,8 +101,11 @@ features:
     requirements:
       - SRC-R05
       - SRC-R07
-    code_paths: []
-    test_paths: []
+    code_paths:
+      - apps/api/src/modules/sources/treatmentIngestion.ts
+    test_paths:
+      - apps/api/test/treatmentIngestion.test.ts
+      - apps/api/integration/treatmentIngestion.test.ts
   - id: NOTICES.MAP_OVERLAY
     stage_ids:
       - SRC-01
@@ -107,8 +115,16 @@ features:
     requirements:
       - SRC-R07
       - SRC-R08
-    code_paths: []
-    test_paths: []
+    code_paths:
+      - apps/api/src/modules/sources/treatmentIngestion.ts
+      - apps/api/src/app.ts
+      - apps/web/src/App.tsx
+      - apps/web/src/components/MapCanvas.tsx
+      - apps/web/src/api/client.ts
+      - packages/contracts/src/index.ts
+    test_paths:
+      - apps/api/test/app.test.ts
+      - apps/api/integration/treatmentIngestion.test.ts
   - id: WEATHER.POINT_FORECAST
     stage_ids:
       - SRC-01

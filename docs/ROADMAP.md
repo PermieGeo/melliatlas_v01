@@ -14,3 +14,7 @@
 Review and correct the local installation, configuration, usage, verification and troubleshooting guidance against the implemented `SRC-01 / S2` code. This maintenance increment does **not** complete a normative source-ingestion requirement, authorize provider access or change the developer-controlled SDD checkpoint. The next product work remains external-access/contract verification followed by the durable structured-provider adapter.
 
 This is a _sequence of prospective scopes_, not a set of pre-approved or completed child specifications. Only the selected `SRC-01` has a current normative sub-spec and implementation plan. Its first source-backed weather-map slice is implemented as the repository's bootstrap capability; the remaining `SRC-01` work is planned.
+
+## Current source-ingestion increment
+
+`SRC-01 / S3a` adds manual, permission-reviewed source ingestion and a map layer containing individually verified polygons. The reference endpoint remains a candidate whose automation/republication rights and live response contract must be checked independently. The next planned slices are source-contract validation and durable multi-page worker/retraction handling, followed by municipal adapters and full spatial evidence acceptance.

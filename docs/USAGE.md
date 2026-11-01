@@ -130,3 +130,17 @@ No configured provider ingestion route, background job, durable treatment-plan i
 - Private apiaries, verified treatment polygons, public notice overlays and agent-generated analysis remain future capabilities.
 
 For errors, see [Diagnostics](DIAGNOSTIC.md). For installed dependencies, database setup and restarting the app, see [Installation](INSTALLATION.md).
+
+## Structured treatment-feed ingestion (operator reviewed)
+
+The source name and endpoint come from the database, not from the map implementation. The reference seed configures a historical portal request shape (`content`, `beeAcreage`, `allPatList`); other providers must use a compatible JSON response adapter. An arbitrary configured endpoint is **not** automatically approved or called.
+
+1. Run all database migrations, including `007_treatment_observation_dedupe.sql`. Configure the source with the existing preset command or through the operator editor. Set `SOURCE_OPERATOR_TOKEN` in `apps/api/.env`, restart the API, then open the **Source settings** tab and authenticate.
+2. Before any access approval, independently obtain and inspect documentary evidence permitting the specific automated API retrieval and reuse. Public browsing without login is not sufficient evidence. Enter the reviewer, the HTTPS permission evidence URL, and a detailed permission basis; explicitly approve. This step grants a local access decision, not an assertion by MelliAtlas that the provider authorized scraping.
+3. Select **Fetch one page**. Requests are manual, bounded by the configured policy (60 seconds between attempts), and use the request parameters saved in the database. A successful fetch stores immutable raw JSON and pending candidates; it **does not** add polygons to the public map.
+4. Select **Show pending observations**. Compare candidate identifiers, treatment details and geographic evidence with the original provider publication. Enter the reviewer and a substantial evidence note, then **Verify and publish** only source-supplied, topologically valid polygons. Reject mismatches. Pending, rejected and text-only records never appear as exact polygons.
+5. Open the **Map** tab and select **Refresh layer**. Orange polygons represent individually reviewed, source-derived geometries. Click a shape for its source URL, fetch time and source-reported attributes; they are not pesticide-risk or safety verdicts.
+
+The public API `GET /api/v1/notices` returns up to 200 verified polygons. An optional `bbox=west,south,east,north` limits the query. The protected operator endpoints are `POST /api/v1/operator/provider/approve`, `POST /api/v1/operator/provider/sync`, `GET /api/v1/operator/notices` and `POST /api/v1/operator/notices/:id/review` (all use `Authorization: Bearer <SOURCE_OPERATOR_TOKEN>`). The review endpoint takes `decision`, `reviewer`, and `evidenceNote` as JSON. The source API itself may not have a browser-friendly GET page; use the provider's official publication UI for independent checks.
+
+**Limitations:** No recurring worker or automatic polling. One page per manual sync, at most 100 items, advancing a stored cursor until the reported end of the feed. Dates and hazard attributes may be null if absent or not verified. No live probe of the reference endpoint or confirmation of automated reuse rights was performed when preparing this feature. A source remaining `pending` is an intentional safety gate, not a connection failure.

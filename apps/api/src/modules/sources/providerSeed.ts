@@ -100,7 +100,7 @@ export async function seedProvider(
       `UPDATE source_catalog SET
          name = $2, kind = $3, url = $4, api_key = $5,
          api_request_config = $6::jsonb, lifecycle = 'under_review',
-         access_decision = 'pending', terms_review = 'pending',
+         access_decision = 'pending', terms_review = 'pending', source_cursor = NULL,
          allowed_locations = '[]'::jsonb, fetch_policy = NULL,
          reviewed_by = NULL, reviewed_at = NULL,
          permission_evidence_url = NULL, permission_basis = NULL, parser_version = NULL

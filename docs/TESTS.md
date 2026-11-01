@@ -62,3 +62,7 @@ python3 tools/specs/validate_state.py
 The PostGIS integration tests require `DATABASE_URL` in their process environment. The test script does **not** automatically load `apps/api/.env` in every invocation, so provide a test-only URL explicitly or load a local environment file in the shell without printing secrets. CI supplies `DATABASE_URL` directly. Do not claim `test:db` passed if the database/URL was not available.
 
 Playwright requires a Chromium installation (`pnpm exec playwright install chromium`) and the database; run `pnpm e2e` with the normal dev server stopped to avoid stale sessions. Browser tests with intercepted responses do not establish that real provider retrieval or storage works.
+
+### SRC-01/S3a provider ingestion checks
+
+`apps/api/test/treatmentIngestion.test.ts` checks geometry evidence and negative cases. `apps/api/integration/treatmentIngestion.test.ts` requires a disposable PostGIS database in `DATABASE_URL` and runs migrations 001–007 inside an isolated schema with a stubbed HTTPS fetcher. It verifies approval gating, immutable documents, review-only publication, deduplication and bbox filtering. Run `pnpm --dir apps/api test:db` after `pnpm db:migrate`. The tests must never access a live provider or use production credentials. Full checks must include formatting, TypeScript, unit tests, build, and Playwright; passing focused tests alone does not prove production readiness or access rights.

@@ -177,3 +177,49 @@ describe("Provider operator configuration HTTP boundary", () => {
     expect(invalid.body.error.code).toBe("INVALID_PROVIDER_CONFIG");
   });
 });
+
+describe("treatment evidence HTTP boundaries", () => {
+  const token = "test-operator-token-12345678901234567890123456789";
+  const calls = { sync: 0, approved: 0, reviewed: 0 };
+  const treatmentFeed: NonNullable<ApiServices["treatmentFeed"]> = {
+    approveAccess: async () => { calls.approved++; },
+    syncOnePage: async () => { calls.sync++; return { runId: "fixture", pageNumber: 0, received: 1, stored: 1, nextPage: 0 }; },
+    pending: async () => [],
+    review: async () => { calls.reviewed++; },
+    published: async () => [],
+  };
+
+  it("does not allow anonymous network-triggering or review actions", async () => {
+    const app = createApp({ ...services, treatmentFeed }, { operatorToken: token });
+    const before = calls.sync;
+    expect((await request(app).post("/api/v1/operator/provider/sync")).status).toBe(401);
+    expect((await request(app).post("/api/v1/operator/provider/approve").send({})).status).toBe(401);
+    expect(calls.sync).toBe(before);
+    expect((await request(app).get("/api/v1/notices")).body).toEqual({ notices: [] });
+  });
+
+  it("requires valid WGS84 bbox and returns no unverified placeholders", async () => {
+    const app = createApp({ ...services, treatmentFeed }, { operatorToken: token });
+    for (const bbox of ["0,0,0,1", "190,0,200,1", "x,0,2,3", "1,2,3,4,5"]) {
+      const result = await request(app).get(`/api/v1/notices?bbox=${bbox}`);
+      expect(result.status).toBe(400);
+      expect(result.body.error.code).toBe("INVALID_BBOX");
+    }
+    const success = await request(app).get("/api/v1/notices?bbox=30,53,35,56");
+    expect(success.status).toBe(200);
+    expect(success.body.notices).toEqual([]);
+  });
+
+  it("accepts explicit permission evidence but does not sync as part of approval", async () => {
+    const app = createApp({ ...services, treatmentFeed, providerConfiguration: {
+      get: async () => { throw new Error("unneeded"); }, update: async () => { throw new Error("unneeded"); },
+    } }, { operatorToken: token });
+    const before = calls.sync;
+    const result = await request(app).post("/api/v1/operator/provider/approve")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ reviewer: "Fixture operator", evidenceUrl: "https://plans.example.org/terms",
+        permissionBasis: "Explicit synthetic fixture access permission for tests" });
+    expect(result.status).toBe(200);
+    expect(calls.sync).toBe(before);
+  });
+});
