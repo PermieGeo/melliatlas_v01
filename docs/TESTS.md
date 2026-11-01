@@ -30,9 +30,9 @@ The E2E configuration starts `pnpm dev` automatically. It intercepts source/weat
 - Source-ingestion contracts and offline destination policy: `apps/api/test/sourcePolicy.test.ts` (no network/real-source permission evidence).
 - Internal approved-registry read mapping and fail-closed behavior: `apps/api/test/municipalSourceRegistry.test.ts`.
 - Real migration compatibility, approval constraints, history and policy checks: `apps/api/integration/sourceCatalogMigration.test.ts` (explicit `test:db`, run on CI with PostGIS; tests roll back their temporary schema).
-- Saturn request building/operator API: `apps/api/test/saturnConfiguration.test.ts`, `apps/api/test/app.test.ts`.
-- Saturn migration/optimistic revision: `apps/api/integration/saturnConfigurationMigration.test.ts` (real PostgreSQL, requires DATABASE_URL).
-- Saturn operator UI: `apps/web/src/components/SaturnSettings.test.tsx`.
+- Provider request building/operator API: `apps/api/test/providerConfiguration.test.ts`, `apps/api/test/app.test.ts`.
+- Provider migration/optimistic revision: `apps/api/integration/providerConfigurationMigration.test.ts` (real PostgreSQL, requires DATABASE_URL).
+- Provider operator UI: `apps/web/src/components/ProviderSettings.test.tsx`.
 - Browser components: `apps/web/src/App.test.tsx`.
 - Browser response decoding and errors: `apps/web/src/api/client.test.ts`.
 - Desktop/mobile map interaction: `tests/e2e/map.spec.ts`.

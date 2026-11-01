@@ -8,11 +8,11 @@
 4. Adjust the displayed inspection radius. It draws a circle around the selected point; it is **not** a search for nearby treatment notices in the current build.
 5. Switch to **Data Sources** to see the database-backed source catalog and each entry's terms-review, lifecycle and last-ingestion status.
 
-### Configure the Saturn endpoint (operator only)
+### Configure the external treatment provider (operator only)
 
-Set a server-side `SATURN_OPERATOR_TOKEN` of at least 32 characters before starting the API. Visit the **Saturn Settings** tab, enter that token for this session, then edit the HTTPS endpoint, `GET`/`POST` method, regional parameter and code, and optional flat JSON parameters. Saving retains a numbered revision; concurrent changes require a reload. The token is held in UI memory and sent only in the Authorization header.
+Set a server-side `SOURCE_OPERATOR_TOKEN` of at least 32 characters before starting the API. Visit the source-settings tab, enter that token for this session, then edit the HTTPS endpoint, `GET`/`POST` method, regional parameter and code, and optional bounded JSON parameters with optional nested region container. Saving retains a numbered revision; concurrent changes require a reload. The token is held in UI memory and sent only in the Authorization header.
 
-For an automated test or a future approved adapter, import `buildSaturnRequest(endpoint, settings)` from the backend source module; it accepts typed settings and returns an HTTP request description **without sending it**. The database candidate is not a permit to use external systems and `collectionEnabled` remains false. Do not use live data as a substitute for verified terms and API response semantics.
+For an automated test or a future approved adapter, import `buildProviderRequest(endpoint, settings)` from the backend source module; it accepts typed settings and returns an HTTP request description **without sending it**. The database candidate is not a permit to use external systems and `collectionEnabled` remains false. Do not use live data as a substitute for verified terms and API response semantics.
 
 On phones, the layout uses mobile navigation and stacked controls. Map tiles and weather inspection require connectivity. A failed request appears as an error instead of substituted sample data.
 
@@ -22,8 +22,8 @@ On phones, the layout uses mobile navigation and stacked controls. Map tiles and
 | ----------------------------------------------------- | ------------------------------------------- |
 | `GET /health/live`                                    | Process liveness                            |
 | `GET /health/ready`                                   | Database readiness; HTTP 503 if unavailable |
-| `GET /api/v1/operator/saturn`                       | Authenticated, read-only candidate connection settings (no-store) |
-| `PUT /api/v1/operator/saturn`                       | Authenticated validated edit with `expectedRevision`; no fetch |
+| `GET /api/v1/operator/provider`                       | Authenticated, read-only candidate connection settings (no-store) |
+| `PUT /api/v1/operator/provider`                       | Authenticated validated edit with `expectedRevision`; no fetch |
 | `GET /api/v1/sources`                                 | Catalog entries from PostgreSQL             |
 | `GET /api/v1/locations/inspect?lat=54.782&lon=32.045` | Live Open-Meteo values and cited provenance |
 

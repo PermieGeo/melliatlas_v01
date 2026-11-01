@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.SATURN_CONFIGURATION
+// Feature IDs: SOURCES.PROVIDER_CONFIGURATION
 import { z } from "zod";
 
 export const coordinatesSchema = z
@@ -85,61 +85,63 @@ export type InspectionResponse = z.infer<typeof inspectionResponseSchema>;
 export type SourceCatalogEntry = z.infer<typeof sourceCatalogEntrySchema>;
 export type SourceCatalogResponse = z.infer<typeof sourceCatalogResponseSchema>;
 
-// Feature IDs: SOURCES.SATURN_CONFIGURATION
-const saturnParameterNameSchema = z
+// Feature IDs: SOURCES.PROVIDER_CONFIGURATION
+const providerParameterNameSchema = z
   .string()
-  .regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/);
+  .regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/)
+  .refine((key) => !["__proto__", "constructor", "prototype"].includes(key), "Unsafe parameter name");
 
-export const saturnRequestSettingsSchema = z
-  .object({
-    method: z.enum(["GET", "POST"]),
-    regionParameter: saturnParameterNameSchema,
-    regionCode: z.number().int().min(1).max(9999),
-    parameters: z
-      .record(
-        z.union([
-          z.string().max(200),
-          z.number().int().safe(),
-          z.boolean(),
-        ]),
-      )
-      .refine((value) => Object.keys(value).length <= 20, "Too many parameters")
-      .refine(
-        (value) =>
-          Object.keys(value).every((key) =>
-            saturnParameterNameSchema.safeParse(key).success,
-          ),
-        "Invalid parameter name",
-      ),
-  })
-  .strict()
-  .refine(
-    (value) => !Object.hasOwn(value.parameters, value.regionParameter),
-    "Region parameter must not be overridden",
-  );
+const providerParameterValueSchema = z.unknown().superRefine((value, ctx) => {
+  let visited = 0;
+  const check = (item: unknown, depth: number): boolean => {
+    visited += 1;
+    if (visited > 100 || depth > 5) return false;
+    if (typeof item === "string") return item.length <= 1000;
+    if (typeof item === "number") return Number.isSafeInteger(item);
+    if (typeof item === "boolean" || item === null) return true;
+    if (Array.isArray(item)) return item.length <= 30 && item.every((part) => check(part, depth + 1));
+    if (item && typeof item === "object") {
+      const entries = Object.entries(item);
+      return entries.length <= 30 && entries.every(([key, part]) =>
+        providerParameterNameSchema.safeParse(key).success &&
+        !["constructor", "prototype", "__proto__"].includes(key) &&
+        check(part, depth + 1),
+      );
+    }
+    return false;
+  };
+  if (!check(value, 0)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid or oversized JSON parameter" });
+});
 
-export const saturnConfigurationEditSchema = z
-  .object({
-    endpoint: z.string().min(1).max(2048),
-    request: saturnRequestSettingsSchema,
-    expectedRevision: z.string().regex(/^[1-9][0-9]{0,17}$/),
-  })
-  .strict();
+export const providerRequestSettingsSchema = z.object({
+  method: z.enum(["GET", "POST"]),
+  regionParameter: providerParameterNameSchema,
+  regionContainer: providerParameterNameSchema.optional(),
+  regionCode: z.number().int().min(1).max(999999),
+  parameters: z.record(providerParameterNameSchema, providerParameterValueSchema)
+    .refine((value) => Object.keys(value).length <= 20, "Too many parameters"),
+}).strict().superRefine((value, ctx) => {
+  if (Object.hasOwn(value.parameters, value.regionContainer ?? value.regionParameter)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Region field/container cannot be overridden" });
+  }
+});
 
-export const saturnConfigurationSchema = z
-  .object({
-    endpoint: z.string().min(1),
-    request: saturnRequestSettingsSchema,
-    revision: z.string().regex(/^[1-9][0-9]{0,17}$/),
-    accessDecision: z.enum(["pending", "approved", "denied"]),
-    collectionEnabled: z.literal(false),
-  })
-  .strict();
+export const providerConfigurationEditSchema = z.object({
+  providerName: z.string().trim().min(1).max(200),
+  endpoint: z.string().min(1).max(2048),
+  request: providerRequestSettingsSchema,
+  expectedRevision: z.string().regex(/^[1-9][0-9]{0,17}$/),
+}).strict();
 
-export type SaturnConfiguration = z.infer<typeof saturnConfigurationSchema>;
-export type SaturnConfigurationEdit = z.infer<
-  typeof saturnConfigurationEditSchema
->;
-export type SaturnRequestSettings = z.infer<
-  typeof saturnRequestSettingsSchema
->;
+export const providerConfigurationSchema = z.object({
+  providerName: z.string().min(1).max(200),
+  endpoint: z.string(),
+  request: providerRequestSettingsSchema,
+  revision: z.string().regex(/^[1-9][0-9]{0,17}$/),
+  accessDecision: z.enum(["pending", "approved", "denied"]),
+  collectionEnabled: z.literal(false),
+}).strict();
+
+export type ProviderConfiguration = z.infer<typeof providerConfigurationSchema>;
+export type ProviderConfigurationEdit = z.infer<typeof providerConfigurationEditSchema>;
+export type ProviderRequestSettings = z.infer<typeof providerRequestSettingsSchema>;

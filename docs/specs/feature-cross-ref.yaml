@@ -18,7 +18,7 @@ features:
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/test/municipalSourceRegistry.test.ts
       - apps/api/integration/sourceCatalogMigration.test.ts
-  - id: SOURCES.SATURN_CONFIGURATION
+  - id: SOURCES.PROVIDER_CONFIGURATION
     stage_ids:
       - SRC-01
     spec_paths:
@@ -26,17 +26,19 @@ features:
     requirements:
       - SRC-R12
     code_paths:
-      - apps/api/src/modules/sources/saturnConfiguration.ts
+      - apps/api/src/modules/sources/providerConfiguration.ts
+      - apps/api/src/modules/sources/beekeeperPlanPage.ts
       - apps/api/src/app.ts
       - apps/api/src/server.ts
-      - apps/web/src/components/SaturnSettings.tsx
+      - apps/web/src/components/ProviderSettings.tsx
       - apps/web/src/api/client.ts
       - packages/contracts/src/index.ts
     test_paths:
-      - apps/api/test/saturnConfiguration.test.ts
+      - apps/api/test/providerConfiguration.test.ts
+      - apps/api/test/beekeeperPlanPage.test.ts
       - apps/api/test/app.test.ts
-      - apps/api/integration/saturnConfigurationMigration.test.ts
-      - apps/web/src/components/SaturnSettings.test.tsx
+      - apps/api/integration/providerConfigurationMigration.test.ts
+      - apps/web/src/components/ProviderSettings.test.tsx
   - id: SOURCES.DOCUMENT_HISTORY
     stage_ids:
       - SRC-01
