@@ -61,21 +61,43 @@ export function MapCanvas({
       <FocusControl focus={focus} />
       <ClickSelection onSelect={onSelect} />
       {treatments.map((notice) => {
-        const polygons = notice.geometry.type === "Polygon"
-          ? [notice.geometry.coordinates]
-          : notice.geometry.coordinates;
+        const polygons =
+          notice.geometry.type === "Polygon"
+            ? [notice.geometry.coordinates]
+            : notice.geometry.coordinates;
         return polygons.map((rings, index) => (
-          <Polygon key={`${notice.id}-${index}`}
-            positions={rings.map((ring) => ring.map(([lon, lat]) => [lat, lon] as [number, number]))}
-            pathOptions={{ color: "#c2410c", weight: 2, fillOpacity: 0.22 }}>
+          <Polygon
+            key={`${notice.id}-${index}`}
+            positions={rings.map((ring) =>
+              ring.map(([lon, lat]) => [lat, lon] as [number, number]),
+            )}
+            pathOptions={{ color: "#c2410c", weight: 2, fillOpacity: 0.22 }}
+          >
             <Popup>
               <div className="max-w-xs space-y-1 text-xs">
                 <strong>{notice.contractorName || "План обработки"}</strong>
                 <p>Кадастр: {notice.cadastralNumber || "не указан"}</p>
-                <p>Период: {notice.startAt || "неизвестен"} — {notice.endAt || "неизвестен"}</p>
-                <p>Препарат: {notice.treatments.map((item) => item.name).filter(Boolean).join(", ") || "не указан"}</p>
-                <p>Источник: {notice.sourceName}; загружено {notice.retrievedAt}</p>
-                <a href={notice.sourceUrl} target="_blank" rel="noopener noreferrer">Открыть источник</a>
+                <p>
+                  Период: {notice.startAt || "неизвестен"} —{" "}
+                  {notice.endAt || "неизвестен"}
+                </p>
+                <p>
+                  Препарат:{" "}
+                  {notice.treatments
+                    .map((item) => item.name)
+                    .filter(Boolean)
+                    .join(", ") || "не указан"}
+                </p>
+                <p>
+                  Источник: {notice.sourceName}; загружено {notice.retrievedAt}
+                </p>
+                <a
+                  href={notice.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Открыть источник
+                </a>
                 <p>Проверено оператором. Не является оценкой безопасности.</p>
               </div>
             </Popup>
@@ -109,4 +131,3 @@ export function MapCanvas({
     </MapContainer>
   );
 }
-

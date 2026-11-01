@@ -4,7 +4,10 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadConfig } from "../config.js";
 import { createDatabasePool } from "./pool.js";
-import { parseProviderSeed, seedProvider } from "../modules/sources/providerSeed.js";
+import {
+  parseProviderSeed,
+  seedProvider,
+} from "../modules/sources/providerSeed.js";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -21,7 +24,9 @@ async function main(): Promise<void> {
     const outcome = await seedProvider(pool, preset, { replace });
     console.info(`Provider preset: ${outcome} (source=treatment-feed)`);
     if (outcome === "preserved_customization") {
-      console.info("Existing operator configuration was preserved; use --replace only for an intentional reset.");
+      console.info(
+        "Existing operator configuration was preserved; use --replace only for an intentional reset.",
+      );
     }
   } finally {
     await pool.end();
@@ -29,6 +34,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : "Provider seed failed");
+  console.error(
+    error instanceof Error ? error.message : "Provider seed failed",
+  );
   process.exitCode = 1;
 });

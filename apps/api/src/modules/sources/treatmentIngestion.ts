@@ -3,18 +3,31 @@ import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { ApiFailure } from "../../lib/errors.js";
-import { parseBeekeeperPlanPage, type BeekeeperPlan } from "./beekeeperPlanPage.js";
+import {
+  parseBeekeeperPlanPage,
+  type BeekeeperPlan,
+} from "./beekeeperPlanPage.js";
 import { RestrictedSourceFetcher, SourceFetchFailure } from "./httpFetcher.js";
 import { ApprovedSourceRegistry } from "./municipalSourceRegistry.js";
 import { buildProviderRequest } from "./providerConfiguration.js";
-import { providerRequestSettingsSchema } from "@melliatlas/contracts";
+import {
+  providerCollectionStatusSchema,
+  providerRequestSettingsSchema,
+  type ProviderCollectionStatus,
+} from "@melliatlas/contracts";
 
 const SOURCE_ID = "treatment-feed";
-const reviewSchema = z.object({
-  reviewer: z.string().trim().min(2).max(120),
-  evidenceUrl: z.string().url().max(2048).refine((value) => value.startsWith("https://")),
-  permissionBasis: z.string().trim().min(20).max(2000),
-}).strict();
+const reviewSchema = z
+  .object({
+    reviewer: z.string().trim().min(2).max(120),
+    evidenceUrl: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((value) => value.startsWith("https://")),
+    permissionBasis: z.string().trim().min(20).max(2000),
+  })
+  .strict();
 
 export type AccessReview = z.infer<typeof reviewSchema>;
 export { reviewSchema as providerAccessReviewSchema };
@@ -34,22 +47,29 @@ export type MapTreatment = {
   spatialPrecision: "exact_polygon";
 };
 
-const geometrySchema = z.object({
-  type: z.enum(["Polygon", "MultiPolygon"]),
-  coordinates: z.unknown(),
-}).passthrough();
+const geometrySchema = z
+  .object({
+    type: z.enum(["Polygon", "MultiPolygon"]),
+    coordinates: z.unknown(),
+  })
+  .passthrough();
 
 /** Geographic validation before PostGIS topology checks; never substitute a guessed centroid. */
-export function safePlanGeometry(input: BeekeeperPlan["geometry"]): NonNullable<BeekeeperPlan["geometry"]> | null {
+export function safePlanGeometry(
+  input: BeekeeperPlan["geometry"],
+): NonNullable<BeekeeperPlan["geometry"]> | null {
   if (!input || !geometrySchema.safeParse(input).success) return null;
-  const rings: unknown[][] = input.type === "Polygon"
-    ? input.coordinates
-    : input.coordinates.flat();
+  const rings: unknown[][] =
+    input.type === "Polygon" ? input.coordinates : input.coordinates.flat();
   let points = 0;
   for (const ring of rings) {
     if (!Array.isArray(ring) || ring.length < 4) return null;
     points += ring.length;
-    if (points > 5000 || JSON.stringify(ring[0]) !== JSON.stringify(ring[ring.length - 1])) return null;
+    if (
+      points > 5000 ||
+      JSON.stringify(ring[0]) !== JSON.stringify(ring[ring.length - 1])
+    )
+      return null;
   }
   if (rings.length > 150 || JSON.stringify(input).length > 150_000) return null;
   return input;
@@ -62,16 +82,21 @@ type ConnectionRow = {
   source_cursor: { pageNumber?: number } | null;
 };
 
-const connectionSchema = z.object({
-  endpoint: z.string().url(),
-  request: providerRequestSettingsSchema,
-}).strict();
+const connectionSchema = z
+  .object({
+    endpoint: z.string().url(),
+    request: providerRequestSettingsSchema,
+  })
+  .strict();
 
 /** Explicit access-review gate; it does not prove legal permission by itself. */
 export class TreatmentIngestionService {
   constructor(
     private readonly pool: Pool,
-    private readonly fetcher: Pick<RestrictedSourceFetcher, "fetch"> = new RestrictedSourceFetcher(),
+    private readonly fetcher: Pick<
+      RestrictedSourceFetcher,
+      "fetch"
+    > = new RestrictedSourceFetcher(),
   ) {}
 
   async approveAccess(input: AccessReview): Promise<void> {
@@ -79,19 +104,51 @@ export class TreatmentIngestionService {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const current = await client.query<{ url: string; api_request_config: unknown }>(
-        "SELECT url, api_request_config FROM source_catalog WHERE id = $1 FOR UPDATE", [SOURCE_ID],
+      const current = await client.query<{
+        url: string;
+        api_request_config: unknown;
+      }>(
+        "SELECT url, api_request_config FROM source_catalog WHERE id = $1 FOR UPDATE",
+        [SOURCE_ID],
       );
-      if (!current.rows[0]) throw new ApiFailure(404, "PROVIDER_NOT_CONFIGURED", "Source not configured");
-      const connection = connectionSchema.parse(current.rows[0].api_request_config);
+      if (!current.rows[0])
+        throw new ApiFailure(
+          404,
+          "PROVIDER_NOT_CONFIGURED",
+          "Source not configured",
+        );
+      const connection = connectionSchema.parse(
+        current.rows[0].api_request_config,
+      );
       const url = new URL(connection.endpoint);
-      if (current.rows[0].url !== connection.endpoint || url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash) {
-        throw new ApiFailure(400, "INVALID_PROVIDER_ENDPOINT", "Source endpoint cannot be approved");
+      if (
+        current.rows[0].url !== connection.endpoint ||
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        url.port ||
+        url.search ||
+        url.hash
+      ) {
+        throw new ApiFailure(
+          400,
+          "INVALID_PROVIDER_ENDPOINT",
+          "Source endpoint cannot be approved",
+        );
       }
-      const locations = [{ hostname: url.hostname, pathPrefixes: [url.pathname.replace(/\/$/, "") || "/"] }];
+      const locations = [
+        {
+          hostname: url.hostname,
+          pathPrefixes: [url.pathname.replace(/\/$/, "") || "/"],
+        },
+      ];
       const fetchPolicy = {
-        timeoutMs: 8000, maxResponseBytes: 2_000_000, minIntervalMs: 60_000,
-        maxRedirects: 0, maxRetries: 1, allowedContentTypes: ["application/json"],
+        timeoutMs: 8000,
+        maxResponseBytes: 2_000_000,
+        minIntervalMs: 60_000,
+        maxRedirects: 0,
+        maxRetries: 1,
+        allowedContentTypes: ["application/json"],
       };
       await client.query(
         `UPDATE source_catalog SET lifecycle='configured', terms_review='reviewed',
@@ -99,8 +156,14 @@ export class TreatmentIngestionService {
            reviewed_by=$4, reviewed_at=now(), permission_evidence_url=$5,
            permission_basis=$6, parser_version='beekeeper-plan-v1'
          WHERE id=$1`,
-        [SOURCE_ID, JSON.stringify(locations), JSON.stringify(fetchPolicy), review.reviewer,
-          review.evidenceUrl, review.permissionBasis],
+        [
+          SOURCE_ID,
+          JSON.stringify(locations),
+          JSON.stringify(fetchPolicy),
+          review.reviewer,
+          review.evidenceUrl,
+          review.permissionBasis,
+        ],
       );
       await client.query("COMMIT");
     } catch (error) {
@@ -111,7 +174,13 @@ export class TreatmentIngestionService {
     }
   }
 
-  async syncOnePage(): Promise<{ runId: string; pageNumber: number; received: number; stored: number; nextPage: number }> {
+  async syncOnePage(): Promise<{
+    runId: string;
+    pageNumber: number;
+    received: number;
+    stored: number;
+    nextPage: number;
+  }> {
     const client = await this.pool.connect();
     let locked = false;
     let runId: string | undefined;
@@ -119,49 +188,99 @@ export class TreatmentIngestionService {
       const result = await client.query<{ acquired: boolean }>(
         "SELECT pg_try_advisory_lock(hashtext('melliatlas_treatment_ingestion')) AS acquired",
       );
-      if (!result.rows[0]?.acquired) throw new ApiFailure(409, "INGEST_BUSY", "Another ingestion is running");
+      if (!result.rows[0]?.acquired)
+        throw new ApiFailure(
+          409,
+          "INGEST_BUSY",
+          "Another ingestion is running",
+        );
       locked = true;
-      const approved = await new ApprovedSourceRegistry(this.pool).getApproved(SOURCE_ID);
-      if (!approved) throw new ApiFailure(409, "SOURCE_NOT_APPROVED", "Source requires verified access review");
+      const approved = await new ApprovedSourceRegistry(this.pool).getApproved(
+        SOURCE_ID,
+      );
+      if (!approved)
+        throw new ApiFailure(
+          409,
+          "SOURCE_NOT_APPROVED",
+          "Source requires verified access review",
+        );
       const row = await client.query<ConnectionRow>(
         "SELECT api_request_config, registry_revision, access_decision, source_cursor FROM source_catalog WHERE id=$1",
         [SOURCE_ID],
       );
-      const connection = connectionSchema.parse(row.rows[0]?.api_request_config);
-      if (row.rows[0]?.registry_revision !== approved.registryRevision || row.rows[0]?.access_decision !== "approved") {
-        throw new ApiFailure(409, "SOURCE_CHANGED", "Source configuration changed");
+      const connection = connectionSchema.parse(
+        row.rows[0]?.api_request_config,
+      );
+      if (
+        row.rows[0]?.registry_revision !== approved.registryRevision ||
+        row.rows[0]?.access_decision !== "approved"
+      ) {
+        throw new ApiFailure(
+          409,
+          "SOURCE_CHANGED",
+          "Source configuration changed",
+        );
       }
       const size = connection.request.parameters.pageSize;
       if (!Number.isInteger(size) || Number(size) < 1 || Number(size) > 100) {
-        throw new ApiFailure(400, "UNSUPPORTED_PAGINATION", "Configure a pageSize between 1 and 100");
+        throw new ApiFailure(
+          400,
+          "UNSUPPORTED_PAGINATION",
+          "Configure a pageSize between 1 and 100",
+        );
       }
-      const pageNumber = Math.max(0, Math.min(100000, Number(row.rows[0]?.source_cursor?.pageNumber ?? 0)));
+      const pageNumber = Math.max(
+        0,
+        Math.min(100000, Number(row.rows[0]?.source_cursor?.pageNumber ?? 0)),
+      );
       const request = buildProviderRequest(connection.endpoint, {
         ...connection.request,
         parameters: { ...connection.request.parameters, pageNumber },
       });
       const started = await client.query<{ id: string }>(
-        "INSERT INTO ingestion_runs(source_id, status) VALUES($1, 'started') RETURNING id", [SOURCE_ID],
+        "INSERT INTO ingestion_runs(source_id, status) VALUES($1, 'started') RETURNING id",
+        [SOURCE_ID],
       );
       runId = started.rows[0].id;
       try {
         const response = await this.fetcher.fetch(approved.source, request);
         let page: ReturnType<typeof parseBeekeeperPlanPage>;
         try {
-          page = parseBeekeeperPlanPage(JSON.parse(response.bytes.toString("utf8")));
+          page = parseBeekeeperPlanPage(
+            JSON.parse(response.bytes.toString("utf8")),
+          );
         } catch {
-          throw new ApiFailure(502, "INVALID_SOURCE_RESPONSE", "Source returned an unsupported JSON page");
+          throw new ApiFailure(
+            502,
+            "INVALID_SOURCE_RESPONSE",
+            "Source returned an unsupported JSON page",
+          );
         }
         const hash = createHash("sha256").update(response.bytes).digest("hex");
-        const nextPage = (page.plans.length === 0 || page.plans.length < Number(size) ||
-          (page.totalElements !== null && (pageNumber + 1) * Number(size) >= page.totalElements))
-          ? 0 : pageNumber + 1;
+        const nextPage =
+          page.plans.length === 0 ||
+          page.plans.length < Number(size) ||
+          (page.totalElements !== null &&
+            (pageNumber + 1) * Number(size) >= page.totalElements)
+            ? 0
+            : pageNumber + 1;
         await client.query("BEGIN");
-        const registry = await client.query<{ registry_revision: string; access_decision: string }>(
-          "SELECT registry_revision, access_decision FROM source_catalog WHERE id=$1 FOR UPDATE", [SOURCE_ID],
+        const registry = await client.query<{
+          registry_revision: string;
+          access_decision: string;
+        }>(
+          "SELECT registry_revision, access_decision FROM source_catalog WHERE id=$1 FOR UPDATE",
+          [SOURCE_ID],
         );
-        if (registry.rows[0]?.registry_revision !== approved.registryRevision || registry.rows[0]?.access_decision !== "approved") {
-          throw new ApiFailure(409, "SOURCE_CHANGED", "Source access changed during collection");
+        if (
+          registry.rows[0]?.registry_revision !== approved.registryRevision ||
+          registry.rows[0]?.access_decision !== "approved"
+        ) {
+          throw new ApiFailure(
+            409,
+            "SOURCE_CHANGED",
+            "Source access changed during collection",
+          );
         }
         const document = await client.query<{ id: string }>(
           `WITH inserted AS (
@@ -171,8 +290,14 @@ export class TreatmentIngestionService {
              ON CONFLICT(source_id, canonical_url, content_hash_sha256) DO NOTHING RETURNING id
            ) SELECT id FROM inserted UNION ALL
            SELECT id FROM source_documents WHERE source_id=$1 AND canonical_url=$3 AND content_hash_sha256=$4 LIMIT 1`,
-          [SOURCE_ID, runId, response.canonicalUrl, hash, response.contentType,
-            response.bytes.toString("utf8")],
+          [
+            SOURCE_ID,
+            runId,
+            response.canonicalUrl,
+            hash,
+            response.contentType,
+            response.bytes.toString("utf8"),
+          ],
         );
         const documentId = document.rows[0]?.id;
         if (!documentId) throw new Error("Source document insert failed");
@@ -180,14 +305,35 @@ export class TreatmentIngestionService {
         for (const [index, plan] of page.plans.entries()) {
           const geometry = safePlanGeometry(plan.geometry);
           // SQL enforces valid polygon topology; rejected geometry remains text-only evidence.
-          const candidate = geometry ? await client.query<{ valid: boolean }>(
-            "SELECT ST_IsValid(ST_SetSRID(ST_GeomFromGeoJSON($1),4326)) AS valid",
-            [JSON.stringify(geometry)],
-          ).catch(() => ({ rows: [{ valid: false }] })) : { rows: [{ valid: false }] };
-          const valid = Boolean(candidate.rows[0]?.valid);
-          const attrs = { recordIndex: index, sourceName: approved.source.name, externalId: plan.externalId,
-            contractorName: plan.contractorName, cadastralNumber: plan.cadastralNumber,
-            treatments: plan.treatments, evidenceState: "unreviewed" };
+          let valid = false;
+          if (geometry) {
+            await client.query("SAVEPOINT source_geometry_validation");
+            try {
+              const candidate = await client.query<{ valid: boolean }>(
+                "SELECT ST_IsValid(ST_SetSRID(ST_GeomFromGeoJSON($1),4326)) AS valid",
+                [JSON.stringify(geometry)],
+              );
+              valid = candidate.rows[0]?.valid === true;
+            } catch {
+              // A malformed upstream geometry must not abort the remaining transaction.
+              await client.query(
+                "ROLLBACK TO SAVEPOINT source_geometry_validation",
+              );
+            } finally {
+              await client.query(
+                "RELEASE SAVEPOINT source_geometry_validation",
+              );
+            }
+          }
+          const attrs = {
+            recordIndex: index,
+            sourceName: approved.source.name,
+            externalId: plan.externalId,
+            contractorName: plan.contractorName,
+            cadastralNumber: plan.cadastralNumber,
+            treatments: plan.treatments,
+            evidenceState: "unreviewed",
+          };
           const inserted = await client.query(
             `INSERT INTO source_observations(source_document_id, observation_type, start_at, end_at,
                geometry, spatial_precision, extraction_method, review_status, attributes)
@@ -196,8 +342,14 @@ export class TreatmentIngestionService {
                CASE WHEN $4::boolean THEN 'exact_polygon' ELSE 'text_only' END,
                'structured', 'pending', $6::jsonb)
              ON CONFLICT DO NOTHING`,
-            [documentId, plan.startAt, plan.endAt, valid, valid ? JSON.stringify(geometry) : null,
-              JSON.stringify(attrs)],
+            [
+              documentId,
+              plan.startAt,
+              plan.endAt,
+              valid,
+              valid ? JSON.stringify(geometry) : null,
+              JSON.stringify(attrs),
+            ],
           );
           stored += inserted.rowCount ?? 0;
         }
@@ -211,55 +363,193 @@ export class TreatmentIngestionService {
           [SOURCE_ID, JSON.stringify({ pageNumber: nextPage })],
         );
         await client.query("COMMIT");
-        return { runId, pageNumber, received: page.plans.length, stored, nextPage };
+        return {
+          runId,
+          pageNumber,
+          received: page.plans.length,
+          stored,
+          nextPage,
+        };
       } catch (error) {
         await client.query("ROLLBACK").catch(() => undefined);
-        const code = error instanceof SourceFetchFailure ? error.code : error instanceof ApiFailure ? error.code : "INVALID_UPSTREAM_RESPONSE";
+        const code =
+          error instanceof SourceFetchFailure
+            ? error.code
+            : error instanceof ApiFailure
+              ? error.code
+              : "INVALID_UPSTREAM_RESPONSE";
         await client.query(
           "UPDATE ingestion_runs SET status='failed', completed_at=now(), error_code=$2 WHERE id=$1 AND status='started'",
           [runId, code],
         );
-        throw error instanceof SourceFetchFailure ? new ApiFailure(503, code, "Source fetch unavailable") : error;
+        throw error instanceof SourceFetchFailure
+          ? new ApiFailure(503, code, "Source fetch unavailable")
+          : error;
       }
     } finally {
-      if (locked) await client.query("SELECT pg_advisory_unlock(hashtext('melliatlas_treatment_ingestion'))");
+      if (locked)
+        await client.query(
+          "SELECT pg_advisory_unlock(hashtext('melliatlas_treatment_ingestion'))",
+        );
       client.release();
     }
   }
 
-  async pending(limit = 40): Promise<Array<{ id: string; sourceUrl: string; retrievedAt: string; contractorName: string | null; cadastralNumber: string | null; geometryAvailable: boolean; startAt: string | null; endAt: string | null; treatments: BeekeeperPlan["treatments"] }>> {
+  /** Read-only operator diagnostics. Empty maps must not conceal missing access, collection or review. */
+  async status(): Promise<ProviderCollectionStatus> {
     const result = await this.pool.query<{
-      id: string; canonical_url: string; retrieved_at: Date; start_at: Date | null; end_at: Date | null; attributes: { contractorName?: string; cadastralNumber?: string; treatments?: BeekeeperPlan["treatments"] }; geometry_available: boolean;
+      access_decision: "pending" | "approved" | "denied";
+      pending_review: string;
+      pending_with_geometry: string;
+      verified_with_geometry: string;
+      missing_geometry: string;
+      run_status: "started" | "succeeded" | "failed" | "partial" | null;
+      run_started_at: Date | null;
+      run_completed_at: Date | null;
+      run_received: number | null;
+      run_accepted: number | null;
+      run_error_code: string | null;
+    }>(
+      `SELECT s.access_decision,
+         (SELECT count(*) FROM source_observations o JOIN source_documents d
+           ON d.id = o.source_document_id
+           WHERE d.source_id = s.id AND o.observation_type = 'treatment_plan'
+             AND o.review_status = 'pending') AS pending_review,
+         (SELECT count(*) FROM source_observations o JOIN source_documents d
+           ON d.id = o.source_document_id
+           WHERE d.source_id = s.id AND o.observation_type = 'treatment_plan'
+             AND o.review_status = 'pending' AND o.geometry IS NOT NULL) AS pending_with_geometry,
+         (SELECT count(*) FROM source_observations o JOIN source_documents d
+           ON d.id = o.source_document_id
+           WHERE d.source_id = s.id AND o.observation_type = 'treatment_plan'
+             AND o.review_status = 'verified' AND o.geometry IS NOT NULL) AS verified_with_geometry,
+         (SELECT count(*) FROM source_observations o JOIN source_documents d
+           ON d.id = o.source_document_id
+           WHERE d.source_id = s.id AND o.observation_type = 'treatment_plan'
+             AND o.geometry IS NULL) AS missing_geometry,
+         r.status AS run_status, r.started_at AS run_started_at,
+         r.completed_at AS run_completed_at, r.discovered_count AS run_received,
+         r.accepted_count AS run_accepted, r.error_code AS run_error_code
+       FROM source_catalog s
+       LEFT JOIN LATERAL (SELECT status, started_at, completed_at, discovered_count,
+         accepted_count, error_code FROM ingestion_runs
+         WHERE source_id = s.id ORDER BY started_at DESC, id DESC LIMIT 1) r ON TRUE
+       WHERE s.id = $1`,
+      [SOURCE_ID],
+    );
+    const row = result.rows[0];
+    if (!row)
+      throw new ApiFailure(
+        404,
+        "PROVIDER_NOT_CONFIGURED",
+        "Source not configured",
+      );
+    return providerCollectionStatusSchema.parse({
+      accessDecision: row.access_decision,
+      pendingReview: Number(row.pending_review),
+      pendingWithGeometry: Number(row.pending_with_geometry),
+      verifiedWithGeometry: Number(row.verified_with_geometry),
+      missingGeometry: Number(row.missing_geometry),
+      latestRun:
+        row.run_status === null
+          ? null
+          : {
+              status: row.run_status,
+              startedAt: row.run_started_at?.toISOString(),
+              completedAt: row.run_completed_at?.toISOString() ?? null,
+              received: row.run_received,
+              accepted: row.run_accepted,
+              errorCode: row.run_error_code,
+            },
+    });
+  }
+
+  async pending(limit = 40): Promise<
+    Array<{
+      id: string;
+      sourceUrl: string;
+      retrievedAt: string;
+      contractorName: string | null;
+      cadastralNumber: string | null;
+      geometryAvailable: boolean;
+      startAt: string | null;
+      endAt: string | null;
+      treatments: BeekeeperPlan["treatments"];
+    }>
+  > {
+    const result = await this.pool.query<{
+      id: string;
+      canonical_url: string;
+      retrieved_at: Date;
+      start_at: Date | null;
+      end_at: Date | null;
+      attributes: {
+        contractorName?: string;
+        cadastralNumber?: string;
+        treatments?: BeekeeperPlan["treatments"];
+      };
+      geometry_available: boolean;
     }>(
       `SELECT o.id, d.canonical_url, d.retrieved_at, o.start_at, o.end_at, o.attributes,
               (o.geometry IS NOT NULL) AS geometry_available
        FROM source_observations o JOIN source_documents d ON d.id=o.source_document_id
        WHERE d.source_id=$1 AND o.review_status='pending' AND o.observation_type='treatment_plan'
-       ORDER BY d.retrieved_at DESC, o.id LIMIT $2`, [SOURCE_ID, limit],
+       ORDER BY d.retrieved_at DESC, o.id LIMIT $2`,
+      [SOURCE_ID, limit],
     );
-    return result.rows.map((r) => ({ id: r.id, sourceUrl: r.canonical_url,
-      retrievedAt: r.retrieved_at.toISOString(), contractorName: r.attributes.contractorName ?? null,
-      cadastralNumber: r.attributes.cadastralNumber ?? null, geometryAvailable: r.geometry_available,
-      startAt: r.start_at?.toISOString() ?? null, endAt: r.end_at?.toISOString() ?? null,
-      treatments: r.attributes.treatments ?? [] }));
+    return result.rows.map((r) => ({
+      id: r.id,
+      sourceUrl: r.canonical_url,
+      retrievedAt: r.retrieved_at.toISOString(),
+      contractorName: r.attributes.contractorName ?? null,
+      cadastralNumber: r.attributes.cadastralNumber ?? null,
+      geometryAvailable: r.geometry_available,
+      startAt: r.start_at?.toISOString() ?? null,
+      endAt: r.end_at?.toISOString() ?? null,
+      treatments: r.attributes.treatments ?? [],
+    }));
   }
 
-  async review(id: string, decision: "verified" | "rejected", reviewer: string, evidenceNote: string): Promise<void> {
-    if (!z.string().uuid().safeParse(id).success) throw new ApiFailure(400, "INVALID_OBSERVATION", "Invalid observation ID");
-    if (reviewer.trim().length < 2 || reviewer.length > 120 || evidenceNote.trim().length < 20 || evidenceNote.length > 2000) {
-      throw new ApiFailure(400, "INVALID_REVIEW", "Reviewer and evidence note required");
+  async review(
+    id: string,
+    decision: "verified" | "rejected",
+    reviewer: string,
+    evidenceNote: string,
+  ): Promise<void> {
+    if (!z.string().uuid().safeParse(id).success)
+      throw new ApiFailure(
+        400,
+        "INVALID_OBSERVATION",
+        "Invalid observation ID",
+      );
+    if (
+      reviewer.trim().length < 2 ||
+      reviewer.length > 120 ||
+      evidenceNote.trim().length < 20 ||
+      evidenceNote.length > 2000
+    ) {
+      throw new ApiFailure(
+        400,
+        "INVALID_REVIEW",
+        "Reviewer and evidence note required",
+      );
     }
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       const result = await client.query(
-      `UPDATE source_observations o SET review_status=$2
+        `UPDATE source_observations o SET review_status=$2
        FROM source_documents d WHERE o.id=$1 AND d.id=o.source_document_id
          AND d.source_id=$3 AND o.observation_type='treatment_plan'
          AND o.review_status='pending' AND ($2 <> 'verified' OR o.geometry IS NOT NULL)`,
-      [id, decision, SOURCE_ID],
-    );
-      if (!result.rowCount) throw new ApiFailure(409, "REVIEW_UNAVAILABLE", "Observation unavailable or lacks validated geometry");
+        [id, decision, SOURCE_ID],
+      );
+      if (!result.rowCount)
+        throw new ApiFailure(
+          409,
+          "REVIEW_UNAVAILABLE",
+          "Observation unavailable or lacks validated geometry",
+        );
       await client.query(
         "INSERT INTO source_observation_reviews(observation_id, reviewer, decision, evidence_note) VALUES($1,$2,$3,$4)",
         [id, reviewer.trim(), decision, evidenceNote.trim()],
@@ -273,10 +563,19 @@ export class TreatmentIngestionService {
     }
   }
 
-  async published(bbox?: [number, number, number, number]): Promise<MapTreatment[]> {
+  async published(
+    bbox?: [number, number, number, number],
+  ): Promise<MapTreatment[]> {
     const result = await this.pool.query<{
-      id: string; name: string; canonical_url: string; retrieved_at: Date; published_at: Date | null;
-      start_at: Date | null; end_at: Date | null; attributes: Record<string, unknown>; geometry: unknown;
+      id: string;
+      name: string;
+      canonical_url: string;
+      retrieved_at: Date;
+      published_at: Date | null;
+      start_at: Date | null;
+      end_at: Date | null;
+      attributes: Record<string, unknown>;
+      geometry: unknown;
     }>(
       `SELECT o.id, s.name, d.canonical_url, d.retrieved_at, d.published_at,
            o.start_at, o.end_at, o.attributes, ST_AsGeoJSON(o.geometry)::json AS geometry
@@ -289,13 +588,29 @@ export class TreatmentIngestionService {
       [SOURCE_ID, ...(bbox ?? [null, null, null, null])],
     );
     return result.rows.map((r) => ({
-      id: r.id, sourceName: typeof r.attributes.sourceName === "string" ? r.attributes.sourceName : r.name, sourceUrl: r.canonical_url,
-      retrievedAt: r.retrieved_at.toISOString(), publishedAt: r.published_at?.toISOString() ?? null,
-      startAt: r.start_at?.toISOString() ?? null, endAt: r.end_at?.toISOString() ?? null,
-      contractorName: typeof r.attributes.contractorName === "string" ? r.attributes.contractorName : null,
-      cadastralNumber: typeof r.attributes.cadastralNumber === "string" ? r.attributes.cadastralNumber : null,
-      treatments: Array.isArray(r.attributes.treatments) ? r.attributes.treatments as MapTreatment["treatments"] : [],
-      geometry: r.geometry as MapTreatment["geometry"], spatialPrecision: "exact_polygon",
+      id: r.id,
+      sourceName:
+        typeof r.attributes.sourceName === "string"
+          ? r.attributes.sourceName
+          : r.name,
+      sourceUrl: r.canonical_url,
+      retrievedAt: r.retrieved_at.toISOString(),
+      publishedAt: r.published_at?.toISOString() ?? null,
+      startAt: r.start_at?.toISOString() ?? null,
+      endAt: r.end_at?.toISOString() ?? null,
+      contractorName:
+        typeof r.attributes.contractorName === "string"
+          ? r.attributes.contractorName
+          : null,
+      cadastralNumber:
+        typeof r.attributes.cadastralNumber === "string"
+          ? r.attributes.cadastralNumber
+          : null,
+      treatments: Array.isArray(r.attributes.treatments)
+        ? (r.attributes.treatments as MapTreatment["treatments"])
+        : [],
+      geometry: r.geometry as MapTreatment["geometry"],
+      spatialPrecision: "exact_polygon",
     }));
   }
 }

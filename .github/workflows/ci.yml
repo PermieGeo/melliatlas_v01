@@ -37,13 +37,7 @@ jobs:
           node-version: "22"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: python3 tools/specs/validate_state.py
-      - run: pnpm format:check
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
       - run: pnpm db:migrate
       - run: pnpm db:migrate
-      - run: pnpm --dir apps/api test:db
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e
+      - run: sh ./run-tests.sh
