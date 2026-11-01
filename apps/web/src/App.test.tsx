@@ -46,8 +46,13 @@ it("renders a map-centered empty state without fictional observations", async ()
   vi.stubGlobal(
     "fetch",
     vi.fn(
-      async () =>
-        new Response(JSON.stringify({ sources: [] }), { status: 200 }),
+      async (url: string) =>
+        new Response(
+          JSON.stringify(
+            url === "/api/v1/notices" ? { notices: [] } : { sources: [] },
+          ),
+          { status: 200 },
+        ),
     ),
   );
   render(<App />);
@@ -65,6 +70,9 @@ it("shows a source failure and recovers after user retry without fallback values
     vi.fn(async (url: string) => {
       if (url === "/api/v1/sources") {
         return new Response(JSON.stringify({ sources: [] }));
+      }
+      if (url === "/api/v1/notices") {
+        return new Response(JSON.stringify({ notices: [] }));
       }
       attempts += 1;
       if (attempts === 1) {
@@ -133,28 +141,51 @@ it("shows the seeded treatment provider publicly without operator credentials", 
     termsReview: "pending",
     lastSuccessfulIngestAt: null,
   };
-  const fetcher = vi.fn(async () =>
-    new Response(JSON.stringify({ sources: [source] }), { status: 200 }),
+  const fetcher = vi.fn(
+    async (url: string) =>
+      new Response(
+        JSON.stringify(
+          url === "/api/v1/notices" ? { notices: [] } : { sources: [source] },
+        ),
+        { status: 200 },
+      ),
   );
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
+  // The map warning belongs to the map tab and must be checked before navigation.
+  expect(
+    await screen.findByText(/Наличие URL в настройках не запускает импорт/),
+  ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
   expect(await screen.findByText("Fixture treatment feed")).toBeTruthy();
   expect(screen.getByText(source.url)).toBeTruthy();
   expect(screen.getByText("На проверке")).toBeTruthy();
   expect(screen.getByText("Не выполнялась")).toBeTruthy();
   expect(
-    screen.getByText(/Импорт планов и их отображение на карте пока не/),
+    screen.getByText(
+      /После проверки доступа оператор может загрузить и проверить записи/,
+    ),
   ).toBeTruthy();
   expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(
+    screen.queryByText(/Наличие URL в настройках не запускает импорт/),
+  ).toBeNull();
+  expect(fetcher).toHaveBeenCalledTimes(2);
   expect(fetcher).toHaveBeenCalledWith("/api/v1/sources", expect.any(Object));
+  expect(fetcher).toHaveBeenCalledWith("/api/v1/notices", expect.any(Object));
 });
 
 it("shows a missing treatment provider instead of inventing settings", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(JSON.stringify({ sources: [] }))),
+    vi.fn(
+      async (url: string) =>
+        new Response(
+          JSON.stringify(
+            url === "/api/v1/notices" ? { notices: [] } : { sources: [] },
+          ),
+        ),
+    ),
   );
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
@@ -162,4 +193,23 @@ it("shows a missing treatment provider instead of inventing settings", async () 
     await screen.findByText(/Источник обработок не найден в реестре/),
   ).toBeTruthy();
   expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
+});
+
+it("explains the missing public map overlay without suggesting sample data", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async (url: string) =>
+        new Response(
+          JSON.stringify(
+            url === "/api/v1/notices" ? { notices: [] } : { sources: [] },
+          ),
+        ),
+    ),
+  );
+  render(<App />);
+  expect(
+    await screen.findByText(/Наличие URL в настройках не запускает импорт/),
+  ).toBeTruthy();
+  expect(screen.getByText(/Проверенных полигонов: 0/)).toBeTruthy();
 });

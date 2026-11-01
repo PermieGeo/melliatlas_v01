@@ -18,7 +18,7 @@ pnpm dev
 
 The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the two development servers but leaves the database running.
 
-**Only configuring the external treatment provider?** The map/weather view does not need a token. Editing the provider settings requires the optional server-side `SOURCE_OPERATOR_TOKEN`, described in [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md). The current build does not automatically fetch or display treatment plans.
+**Only configuring the external treatment provider?** The map/weather view does not need a token. Editing the provider settings requires the optional server-side `SOURCE_OPERATOR_TOKEN`, described in [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md). Manual, permission-gated plan import and review are available, but saving an API URL does not trigger a fetch or publish map polygons.
 
 ## Requirements and ports
 
@@ -341,3 +341,17 @@ pnpm dev
 The seed updates a pristine candidate only; it does not approve an API or initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, use the authenticated source settings UI. Enter `SOURCE_OPERATOR_TOKEN` in `apps/api/.env` (at least 32 characters) and restart the API to enable operator-only routes; this is an application administrator token, **not** a token required by the public reference provider.
 
 The map remains empty until permission has been independently reviewed, an operator explicitly fetches a page, and individual polygon candidates are verified. Never fabricate permission evidence or automatically mark public content as verified.
+
+## Running the complete check suite locally
+
+After starting PostGIS, applying migrations, installing dependencies and Playwright
+Chromium, run `sh ./run-tests.sh` from the repository root. It uses
+`DATABASE_URL` from the environment or `apps/api/.env`, rejects remote database
+URLs, and runs format validation, typechecking, all unit tests, real PostGIS
+integration tests, production build and Playwright. Failed prerequisites stop
+the script instead of silently omitting tests. See [Testing](TESTS.md).
+
+For automatic execution during `apatch CHK`, configure its locally managed
+`.apatch/config.yaml` checks list to run `sh ./run-tests.sh` (verify current
+configuration before editing). The MelliAtlas patch does not edit ignored
+`apatch` runtime metadata.

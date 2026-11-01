@@ -31,6 +31,8 @@ yarn-error.log*
 .apatch/
 
 # Temporary files and caches
+__pycache__/
+*.py[cod]
 .cache/
 .vite/
 tmp/

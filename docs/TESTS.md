@@ -66,3 +66,36 @@ Playwright requires a Chromium installation (`pnpm exec playwright install chrom
 ### SRC-01/S3a provider ingestion checks
 
 `apps/api/test/treatmentIngestion.test.ts` checks geometry evidence and negative cases. `apps/api/integration/treatmentIngestion.test.ts` requires a disposable PostGIS database in `DATABASE_URL` and runs migrations 001–007 inside an isolated schema with a stubbed HTTPS fetcher. It verifies approval gating, immutable documents, review-only publication, deduplication and bbox filtering. Run `pnpm --dir apps/api test:db` after `pnpm db:migrate`. The tests must never access a live provider or use production credentials. Full checks must include formatting, TypeScript, unit tests, build, and Playwright; passing focused tests alone does not prove production readiness or access rights.
+
+## Canonical check runner (`apatch CHK`)
+
+`sh ./run-tests.sh` now runs, in fail-fast order: SDD validation, Prettier check,
+TypeScript typecheck, API/web Vitest, production build, **real PostGIS integration
+suite** (`apps/api/integration/`), and Playwright E2E. The earlier runner was a
+no-op. Integration tests use isolated schemas and local synthetic provider
+fixtures; they do not call an external treatment provider.
+
+Prerequisites: install dependencies (`pnpm install --frozen-lockfile`), start the
+local PostGIS container (`docker compose up -d db`), apply migrations for the
+E2E API (`pnpm db:migrate`), and install Chromium once
+(`pnpm exec playwright install chromium`). Set `DATABASE_URL` to the local database,
+or create `apps/api/.env` containing it. The runner loads this value via Node.js
+22's `process.loadEnvFile` and refuses remote database addresses; it does not
+print credentials. A missing database, browser or dependency causes a visible
+failure, not a skipped test. It does not change source files or automatically
+run formatting preparation.
+
+For `apatch` to invoke the runner, the developer-controlled
+`.apatch/config.yaml` must contain `checks` pointing at `sh ./run-tests.sh`.
+Inspect the actual `CHK` command output; repository code cannot silently change
+local `apatch` configuration. CI also invokes this runner after database
+migration and browser installation.
+
+Provider-specific coverage includes `apps/api/test/beekeeperPlanPage.test.ts`
+(malformed geometry is retained as text-only evidence),
+`apps/api/test/app.test.ts` (private diagnostics authentication),
+`apps/api/integration/treatmentIngestion.test.ts` (real PostGIS access,
+collection, duplicate handling and publication), and
+`apps/web/src/components/ProviderSettings.test.tsx` (visible import status).
+No unit or CI test establishes the availability, contract or reuse rights of a
+live external API; the only supported live fetch remains explicit and approved.

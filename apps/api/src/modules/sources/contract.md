@@ -18,3 +18,10 @@
 - **Preset bootstrap:** [providerSeed.ts](providerSeed.ts) validates one `treatment` preset and seeds the existing `treatment-feed` row through a locked transaction. The default only replaces the original untouched placeholder; explicit replacement revokes prior access approval. `source_catalog.api_key` is nullable and excluded from revision snapshots and HTTP responses. The seed does not call the provider; operator edits clear the previous key. Key-at-rest protection for production is an infrastructure obligation.
 
 - **Manual pipeline:** [treatmentIngestion.ts](treatmentIngestion.ts) owns a review-gated single-page fetch, session-level advisory lock, validated geometry, persisted raw JSON, run status, candidate decisions, and bounded spatial projection. `source_observation_reviews` records reviewer and evidence notes. An operator can inspect pending entries, but only verified polygons are exposed by the public notices API. No provider access is automatically approved.
+
+- **Operator diagnostics:** `TreatmentIngestionService.status()` is read-only,
+  returned only through authenticated `/api/v1/operator/provider/status`.
+  It shows last run/error and actual stored/pending/verified geometry counts;
+  it does not trigger retrieval or include credentials/raw data.
+- **Malformed geometry:** Invalid provider geometry is retained as a text-only
+  candidate without fabricating a polygon or aborting unrelated valid records.

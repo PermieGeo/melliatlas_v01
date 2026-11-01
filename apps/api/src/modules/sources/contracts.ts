@@ -46,7 +46,14 @@ export const fetchPolicySchema = z
     maxRedirects: z.number().int().min(0).max(3),
     maxRetries: z.number().int().min(0).max(3),
     allowedContentTypes: z
-      .array(z.enum(["text/html", "text/plain", "application/pdf", "application/json"]))
+      .array(
+        z.enum([
+          "text/html",
+          "text/plain",
+          "application/pdf",
+          "application/json",
+        ]),
+      )
       .min(1)
       .max(3),
   })

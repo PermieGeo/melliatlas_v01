@@ -12,3 +12,5 @@
 - **Extension:** Update schema, backend, web consumer and independent tests together. Preserve existing `/api/v1` compatibility or introduce deliberate versioning.
 
 - `mapTreatmentSchema` and `mapTreatmentsResponseSchema` define WGS84 geometry, source-provenance and reviewed observation attributes for the public notice map. Unreviewed candidates never cross the public boundary.
+
+- `providerCollectionStatusSchema` is the authenticated, read-only import diagnostics response. It reports counts and last run status without raw source payloads or provider keys.

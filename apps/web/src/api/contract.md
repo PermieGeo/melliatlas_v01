@@ -12,3 +12,5 @@
 - **Extension:** Add new clients here when server endpoints ship; keep provider-dependent parsing on the backend.
 
 - `loadMapTreatments` consumes `GET /api/v1/notices` via shared schema and never calls a provider directly. Operator-only access review, bounded sync, pending queue and review mutations use an ephemeral bearer token.
+
+- Operator-only import diagnostics are schema-validated by `providerCollectionStatusSchema`; no provider secret is persisted in the browser.

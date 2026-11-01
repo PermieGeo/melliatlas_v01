@@ -17,13 +17,21 @@ export function validateProviderEndpoint(value: string): string {
     /[\\\s\u0000-\u001f\u007f]/.test(value) ||
     /%(?:00|25|2e|2f|5c)/i.test(value)
   ) {
-    throw new ApiFailure(400, "INVALID_PROVIDER_ENDPOINT", "Invalid HTTPS endpoint");
+    throw new ApiFailure(
+      400,
+      "INVALID_PROVIDER_ENDPOINT",
+      "Invalid HTTPS endpoint",
+    );
   }
   let url: URL;
   try {
     url = new URL(value);
   } catch {
-    throw new ApiFailure(400, "INVALID_PROVIDER_ENDPOINT", "Invalid HTTPS endpoint");
+    throw new ApiFailure(
+      400,
+      "INVALID_PROVIDER_ENDPOINT",
+      "Invalid HTTPS endpoint",
+    );
   }
   if (
     url.protocol !== "https:" ||
@@ -35,12 +43,18 @@ export function validateProviderEndpoint(value: string): string {
     !url.hostname.includes(".") ||
     url.hostname.endsWith(".") ||
     isIP(url.hostname) ||
-    !url.hostname.split(".").every((part) =>
-      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(part),
-    ) ||
-    ["localhost", "local", "internal"].includes(url.hostname.split(".").at(-1) ?? "")
+    !url.hostname
+      .split(".")
+      .every((part) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(part)) ||
+    ["localhost", "local", "internal"].includes(
+      url.hostname.split(".").at(-1) ?? "",
+    )
   ) {
-    throw new ApiFailure(400, "INVALID_PROVIDER_ENDPOINT", "Invalid HTTPS endpoint");
+    throw new ApiFailure(
+      400,
+      "INVALID_PROVIDER_ENDPOINT",
+      "Invalid HTTPS endpoint",
+    );
   }
   return url.toString();
 }
@@ -60,7 +74,9 @@ export function buildProviderRequest(
   const parsed = providerRequestSettingsSchema.parse(settings);
   const payload: Record<string, unknown> = { ...parsed.parameters };
   if (parsed.regionContainer) {
-    payload[parsed.regionContainer] = { [parsed.regionParameter]: parsed.regionCode };
+    payload[parsed.regionContainer] = {
+      [parsed.regionParameter]: parsed.regionCode,
+    };
   } else {
     payload[parsed.regionParameter] = parsed.regionCode;
   }
@@ -68,16 +84,23 @@ export function buildProviderRequest(
     return { url, method: "POST", body: JSON.stringify(payload) };
   }
   const requestUrl = new URL(url);
-  for (const [key, value] of Object.entries(payload).sort(([a], [b]) => a.localeCompare(b))) {
-    requestUrl.searchParams.set(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+  for (const [key, value] of Object.entries(payload).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    requestUrl.searchParams.set(
+      key,
+      typeof value === "object" ? JSON.stringify(value) : String(value),
+    );
   }
   return { url: requestUrl.toString(), method: "GET" };
 }
 
-const storedConnectionSchema = z.object({
-  endpoint: z.string(),
-  request: providerRequestSettingsSchema,
-}).strict();
+const storedConnectionSchema = z
+  .object({
+    endpoint: z.string(),
+    request: providerRequestSettingsSchema,
+  })
+  .strict();
 
 type ProviderRow = {
   api_request_config: unknown;
@@ -107,12 +130,18 @@ export class ProviderConfigurationRepository {
       "SELECT name, api_request_config, registry_revision, access_decision FROM source_catalog WHERE id = 'treatment-feed'",
     );
     if (!result.rows[0]) {
-      throw new ApiFailure(503, "PROVIDER_NOT_CONFIGURED", "Provider configuration migration is required");
+      throw new ApiFailure(
+        503,
+        "PROVIDER_NOT_CONFIGURED",
+        "Provider configuration migration is required",
+      );
     }
     return parseRow(result.rows[0]);
   }
 
-  async update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration> {
+  async update(
+    input: ProviderConfigurationEdit,
+  ): Promise<ProviderConfiguration> {
     const endpoint = validateProviderEndpoint(input.endpoint);
     const settings = providerRequestSettingsSchema.parse(input.request);
     const result = await this.pool.query<ProviderRow>(
@@ -123,10 +152,19 @@ export class ProviderConfigurationRepository {
          permission_evidence_url = NULL, permission_basis = NULL, parser_version = NULL
        WHERE id = 'treatment-feed' AND registry_revision = $4::bigint
        RETURNING name, api_request_config, registry_revision, access_decision`,
-      [input.providerName, endpoint, JSON.stringify({ endpoint, request: settings }), input.expectedRevision],
+      [
+        input.providerName,
+        endpoint,
+        JSON.stringify({ endpoint, request: settings }),
+        input.expectedRevision,
+      ],
     );
     if (!result.rows[0]) {
-      throw new ApiFailure(409, "PROVIDER_REVISION_CONFLICT", "Provider configuration changed; reload before saving");
+      throw new ApiFailure(
+        409,
+        "PROVIDER_REVISION_CONFLICT",
+        "Provider configuration changed; reload before saving",
+      );
     }
     return parseRow(result.rows[0]);
   }
