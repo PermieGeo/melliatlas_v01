@@ -28,7 +28,7 @@ export type ApprovedRegistration = {
 };
 
 /** Internal read-only entry point. It never updates permissions or fetches a URL. */
-export class MunicipalSourceRegistry {
+export class ApprovedSourceRegistry {
   constructor(private readonly pool: Pool) {}
 
   async getApproved(sourceId: string): Promise<ApprovedRegistration | null> {
@@ -39,7 +39,7 @@ export class MunicipalSourceRegistry {
               reviewed_by, reviewed_at, permission_evidence_url, permission_basis,
               parser_version, fetch_policy, registry_revision
          FROM source_catalog
-        WHERE id = $1 AND kind = 'municipal_notice'
+        WHERE id = $1 AND kind IN ('municipal_notice', 'treatment')
           AND lifecycle = 'configured' AND access_decision = 'approved'
           AND terms_review = 'reviewed'`,
       [sourceId],
@@ -73,3 +73,6 @@ export class MunicipalSourceRegistry {
     return { source: parsed.data, registryRevision: row.registry_revision };
   }
 }
+
+/** Compatibility alias for earlier municipal-only callers. */
+export { ApprovedSourceRegistry as MunicipalSourceRegistry };

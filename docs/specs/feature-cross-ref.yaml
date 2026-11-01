@@ -63,9 +63,12 @@ features:
       - apps/api/src/modules/sources/contracts.ts
       - apps/api/src/modules/sources/destinationPolicy.ts
       - apps/api/src/modules/sources/municipalSourceRegistry.ts
+      - apps/api/src/modules/sources/httpFetcher.ts
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/test/municipalSourceRegistry.test.ts
+      - apps/api/test/httpFetcher.test.ts
+      - apps/api/integration/treatmentAccessMigration.test.ts
       - apps/api/integration/sourceCatalogMigration.test.ts
   - id: NOTICES.EXTRACTION
     stage_ids:
