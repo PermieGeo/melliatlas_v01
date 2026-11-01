@@ -2,18 +2,18 @@
 
 Run commands from the repository root after [installation](INSTALLATION.md). Format checks and tests must not modify source files.
 
-| Command                                                   | Purpose                                                                                                         | External dependency                                  |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `pnpm format:check`                                       | Prettier validation                                                                                             | Installed dependencies                               |
-| `pnpm typecheck`                                          | Build shared schemas; type-check API and web                                                                    | Installed dependencies                               |
-| `pnpm test`                                               | API Vitest/Supertest and React component tests                                                                  | No live provider required; HTTP is stubbed           |
-| `pnpm build`                                              | Production TypeScript/API and Vite/web builds                                                                   | Installed dependencies                               |
-| `python3 tools/specs/validate_state.py`                   | Checkpoint, links and feature cross-reference                                                                   | Python 3 (standard library)                          |
-| `python3 tools/feature_context.py WEATHER.POINT_FORECAST` | One capability's owners/tests                                                                                   | Python 3 (standard library)                          |
-| `python3 tools/feature_context.py SRC-01`                 | Features within a delivery stage                                                                                | Python 3 (standard library)                          |
-| `pnpm db:migrate`                                         | Apply checksummed SQL migrations to PostgreSQL                                                                  | Running PostGIS database                             |
-| `pnpm --dir apps/api test:db`                             | Upgrade from SQL 001 through 003 and verify approval/history constraints against a real transactional PostGIS schema | Running PostGIS database and `DATABASE_URL`          |
-| `pnpm e2e`                                                | Playwright desktop/mobile Chromium browser flows                                                                | Running PostGIS; installed Chromium browser binaries |
+| Command                                                   | Purpose                                                                                                                        | External dependency                                  |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `pnpm format:check`                                       | Prettier validation                                                                                                            | Installed dependencies                               |
+| `pnpm typecheck`                                          | Build shared schemas; type-check API and web                                                                                   | Installed dependencies                               |
+| `pnpm test`                                               | API Vitest/Supertest and React component tests                                                                                 | No live provider required; HTTP is stubbed           |
+| `pnpm build`                                              | Production TypeScript/API and Vite/web builds                                                                                  | Installed dependencies                               |
+| `python3 tools/specs/validate_state.py`                   | Checkpoint, links and feature cross-reference                                                                                  | Python 3 (standard library)                          |
+| `python3 tools/feature_context.py WEATHER.POINT_FORECAST` | One capability's owners/tests                                                                                                  | Python 3 (standard library)                          |
+| `python3 tools/feature_context.py SRC-01`                 | Features within a delivery stage                                                                                               | Python 3 (standard library)                          |
+| `pnpm db:migrate`                                         | Apply checksummed SQL migrations to PostgreSQL                                                                                 | Running PostGIS database                             |
+| `pnpm --dir apps/api test:db`                             | Run independent real-PostGIS tests covering migrations `001`–`005`, including approval/history and treatment-source revocation | Running PostGIS database and `DATABASE_URL`          |
+| `pnpm e2e`                                                | Playwright desktop/mobile Chromium browser flows                                                                               | Running PostGIS; installed Chromium browser binaries |
 
 Install browsers once where required:
 
@@ -21,7 +21,7 @@ Install browsers once where required:
 pnpm exec playwright install chromium
 ```
 
-The E2E configuration starts `pnpm dev` automatically. It intercepts source/weather API responses with synthetic test-only fixtures; these are never product fallback data. The API server still requires local PostgreSQL. **Intercepted Playwright tests verify UI behavior, not database/source integration.**
+The E2E configuration starts `pnpm dev` automatically (or may reuse an existing server outside CI; stop stale manual instances first). It intercepts source/weather API responses with synthetic test-only fixtures; these are never product fallback data. The API server still requires local PostgreSQL. **Intercepted Playwright tests verify UI behavior, not database/source integration.**
 
 ## Test ownership
 
@@ -42,3 +42,22 @@ New behavior needs independently derived positive, negative, boundary and regres
 
 - Restricted outbound transport: `apps/api/test/httpFetcher.test.ts` uses synthetic public/private DNS answers and injected HTTPS responses; real network/TLS behavior is not established by these fakes.
 - Treatment approval migration and revocation: `apps/api/integration/treatmentAccessMigration.test.ts` requires an isolated real PostGIS connection and checks migration `005` after `001`–`004`.
+
+### Useful post-installation sequence
+
+First confirm that PostgreSQL is healthy and migrations are applied, then run independent checks:
+
+```bash
+docker compose up -d db
+pnpm db:migrate
+pnpm format:check
+pnpm typecheck
+pnpm test
+pnpm --dir apps/api test:db
+pnpm build
+python3 tools/specs/validate_state.py
+```
+
+The PostGIS integration tests require `DATABASE_URL` in their process environment. The test script does **not** automatically load `apps/api/.env` in every invocation, so provide a test-only URL explicitly or load a local environment file in the shell without printing secrets. CI supplies `DATABASE_URL` directly. Do not claim `test:db` passed if the database/URL was not available.
+
+Playwright requires a Chromium installation (`pnpm exec playwright install chromium`) and the database; run `pnpm e2e` with the normal dev server stopped to avoid stale sessions. Browser tests with intercepted responses do not establish that real provider retrieval or storage works.
