@@ -46,7 +46,7 @@ export const fetchPolicySchema = z
     maxRedirects: z.number().int().min(0).max(3),
     maxRetries: z.number().int().min(0).max(3),
     allowedContentTypes: z
-      .array(z.enum(["text/html", "text/plain", "application/pdf"]))
+      .array(z.enum(["text/html", "text/plain", "application/pdf", "application/json"]))
       .min(1)
       .max(3),
   })
@@ -66,7 +66,7 @@ export const sourceDefinitionSchema = z
   .object({
     id: sourceIdSchema,
     name: z.string().min(1).max(200),
-    kind: z.literal("municipal_notice"),
+    kind: z.enum(["municipal_notice", "treatment"]),
     enabled: z.boolean(),
     locations: z
       .array(

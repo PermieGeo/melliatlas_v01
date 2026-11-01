@@ -25,3 +25,7 @@ This page describes **running code**. Planned behavior is owned by [specificatio
 | Public wire schemas                | [contracts/contract.md](../packages/contracts/contract.md)         |
 
 The backend remains a single Node.js deployment. Geospatial notice APIs, full identity management, worker ingestion and AI-agent orchestration are future modules, not current entry points. The token-gated operator settings route is a narrow configuration entry point, not general user authentication. The architecture is described in [ARCHITECTURE](ARCHITECTURE.md).
+
+## Restricted provider retrieval (SRC-01 / S2)
+
+`modules/sources/httpFetcher.ts` implements a bounded, injectable HTTPS transport for explicit approved source registrations. It pins a publicly routable DNS answer to direct TLS, validates certificates and the socket peer, rejects unsafe redirects, and caps response size, MIME, time and retries. It is not connected to an API endpoint, scheduler or public map. SQL migration `005_treatment_source_approval.sql` permits separately reviewed `treatment` registrations without approving any existing candidate. Any provider configuration edit revokes previous approval. A verified access decision and independently confirmed API contract are still prerequisites for actual collection.
