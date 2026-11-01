@@ -17,40 +17,13 @@ const multiPolygon = z
     coordinates: z.array(z.array(z.array(coordinate).min(4)).min(1)).min(1),
   })
   .passthrough();
-const plan = z
-  .object({
-    id: z.union([z.string(), z.number()]).optional(),
-    beeAcreage: z
-      .object({
-        id: z.union([z.string(), z.number()]).optional(),
-        planId: z.union([z.string(), z.number()]).optional(),
-        contractorName: z.string().optional(),
-        cadNum: z.string().optional(),
-        planDate: z.number().finite().optional(),
-        planDateEnd: z.number().finite().optional(),
-        geo: z.unknown().optional(),
-      })
-      .passthrough()
-      .optional(),
-    allPatList: z
-      .array(
-        z
-          .object({
-            patName: z.string().optional(),
-            regulationCropName: z.string().optional(),
-            patProductDangerClassBee: z
-              .union([z.string(), z.number()])
-              .optional(),
-          })
-          .passthrough(),
-      )
-      .optional(),
-  })
-  .passthrough();
+
+// Nullable and inconsistently typed optional provider fields must not reject an otherwise valid page.
+// Validate the page/record envelopes; interpret optional claims independently without inventing values.
 const pageSchema = z
   .object({
-    content: z.array(plan).max(200),
-    totalElements: z.number().int().nonnegative().optional(),
+    content: z.array(z.object({}).passthrough()).max(200),
+    totalElements: z.number().int().nonnegative().nullish(),
   })
   .passthrough();
 
@@ -68,19 +41,46 @@ export type BeekeeperPlan = {
   }[];
 };
 
-function unixSeconds(value: number | undefined): string | null {
+function objectOrNull(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function optionalText(value: unknown): string | null {
+  return typeof value === "string" ? value.trim() || null : null;
+}
+
+function optionalId(value: unknown): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  return typeof value === "number" && Number.isSafeInteger(value)
+    ? String(value)
+    : null;
+}
+
+function unixSeconds(value: unknown): string | null {
+  const number =
+    typeof value === "string" && /^\d{1,12}$/.test(value)
+      ? Number(value)
+      : value;
   if (
-    value === undefined ||
-    !Number.isSafeInteger(value) ||
-    value <= 0 ||
-    value > 253402300799
+    typeof number !== "number" ||
+    !Number.isSafeInteger(number) ||
+    number <= 0 ||
+    number > 253402300799
   )
     return null;
-  const date = new Date(value * 1000);
+  const date = new Date(number * 1000);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-/** Parse the historical portal shape as unreviewed evidence; do not infer absent values or publish it. */
+function beeHazardClass(value: unknown): number | null {
+  const number =
+    typeof value === "string" && /^[1-3]$/.test(value) ? Number(value) : value;
+  return number === 1 || number === 2 || number === 3 ? number : null;
+}
+
+/** Parse a provider page as unreviewed evidence; unknown optional values remain unknown. */
 export function parseBeekeeperPlanPage(input: unknown): {
   totalElements: number | null;
   plans: BeekeeperPlan[];
@@ -89,25 +89,34 @@ export function parseBeekeeperPlanPage(input: unknown): {
   return {
     totalElements: page.totalElements ?? null,
     plans: page.content.map((record) => {
-      const acreage = record.beeAcreage;
-      const geometry = z.union([polygon, multiPolygon]).safeParse(acreage?.geo);
+      const acreage = objectOrNull(record.beeAcreage);
+      const parsedGeometry = z
+        .union([polygon, multiPolygon])
+        .safeParse(acreage?.geo);
+      const products = Array.isArray(record.allPatList)
+        ? record.allPatList
+        : [];
       return {
         externalId:
-          String(acreage?.planId ?? acreage?.id ?? record.id ?? "") || null,
-        contractorName: acreage?.contractorName?.trim() || null,
-        cadastralNumber: acreage?.cadNum?.trim() || null,
+          optionalId(acreage?.planId) ??
+          optionalId(acreage?.id) ??
+          optionalId(record.id),
+        contractorName: optionalText(acreage?.contractorName),
+        cadastralNumber: optionalText(acreage?.cadNum),
         startAt: unixSeconds(acreage?.planDate),
         endAt: unixSeconds(acreage?.planDateEnd),
-        geometry: geometry.success ? geometry.data : null,
-        treatments: (record.allPatList ?? []).map((item) => ({
-          name: item.patName?.trim() || null,
-          crop: item.regulationCropName?.trim() || null,
-          beeHazardClass: [1, 2, 3].includes(
-            Number(item.patProductDangerClassBee ?? NaN),
-          )
-            ? Number(item.patProductDangerClassBee)
-            : null,
-        })),
+        geometry: parsedGeometry.success ? parsedGeometry.data : null,
+        treatments: products.flatMap((rawProduct: unknown) => {
+          const product = objectOrNull(rawProduct);
+          if (!product) return [];
+          return [
+            {
+              name: optionalText(product.patName),
+              crop: optionalText(product.regulationCropName),
+              beeHazardClass: beeHazardClass(product.patProductDangerClassBee),
+            },
+          ];
+        }),
       };
     }),
   };

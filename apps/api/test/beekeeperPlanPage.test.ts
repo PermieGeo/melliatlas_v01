@@ -75,6 +75,77 @@ describe("published treatment plan page parsing", () => {
     });
   });
 
+  it("keeps a real polygon when optional provider fields are null or unexpectedly typed", () => {
+    const geometry = {
+      type: "Polygon" as const,
+      coordinates: [
+        [
+          [32, 54],
+          [33, 54],
+          [33, 55],
+          [32, 54],
+        ],
+      ],
+    };
+    const result = parseBeekeeperPlanPage({
+      totalElements: 21661,
+      content: [
+        {
+          id: 21,
+          beeAcreage: {
+            planId: null,
+            contractorName: null,
+            cadNum: 42,
+            planDate: "1793491200",
+            planDateEnd: null,
+            geo: geometry,
+          },
+          allPatList: [
+            null,
+            {
+              patName: null,
+              regulationCropName: false,
+              patProductDangerClassBee: null,
+            },
+            { patName: " Product ", patProductDangerClassBee: "2" },
+          ],
+        },
+        { beeAcreage: null, allPatList: null },
+      ],
+    });
+    expect(result.totalElements).toBe(21661);
+    expect(result.plans).toHaveLength(2);
+    expect(result.plans[0]).toMatchObject({
+      externalId: "21",
+      contractorName: null,
+      cadastralNumber: null,
+      endAt: null,
+      geometry,
+      treatments: [
+        { name: null, crop: null, beeHazardClass: null },
+        { name: "Product", crop: null, beeHazardClass: 2 },
+      ],
+    });
+    expect(result.plans[0].startAt).toMatch(/Z$/);
+    expect(result.plans[1]).toMatchObject({
+      externalId: null,
+      geometry: null,
+      treatments: [],
+    });
+  });
+
+  it("rejects malformed page envelopes instead of silently dropping records", () => {
+    expect(() => parseBeekeeperPlanPage({ content: [null] })).toThrow();
+    expect(() =>
+      parseBeekeeperPlanPage({ content: [{}], totalElements: -1 }),
+    ).toThrow();
+    expect(() =>
+      parseBeekeeperPlanPage({
+        content: Array.from({ length: 201 }, () => ({})),
+      }),
+    ).toThrow();
+  });
+
   it("accepts a source-published numeric hazard class encoded as a string", () => {
     const result = parseBeekeeperPlanPage({
       content: [{ allPatList: [{ patProductDangerClassBee: "1" }] }],
