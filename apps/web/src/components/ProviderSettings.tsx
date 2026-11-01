@@ -80,7 +80,7 @@ export function ProviderSettings() {
   return (
     <section aria-label="Настройки источника данных" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
       <h2 className="font-display text-lg font-bold">Подключение источника обработок</h2>
-      <p className="text-sm text-slate-600">Настройки сохраняются на сервере. Адрес API пока является кандидатом; автоматический сбор и отображение обработок не включены.</p>
+      <p className="text-sm text-slate-600">Чтобы увидеть и изменить подробные параметры запроса, введите токен оператора и нажмите «Открыть настройки». Это локальный токен MelliAtlas, а не ключ внешнего API. Автоматический сбор и отображение обработок пока не включены.</p>
       <label className="block text-sm font-semibold text-slate-800">
         Токен оператора
         <input type="password" autoComplete="off" value={token} onChange={(event) => { requestGeneration.current += 1; setToken(event.target.value); setConfig(null); setPending(false); }} className="mt-1 block w-full rounded-lg border border-slate-300 p-2" />
@@ -93,7 +93,7 @@ export function ProviderSettings() {
             <input aria-label="Название источника" value={providerName} onChange={(event) => setProviderName(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2" />
           </label>
           <label className="block text-sm font-medium">HTTPS API endpoint
-            <input aria-label="Provider API endpoint" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2 font-mono text-xs" />
+            <input aria-label="Адрес API источника" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2 font-mono text-xs" />
           </label>
           <label className="block text-sm font-medium">Метод
             <select aria-label="Provider HTTP method" value={method} onChange={(event) => setMethod(event.target.value as "GET" | "POST")} className="mt-1 block w-full rounded-lg border border-slate-300 p-2">

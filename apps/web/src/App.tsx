@@ -186,6 +186,11 @@ export default function App() {
     ? `${selected.lat.toFixed(4)}° N, ${selected.lon.toFixed(4)}° E`
     : "Точка не выбрана";
 
+  const configuredTreatmentSource =
+    sourceCatalog.status === "loaded"
+      ? sourceCatalog.value.find((source) => source.id === "treatment-feed")
+      : undefined;
+
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC] font-sans text-[#0F172A]">
       <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-slate-200 bg-white px-4 py-3.5 sm:px-6">
@@ -534,7 +539,75 @@ export default function App() {
             </div>
           </div>
         ) : tab === "provider" ? (
-          <ProviderSettings />
+          <div className="space-y-5">
+            <section
+              aria-label="Сохранённый источник"
+              className="space-y-3 rounded-xl border border-slate-200 bg-white p-5"
+            >
+              <h2 className="font-display text-base font-bold text-slate-900">
+                Сохранённый источник
+              </h2>
+              {sourceCatalog.status === "loading" && (
+                <p role="status" className="text-sm text-slate-600">
+                  Загрузка сведений об источнике…
+                </p>
+              )}
+              {sourceCatalog.status === "error" && (
+                <p role="alert" className="text-sm text-amber-900">
+                  Не удалось загрузить источник: {sourceCatalog.message}
+                </p>
+              )}
+              {sourceCatalog.status === "loaded" &&
+                !configuredTreatmentSource && (
+                  <p className="text-sm text-slate-600">
+                    Источник обработок не найден в реестре. Проверьте миграции
+                    и первоначальную настройку.
+                  </p>
+                )}
+              {configuredTreatmentSource && (
+                <dl className="space-y-2 text-sm">
+                  <div>
+                    <dt className="font-semibold text-slate-700">Название</dt>
+                    <dd className="text-slate-600">{configuredTreatmentSource.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-700">Тип</dt>
+                    <dd className="text-slate-600">Планы обработок</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-700">Адрес API</dt>
+                    <dd className="break-all font-mono text-xs text-slate-600">
+                      {configuredTreatmentSource.url}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-700">Состояние реестра</dt>
+                    <dd className="text-slate-600">
+                      {configuredTreatmentSource.lifecycle === "configured"
+                        ? "Настроен"
+                        : configuredTreatmentSource.lifecycle === "under_review"
+                          ? "На проверке"
+                          : "Отключён"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-700">Последняя загрузка</dt>
+                    <dd className="text-slate-600">
+                      {configuredTreatmentSource.lastSuccessfulIngestAt
+                        ? utcTime(configuredTreatmentSource.lastSuccessfulIngestAt)
+                        : "Не выполнялась"}
+                    </dd>
+                  </div>
+                </dl>
+              )}
+              <p className="text-xs leading-relaxed text-slate-600">
+                Эти общедоступные сведения берутся из каталога. Подробные
+                параметры запроса можно открыть ниже с токеном оператора.
+                Импорт планов и их отображение на карте пока не реализованы.
+              </p>
+            </section>
+            <ProviderSettings />
+          </div>
         ) : (
           <section aria-label="Реестр источников" className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-white p-5">
