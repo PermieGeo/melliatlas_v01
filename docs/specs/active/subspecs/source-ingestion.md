@@ -31,8 +31,9 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 | SRC-R09 | Bound source fetch duration, payload size, concurrency, network destination, retry count and cache staleness                                                                        | Redirect to a private IP, oversized body, timeouts and rate limits fail closed and are recorded         |
 | SRC-R10 | Expose job diagnostics for the operator: last attempt/success, item counts, failures and selected source version                                                                    | Repeated jobs and server restarts do not lose status or duplicate current observations                  |
 | SRC-R11 | Preserve bootstrap Open-Meteo location inspection as a real, independently attributed forecast endpoint                                                                             | Valid coordinates succeed with a real provider; invalid/malformed/offline cases return typed errors     |
+| SRC-R12 | Prioritize a configurable FGIS Saturn Beekeeper Portal connector ahead of municipal adapters. Accept endpoint, HTTP method, region field/code and bounded request parameters through authenticated operator UI and typed programmatic inputs. Persist settings with revisions, but keep collection off until reviewed access and a safe fetcher exist. | Unauthorized edits fail; concurrent writes do not overwrite configuration; tests inject request settings without network; no unreviewed endpoint triggers retrieval. |
 
-**Source acquisition gate:** The reference prototype names a public Saturn-related endpoint and specific regional identifiers; these remain provisional until independently confirmed. `SRC-R02` begins with a small set of verified municipal web sources and expands only with confirmed access conditions. User-visible records must correspond to inspected original documents.
+**Source acquisition gate:** FGIS Saturn is the **first integration priority**, followed by the two independently verified municipal notice sources required by `SRC-R02`. Public Beekeeper Portal browsing is reported as unauthenticated, but the reference `POST https://bee-saturn.ru/backend/beemaster/planapplybees` endpoint, request schema and automated-reuse permission remain provisional. An operator may save a candidate endpoint without granting network permission. No collection or publication begins until access review, a restricted transport, and evidence validation have passed. User-visible records must correspond to inspected original documents.
 
 ## 3. API and persistent data
 
@@ -42,6 +43,12 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 - `GET /api/v1/sources` reads the configured source catalog.
 - `GET /api/v1/locations/inspect?lat&lon` retrieves Open-Meteo values, WGS84 coordinate echo, forecast-model provenance and UTC times.
 - `apps/api/migrations/001_source_core.sql` defines the initial source catalog, ingestion runs, source documents and spatial observation tables.
+
+**Authenticated operator configuration slice (no collection):**
+
+- `GET /api/v1/operator/saturn` reads the candidate Saturn endpoint, request method/region/parameters and registry revision; `PUT /api/v1/operator/saturn` accepts a complete validated configuration and `expectedRevision`, returning 409 on conflict. Both require an operator bearer token configured server-side and return 503 if disabled. No credentials are persisted in browser storage or included in responses.
+- `apps/api/migrations/003_saturn_api_configuration.sql` adds inert request settings to `source_catalog` and inserts a pending `treatment` source. The registry's existing approval gate does not grant Saturn network access; a future additive change must explicitly support reviewed treatment sources.
+- The request builder is a pure programmatic interface accepting the endpoint and typed request parameters; it sends no network requests and makes no authorization decisions.
 
 **Planned endpoints for this stage:**
 
@@ -67,7 +74,7 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 
 - Fetch accepts only pre-registered HTTPS hosts and explicitly approved paths. Resolve and check DNS/redirect targets, block loopback/link-local/private address ranges and cloud metadata endpoints, cap response bytes and MIME types.
 - Treat source HTML/PDF as untrusted data; strip active content, do not execute embedded scripts, and do not allow document text to control fetch tools or operator configuration.
-- No public endpoint triggers unbounded scraping. Admin commands and scheduled worker processes require authentication or private deployment boundaries.
+- No public endpoint triggers unbounded scraping. Operator configuration changes require server-side bearer authorization, no-store responses and revision checks. For production rollout, operator authentication must be evaluated against deployment security requirements; setting a candidate URL never grants fetch permission.
 - Keep secrets and private apiary positions outside raw source artifacts, model prompts and source API responses.
 - Provider rate limits and terms take priority over requested polling cadence. Failed and partially successful runs remain inspectable.
 - Show source coverage and quality flags; do not equate absence of a notice with absence of agricultural treatment.
@@ -87,6 +94,13 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 | SRC-T09 | Mobile touch and desktop click on genuine map results                     | Details and source links work; approximate precision is visually distinct                      |
 | SRC-T10 | Source data contains instructions targeting the AI/parser/worker          | Content stored as evidence, never executed or granted privileges                               |
 | SRC-T11 | Open-Meteo malformed response, outage or invalid lat/lon                  | Typed 503/400; no fake weather, no leaked upstream stack trace                                 |
+
+### Saturn configuration coverage
+
+- **SRC-T12:** Unauthorized or missing operator credentials cannot read or mutate settings; no configured token fails closed.
+- **SRC-T13:** A valid operator change persists across reads with a monotonic revision; a stale revision returns 409 and leaves the latest record intact.
+- **SRC-T14:** Programmatic GET/POST request construction accepts an explicit region and bounded parameters; invalid URL, reserved/duplicate region key, malformed fields and IP-literal endpoints fail validation. Constructing a request does not fetch any data.
+- **SRC-T15 (future):** A reviewed Saturn source safely fetches, parses and retains real records with original published evidence; re-fetch and unsafe DNS/redirect attempts obey SRC-R03 and SRC-R09.
 
 ## 7. Completion gate
 

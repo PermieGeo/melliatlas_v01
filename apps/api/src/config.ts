@@ -4,6 +4,7 @@ const configSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  SATURN_OPERATOR_TOKEN: z.string().min(32).optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   DATABASE_URL: z.string().min(1),
   OPEN_METEO_TIMEOUT_MS: z.coerce
