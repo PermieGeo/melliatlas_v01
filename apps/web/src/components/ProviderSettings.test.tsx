@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 const status = {
-  accessDecision: "pending",
+  sourceConfigured: true,
   latestRun: null,
   pendingReview: 0,
   pendingWithGeometry: 0,
@@ -33,7 +33,6 @@ const config = {
     parameters: {},
   },
   revision: "1",
-  accessDecision: "pending",
   collectionEnabled: false,
 };
 
@@ -84,7 +83,15 @@ it("requires an operator token and submits edited parameters to the backend", as
   );
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
   expect(
-    await screen.findByText(/Автоматическая загрузка отключена/),
+    await screen.findByText(
+      /Конфигурация сохранена\. Можно загрузить страницу вручную/,
+    ),
+  ).toBeTruthy();
+  expect((screen.getByLabelText("Код региона") as HTMLInputElement).value).toBe(
+    "67",
+  );
+  expect(
+    screen.getByRole("button", { name: "Загрузить одну страницу" }),
   ).toBeTruthy();
 });
 
@@ -135,7 +142,7 @@ it("discards an in-flight settings response after the operator token changes", a
   expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
 });
 
-it("explains why no map layer is available before access review and shows the last failed sync", async () => {
+it("shows a failed manual sync without requesting permission evidence", async () => {
   const fetcher = vi.fn(
     async (path: string) =>
       new Response(
@@ -169,38 +176,33 @@ it("explains why no map layer is available before access review and shows the la
     await screen.findByText(/Ожидают проверки: 2; с полигонами: 1/),
   ).toBeTruthy();
   expect(screen.getByText(/UPSTREAM_STATUS/)).toBeTruthy();
-  expect(screen.getByText(/требуется подтверждённое основание/)).toBeTruthy();
   expect(
-    screen.queryByRole("button", { name: "Загрузить одну страницу" }),
-  ).toBeNull();
+    screen.getByRole("button", { name: "Загрузить одну страницу" }),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText("Ссылка на разрешение")).toBeNull();
 });
 
-it("offers the manual fetch action as soon as operator approval succeeds", async () => {
-  let approved = false;
+it("allows the operator to fetch immediately without access approval", async () => {
+  let syncCount = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (path: string, init?: RequestInit) => {
       if (
-        path === "/api/v1/operator/provider/approve" &&
+        path === "/api/v1/operator/provider/sync" &&
         init?.method === "POST"
       ) {
-        approved = true;
-        return new Response(JSON.stringify({ status: "reviewed" }));
-      }
-      if (path === "/api/v1/operator/provider/status") {
+        syncCount++;
         return new Response(
-          JSON.stringify({
-            ...status,
-            accessDecision: approved ? "approved" : "pending",
-          }),
+          JSON.stringify({ received: 2, stored: 2, nextPage: 1 }),
         );
       }
-      return new Response(
-        JSON.stringify({
-          ...config,
-          accessDecision: approved ? "approved" : "pending",
-        }),
-      );
+      if (path === "/api/v1/operator/notices") {
+        return new Response(JSON.stringify({ notices: [] }));
+      }
+      if (path === "/api/v1/operator/provider/status") {
+        return new Response(JSON.stringify(status));
+      }
+      return new Response(JSON.stringify(config));
     }),
   );
   render(<ProviderSettings />);
@@ -208,21 +210,110 @@ it("offers the manual fetch action as soon as operator approval succeeds", async
     target: { value: "test-operator" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Открыть настройки" }));
-  expect(await screen.findByLabelText("Имя проверяющего")).toBeTruthy();
+  const button = await screen.findByRole("button", {
+    name: "Загрузить одну страницу",
+  });
+  expect(screen.queryByText(/Подтвердить проверенный доступ/)).toBeNull();
+  fireEvent.click(button);
+  await waitFor(() => expect(syncCount).toBe(1));
+  expect(await screen.findByText(/Страница получена: 2/)).toBeTruthy();
+});
+
+it("disables manual fetching when the provider is not configured", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async (path: string) =>
+        new Response(
+          JSON.stringify(
+            path === "/api/v1/operator/provider/status"
+              ? { ...status, sourceConfigured: false }
+              : config,
+          ),
+        ),
+    ),
+  );
+  render(<ProviderSettings />);
+  fireEvent.change(screen.getByLabelText("Токен оператора"), {
+    target: { value: "test-operator" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Открыть настройки" }));
+  const button = await screen.findByRole("button", {
+    name: "Загрузить одну страницу",
+  });
+  expect(button.hasAttribute("disabled")).toBe(true);
+});
+
+it("requires a reviewer identity and evidence note before publishing a fetched polygon", async () => {
+  const observationId = "11111111-2222-4333-8444-555555555555";
+  let reviewed = false;
+  const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
+    if (path === "/api/v1/operator/provider/status") {
+      return new Response(
+        JSON.stringify({ ...status, pendingReview: 1, pendingWithGeometry: 1 }),
+      );
+    }
+    if (path === "/api/v1/operator/notices") {
+      return new Response(
+        JSON.stringify({
+          notices: reviewed
+            ? []
+            : [
+                {
+                  id: observationId,
+                  sourceUrl: "https://example.org/plans",
+                  retrievedAt: "2026-11-01T12:00:00.000Z",
+                  contractorName: "Fixture grower",
+                  cadastralNumber: "67:01:0000000:42",
+                  geometryAvailable: true,
+                  startAt: null,
+                  endAt: null,
+                  treatments: [],
+                },
+              ],
+        }),
+      );
+    }
+    if (path === `/api/v1/operator/notices/${observationId}/review`) {
+      expect(init?.method).toBe("POST");
+      expect(init?.headers).toMatchObject({
+        Authorization: "Bearer test-operator",
+      });
+      expect(JSON.parse(String(init?.body))).toEqual({
+        decision: "verified",
+        reviewer: "Test reviewer",
+        evidenceNote: "Compared geometry with the original document.",
+      });
+      reviewed = true;
+      return new Response(JSON.stringify({ status: "verified" }));
+    }
+    return new Response(JSON.stringify(config));
+  });
+  vi.stubGlobal("fetch", fetcher);
+
+  render(<ProviderSettings />);
+  fireEvent.change(screen.getByLabelText("Токен оператора"), {
+    target: { value: "test-operator" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Открыть настройки" }));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Показать ожидающие проверки записи",
+    }),
+  );
+
+  const confirm = await screen.findByRole("button", {
+    name: "Подтвердить и опубликовать",
+  });
+  expect(confirm.hasAttribute("disabled")).toBe(true);
   fireEvent.change(screen.getByLabelText("Имя проверяющего"), {
     target: { value: "Test reviewer" },
   });
-  fireEvent.change(screen.getByLabelText("Ссылка на разрешение"), {
-    target: { value: "https://publisher.example.org/terms" },
+  expect(confirm.hasAttribute("disabled")).toBe(true);
+  fireEvent.change(screen.getByLabelText("Основание проверки записи"), {
+    target: { value: "Compared geometry with the original document." },
   });
-  fireEvent.change(screen.getByLabelText("Обоснование доступа"), {
-    target: { value: "Synthetic operator permission fixture for UI only." },
-  });
-  fireEvent.click(
-    screen.getByRole("button", { name: "Подтвердить проверенный доступ" }),
-  );
-  expect(
-    await screen.findByRole("button", { name: "Загрузить одну страницу" }),
-  ).toBeTruthy();
-  expect(screen.getByText(/Теперь можно загрузить страницу/)).toBeTruthy();
+  expect(confirm.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(confirm);
+  await waitFor(() => expect(reviewed).toBe(true));
 });

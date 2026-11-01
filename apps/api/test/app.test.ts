@@ -133,7 +133,6 @@ describe("Provider operator configuration HTTP boundary", () => {
       parameters: {},
     },
     revision: "1",
-    accessDecision: "pending" as const,
     collectionEnabled: false as const,
   };
   const adminServices: ApiServices = {
@@ -206,19 +205,16 @@ describe("Provider operator configuration HTTP boundary", () => {
 
 describe("treatment evidence HTTP boundaries", () => {
   const token = "test-operator-token-12345678901234567890123456789";
-  const calls = { sync: 0, approved: 0, reviewed: 0 };
+  const calls = { sync: 0, reviewed: 0 };
   const treatmentFeed: NonNullable<ApiServices["treatmentFeed"]> = {
     status: async () => ({
-      accessDecision: "pending",
+      sourceConfigured: true,
       latestRun: null,
       pendingReview: 0,
       pendingWithGeometry: 0,
       verifiedWithGeometry: 0,
       missingGeometry: 0,
     }),
-    approveAccess: async () => {
-      calls.approved++;
-    },
     syncOnePage: async () => {
       calls.sync++;
       return {
@@ -245,10 +241,6 @@ describe("treatment evidence HTTP boundaries", () => {
     expect(
       (await request(app).post("/api/v1/operator/provider/sync")).status,
     ).toBe(401);
-    expect(
-      (await request(app).post("/api/v1/operator/provider/approve").send({}))
-        .status,
-    ).toBe(401);
     expect(calls.sync).toBe(before);
     expect((await request(app).get("/api/v1/notices")).body).toEqual({
       notices: [],
@@ -268,7 +260,7 @@ describe("treatment evidence HTTP boundaries", () => {
     expect(allowed.status).toBe(200);
     expect(allowed.headers["cache-control"]).toBe("no-store");
     expect(allowed.body).toEqual({
-      accessDecision: "pending",
+      sourceConfigured: true,
       latestRun: null,
       pendingReview: 0,
       pendingWithGeometry: 0,
@@ -292,33 +284,21 @@ describe("treatment evidence HTTP boundaries", () => {
     expect(success.body.notices).toEqual([]);
   });
 
-  it("accepts explicit permission evidence but does not sync as part of approval", async () => {
+  it("removes the old permission-approval route while keeping manual sync operator-only", async () => {
     const app = createApp(
-      {
-        ...services,
-        treatmentFeed,
-        providerConfiguration: {
-          get: async () => {
-            throw new Error("unneeded");
-          },
-          update: async () => {
-            throw new Error("unneeded");
-          },
-        },
-      },
+      { ...services, treatmentFeed },
       { operatorToken: token },
     );
-    const before = calls.sync;
-    const result = await request(app)
+    const legacy = await request(app)
       .post("/api/v1/operator/provider/approve")
       .set("Authorization", `Bearer ${token}`)
-      .send({
-        reviewer: "Fixture operator",
-        evidenceUrl: "https://plans.example.org/terms",
-        permissionBasis:
-          "Explicit synthetic fixture access permission for tests",
-      });
-    expect(result.status).toBe(200);
-    expect(calls.sync).toBe(before);
+      .send({});
+    expect(legacy.status).toBe(404);
+    const before = calls.sync;
+    const authorized = await request(app)
+      .post("/api/v1/operator/provider/sync")
+      .set("Authorization", `Bearer ${token}`);
+    expect(authorized.status).toBe(200);
+    expect(calls.sync).toBe(before + 1);
   });
 });

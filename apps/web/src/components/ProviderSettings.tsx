@@ -8,7 +8,6 @@ import { useRef, useState } from "react";
 import {
   loadProviderConfiguration,
   saveProviderConfiguration,
-  approveProviderAccess,
   syncProviderPage,
   loadPendingTreatments,
   reviewTreatment,
@@ -33,8 +32,6 @@ export function ProviderSettings({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [reviewer, setReviewer] = useState("");
-  const [permissionEvidenceUrl, setPermissionEvidenceUrl] = useState("");
-  const [permissionBasis, setPermissionBasis] = useState("");
   const [evidenceNote, setEvidenceNote] = useState("");
   const [pendingTreatments, setPendingTreatments] = useState<
     PendingTreatment[]
@@ -116,9 +113,7 @@ export function ProviderSettings({
       const result = await saveProviderConfiguration(token, edit);
       if (requestGeneration.current === generation) {
         populate(result);
-        setMessage(
-          "Конфигурация сохранена. Автоматическая загрузка отключена до проверки разрешений и безопасности.",
-        );
+        setMessage("Конфигурация сохранена. Можно загрузить страницу вручную.");
       }
     } catch (error) {
       if (requestGeneration.current === generation)
@@ -164,8 +159,8 @@ export function ProviderSettings({
       <p className="text-sm text-slate-600">
         Чтобы увидеть и изменить подробные параметры запроса, введите токен
         оператора и нажмите «Открыть настройки». Это локальный токен MelliAtlas,
-        а не ключ внешнего API. Планы загружаются только вручную после проверки
-        разрешений; на карте показываются записи, подтверждённые оператором.
+        а не ключ внешнего API. Загрузка запускается вручную; на карте
+        показываются только записи, подтверждённые оператором.
       </p>
       <label className="block text-sm font-semibold text-slate-800">
         Токен оператора
@@ -195,8 +190,7 @@ export function ProviderSettings({
       {config && (
         <div className="space-y-3 border-t border-slate-200 pt-4">
           <p className="text-xs text-slate-500">
-            Ревизия: {config.revision} · Доступ: {config.accessDecision} ·
-            Автозагрузка: отключена
+            Ревизия: {config.revision} · Автозагрузка: отключена
           </p>
           <label className="block text-sm font-medium">
             Название источника
@@ -299,10 +293,10 @@ export function ProviderSettings({
             {collectionStatus && (
               <>
                 <p>
-                  Доступ:{" "}
-                  {collectionStatus.accessDecision === "approved"
-                    ? "подтверждён"
-                    : "ожидает проверки"}
+                  Источник:{" "}
+                  {collectionStatus.sourceConfigured
+                    ? "настроен"
+                    : "не настроен"}
                 </p>
                 <p>
                   Ожидают проверки: {collectionStatus.pendingReview}; с
@@ -311,9 +305,7 @@ export function ProviderSettings({
                 </p>
                 <p>
                   Опубликованные полигоны:{" "}
-                  {collectionStatus.accessDecision === "approved"
-                    ? collectionStatus.verifiedWithGeometry
-                    : 0}
+                  {collectionStatus.verifiedWithGeometry}
                 </p>
                 {collectionStatus.latestRun ? (
                   <p>
@@ -330,106 +322,31 @@ export function ProviderSettings({
                     загружает данные.
                   </p>
                 )}
-                {collectionStatus.accessDecision !== "approved" && (
+                {collectionStatus.pendingWithGeometry > 0 && (
                   <p>
-                    Для запуска импорта требуется подтверждённое основание
-                    автоматизированного доступа. Ключ внешнего API не является
-                    обязательным.
+                    Есть полигоны, ожидающие проверки. Откройте список
+                    кандидатов ниже.
                   </p>
                 )}
-                {collectionStatus.accessDecision === "approved" &&
-                  collectionStatus.pendingWithGeometry > 0 && (
-                    <p>
-                      Есть полигоны, ожидающие ручной проверки. Откройте список
-                      кандидатов ниже.
-                    </p>
-                  )}
               </>
             )}
           </div>
-          <p className="text-xs text-slate-600">
-            Доступность публичного сайта не означает разрешение на
-            автоматизированное использование. Подтверждайте доступ только при
-            наличии проверенного основания. Загрузка производится по одной
-            странице, без фонового опроса.
-          </p>
-          {config.accessDecision !== "approved" && (
-            <div className="space-y-2 rounded-lg bg-amber-50 p-3">
-              <label className="block text-xs">
-                Имя проверяющего
-                <input
-                  aria-label="Имя проверяющего"
-                  value={reviewer}
-                  onChange={(event) => setReviewer(event.target.value)}
-                  className="mt-1 w-full rounded border p-2"
-                />
-              </label>
-              <label className="block text-xs">
-                Ссылка на подтверждение прав доступа
-                <input
-                  aria-label="Ссылка на разрешение"
-                  value={permissionEvidenceUrl}
-                  onChange={(event) =>
-                    setPermissionEvidenceUrl(event.target.value)
-                  }
-                  className="mt-1 w-full rounded border p-2"
-                />
-              </label>
-              <label className="block text-xs">
-                Обоснование автоматизированной загрузки и повторного
-                использования
-                <textarea
-                  aria-label="Обоснование доступа"
-                  value={permissionBasis}
-                  onChange={(event) => setPermissionBasis(event.target.value)}
-                  className="mt-1 w-full rounded border p-2"
-                  rows={3}
-                />
-              </label>
-              <button
-                type="button"
-                disabled={
-                  pending ||
-                  !reviewer ||
-                  !permissionEvidenceUrl ||
-                  permissionBasis.length < 20
-                }
-                onClick={() =>
-                  void operatorAction(async () => {
-                    await approveProviderAccess(token, {
-                      reviewer,
-                      evidenceUrl: permissionEvidenceUrl,
-                      permissionBasis,
-                    });
-                    setCollectionMessage(
-                      "Основание доступа сохранено. Теперь можно загрузить страницу.",
-                    );
-                  })
-                }
-                className="rounded bg-amber-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              >
-                Подтвердить проверенный доступ
-              </button>
-            </div>
-          )}
-          {config.accessDecision === "approved" && (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                void operatorAction(async () => {
-                  const result = await syncProviderPage(token);
-                  setCollectionMessage(
-                    `Страница получена: ${result.received}; новых кандидатов: ${result.stored}; следующая страница: ${result.nextPage}`,
-                  );
-                  setPendingTreatments(await loadPendingTreatments(token));
-                })
-              }
-              className="rounded bg-indigo-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              Загрузить одну страницу
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={pending || collectionStatus?.sourceConfigured === false}
+            onClick={() =>
+              void operatorAction(async () => {
+                const result = await syncProviderPage(token);
+                setCollectionMessage(
+                  `Страница получена: ${result.received}; новых кандидатов: ${result.stored}; следующая страница: ${result.nextPage}`,
+                );
+                setPendingTreatments(await loadPendingTreatments(token));
+              })
+            }
+            className="rounded bg-indigo-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            Загрузить одну страницу
+          </button>
           <button
             type="button"
             disabled={pending}
@@ -448,6 +365,15 @@ export function ProviderSettings({
                 Проверьте оригинальный источник и геометрию до публикации.
                 Непроверенные записи скрыты с публичной карты.
               </p>
+              <label className="block text-xs">
+                Имя проверяющего
+                <input
+                  aria-label="Имя проверяющего"
+                  value={reviewer}
+                  onChange={(event) => setReviewer(event.target.value)}
+                  className="mt-1 w-full rounded border p-2"
+                />
+              </label>
               <label className="block text-xs">
                 Описание проверенных сведений и основания решения (не менее 20
                 символов)

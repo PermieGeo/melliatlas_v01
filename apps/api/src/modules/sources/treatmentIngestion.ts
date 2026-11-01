@@ -8,8 +8,9 @@ import {
   type BeekeeperPlan,
 } from "./beekeeperPlanPage.js";
 import { RestrictedSourceFetcher, SourceFetchFailure } from "./httpFetcher.js";
-import { ApprovedSourceRegistry } from "./municipalSourceRegistry.js";
+import { validateProviderEndpoint } from "./providerConfiguration.js";
 import { buildProviderRequest } from "./providerConfiguration.js";
+import { sourceDefinitionSchema, type SourceDefinition } from "./contracts.js";
 import {
   providerCollectionStatusSchema,
   providerRequestSettingsSchema,
@@ -17,21 +18,6 @@ import {
 } from "@melliatlas/contracts";
 
 const SOURCE_ID = "treatment-feed";
-const reviewSchema = z
-  .object({
-    reviewer: z.string().trim().min(2).max(120),
-    evidenceUrl: z
-      .string()
-      .url()
-      .max(2048)
-      .refine((value) => value.startsWith("https://")),
-    permissionBasis: z.string().trim().min(20).max(2000),
-  })
-  .strict();
-
-export type AccessReview = z.infer<typeof reviewSchema>;
-export { reviewSchema as providerAccessReviewSchema };
-
 export type MapTreatment = {
   id: string;
   sourceName: string;
@@ -78,7 +64,10 @@ export function safePlanGeometry(
 type ConnectionRow = {
   api_request_config: unknown;
   registry_revision: string;
-  access_decision: string;
+  name: string;
+  kind: string;
+  lifecycle: string;
+  url: string;
   source_cursor: { pageNumber?: number } | null;
 };
 
@@ -89,7 +78,6 @@ const connectionSchema = z
   })
   .strict();
 
-/** Explicit access-review gate; it does not prove legal permission by itself. */
 export class TreatmentIngestionService {
   constructor(
     private readonly pool: Pool,
@@ -99,79 +87,47 @@ export class TreatmentIngestionService {
     > = new RestrictedSourceFetcher(),
   ) {}
 
-  async approveAccess(input: AccessReview): Promise<void> {
-    const review = reviewSchema.parse(input);
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const current = await client.query<{
-        url: string;
-        api_request_config: unknown;
-      }>(
-        "SELECT url, api_request_config FROM source_catalog WHERE id = $1 FOR UPDATE",
-        [SOURCE_ID],
+  /** Build a narrow, operator-controlled fetch registration from the persisted endpoint. */
+  private configuredSource(row: ConnectionRow): SourceDefinition {
+    if (row.lifecycle !== "configured" || row.kind !== "treatment") {
+      throw new ApiFailure(
+        409,
+        "SOURCE_NOT_CONFIGURED",
+        "Configure the treatment source before fetching",
       );
-      if (!current.rows[0])
-        throw new ApiFailure(
-          404,
-          "PROVIDER_NOT_CONFIGURED",
-          "Source not configured",
-        );
-      const connection = connectionSchema.parse(
-        current.rows[0].api_request_config,
+    }
+    const connection = connectionSchema.parse(row.api_request_config);
+    const endpoint = validateProviderEndpoint(connection.endpoint);
+    if (row.url !== endpoint) {
+      throw new ApiFailure(
+        409,
+        "SOURCE_CHANGED",
+        "Source endpoint is inconsistent",
       );
-      const url = new URL(connection.endpoint);
-      if (
-        current.rows[0].url !== connection.endpoint ||
-        url.protocol !== "https:" ||
-        url.username ||
-        url.password ||
-        url.port ||
-        url.search ||
-        url.hash
-      ) {
-        throw new ApiFailure(
-          400,
-          "INVALID_PROVIDER_ENDPOINT",
-          "Source endpoint cannot be approved",
-        );
-      }
-      const locations = [
+    }
+    const url = new URL(endpoint);
+    return sourceDefinitionSchema.parse({
+      id: SOURCE_ID,
+      name: row.name,
+      kind: "treatment",
+      enabled: true,
+      locations: [
         {
           hostname: url.hostname,
           pathPrefixes: [url.pathname.replace(/\/$/, "") || "/"],
         },
-      ];
-      const fetchPolicy = {
+      ],
+      review: { decision: "configured" },
+      parserVersion: "beekeeper-plan-v1",
+      fetchPolicy: {
         timeoutMs: 8000,
         maxResponseBytes: 2_000_000,
         minIntervalMs: 60_000,
         maxRedirects: 0,
         maxRetries: 1,
         allowedContentTypes: ["application/json"],
-      };
-      await client.query(
-        `UPDATE source_catalog SET lifecycle='configured', terms_review='reviewed',
-           access_decision='approved', allowed_locations=$2::jsonb, fetch_policy=$3::jsonb,
-           reviewed_by=$4, reviewed_at=now(), permission_evidence_url=$5,
-           permission_basis=$6, parser_version='beekeeper-plan-v1'
-         WHERE id=$1`,
-        [
-          SOURCE_ID,
-          JSON.stringify(locations),
-          JSON.stringify(fetchPolicy),
-          review.reviewer,
-          review.evidenceUrl,
-          review.permissionBasis,
-        ],
-      );
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+      },
+    });
   }
 
   async syncOnePage(): Promise<{
@@ -195,32 +151,22 @@ export class TreatmentIngestionService {
           "Another ingestion is running",
         );
       locked = true;
-      const approved = await new ApprovedSourceRegistry(this.pool).getApproved(
-        SOURCE_ID,
-      );
-      if (!approved)
-        throw new ApiFailure(
-          409,
-          "SOURCE_NOT_APPROVED",
-          "Source requires verified access review",
-        );
       const row = await client.query<ConnectionRow>(
-        "SELECT api_request_config, registry_revision, access_decision, source_cursor FROM source_catalog WHERE id=$1",
+        "SELECT name, kind, lifecycle, url, api_request_config, registry_revision, source_cursor FROM source_catalog WHERE id=$1",
         [SOURCE_ID],
       );
+      if (!row.rows[0]) {
+        throw new ApiFailure(
+          404,
+          "PROVIDER_NOT_CONFIGURED",
+          "Source not configured",
+        );
+      }
+      const source = this.configuredSource(row.rows[0]);
+      const revision = row.rows[0].registry_revision;
       const connection = connectionSchema.parse(
         row.rows[0]?.api_request_config,
       );
-      if (
-        row.rows[0]?.registry_revision !== approved.registryRevision ||
-        row.rows[0]?.access_decision !== "approved"
-      ) {
-        throw new ApiFailure(
-          409,
-          "SOURCE_CHANGED",
-          "Source configuration changed",
-        );
-      }
       const size = connection.request.parameters.pageSize;
       if (!Number.isInteger(size) || Number(size) < 1 || Number(size) > 100) {
         throw new ApiFailure(
@@ -243,7 +189,7 @@ export class TreatmentIngestionService {
       );
       runId = started.rows[0].id;
       try {
-        const response = await this.fetcher.fetch(approved.source, request);
+        const response = await this.fetcher.fetch(source, request);
         let page: ReturnType<typeof parseBeekeeperPlanPage>;
         try {
           page = parseBeekeeperPlanPage(
@@ -267,19 +213,21 @@ export class TreatmentIngestionService {
         await client.query("BEGIN");
         const registry = await client.query<{
           registry_revision: string;
-          access_decision: string;
+          lifecycle: string;
+          url: string;
         }>(
-          "SELECT registry_revision, access_decision FROM source_catalog WHERE id=$1 FOR UPDATE",
+          "SELECT registry_revision, lifecycle, url FROM source_catalog WHERE id=$1 FOR UPDATE",
           [SOURCE_ID],
         );
         if (
-          registry.rows[0]?.registry_revision !== approved.registryRevision ||
-          registry.rows[0]?.access_decision !== "approved"
+          registry.rows[0]?.registry_revision !== revision ||
+          registry.rows[0]?.lifecycle !== "configured" ||
+          registry.rows[0]?.url !== connection.endpoint
         ) {
           throw new ApiFailure(
             409,
             "SOURCE_CHANGED",
-            "Source access changed during collection",
+            "Source configuration changed during collection",
           );
         }
         const document = await client.query<{ id: string }>(
@@ -327,7 +275,7 @@ export class TreatmentIngestionService {
           }
           const attrs = {
             recordIndex: index,
-            sourceName: approved.source.name,
+            sourceName: source.name,
             externalId: plan.externalId,
             contractorName: plan.contractorName,
             cadastralNumber: plan.cadastralNumber,
@@ -398,7 +346,7 @@ export class TreatmentIngestionService {
   /** Read-only operator diagnostics. Empty maps must not conceal missing access, collection or review. */
   async status(): Promise<ProviderCollectionStatus> {
     const result = await this.pool.query<{
-      access_decision: "pending" | "approved" | "denied";
+      lifecycle: string;
       pending_review: string;
       pending_with_geometry: string;
       verified_with_geometry: string;
@@ -410,7 +358,7 @@ export class TreatmentIngestionService {
       run_accepted: number | null;
       run_error_code: string | null;
     }>(
-      `SELECT s.access_decision,
+      `SELECT s.lifecycle,
          (SELECT count(*) FROM source_observations o JOIN source_documents d
            ON d.id = o.source_document_id
            WHERE d.source_id = s.id AND o.observation_type = 'treatment_plan'
@@ -445,7 +393,7 @@ export class TreatmentIngestionService {
         "Source not configured",
       );
     return providerCollectionStatusSchema.parse({
-      accessDecision: row.access_decision,
+      sourceConfigured: row.lifecycle === "configured",
       pendingReview: Number(row.pending_review),
       pendingWithGeometry: Number(row.pending_with_geometry),
       verifiedWithGeometry: Number(row.verified_with_geometry),
@@ -581,7 +529,7 @@ export class TreatmentIngestionService {
            o.start_at, o.end_at, o.attributes, ST_AsGeoJSON(o.geometry)::json AS geometry
        FROM source_observations o JOIN source_documents d ON d.id=o.source_document_id
        JOIN source_catalog s ON s.id=d.source_id
-       WHERE d.source_id=$1 AND s.access_decision='approved' AND o.observation_type='treatment_plan' AND o.review_status='verified'
+       WHERE d.source_id=$1 AND s.lifecycle='configured' AND o.observation_type='treatment_plan' AND o.review_status='verified'
          AND o.geometry IS NOT NULL
          AND ($2::float8 IS NULL OR ST_Intersects(o.geometry,ST_MakeEnvelope($2,$3,$4,$5,4326)))
        ORDER BY d.retrieved_at DESC, o.id LIMIT 200`,

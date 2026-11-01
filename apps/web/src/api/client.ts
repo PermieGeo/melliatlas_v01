@@ -113,17 +113,6 @@ async function operatorRequest(
   return decodeApiResponse(response);
 }
 
-export async function approveProviderAccess(
-  token: string,
-  input: { reviewer: string; evidenceUrl: string; permissionBasis: string },
-): Promise<void> {
-  await operatorRequest(
-    token,
-    "/api/v1/operator/provider/approve",
-    "POST",
-    input,
-  );
-}
 export async function syncProviderPage(
   token: string,
 ): Promise<{ received: number; stored: number; nextPage: number }> {

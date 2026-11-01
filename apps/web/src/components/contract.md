@@ -11,3 +11,5 @@
 - **Extension:** New map overlays should use source-backed typed data, preserve provenance/precision and support touch/keyboard interaction.
 
 - **Verified overlay:** `MapCanvas` accepts typed `MapTreatment[]`; only backend-reviewed Polygon/MultiPolygon geometries are rendered with source attribution and review caveats.
+
+- **Manual feed workflow:** ProviderSettings exposes a direct token-protected one-page fetch after loading a configured provider, without a permission-approval form. The candidate review controls remain separate from source connection settings.

@@ -88,6 +88,7 @@ export const sourceDefinitionSchema = z
       .max(10),
     review: z.discriminatedUnion("decision", [
       z.object({ decision: z.literal("pending") }).strict(),
+      z.object({ decision: z.literal("configured") }).strict(),
       z
         .object({ decision: z.literal("denied"), reason: z.string().min(1) })
         .strict(),
@@ -120,6 +121,13 @@ export const sourceDefinitionSchema = z
       }
     }
   });
+
+export const manuallyFetchableSourceSchema = sourceDefinitionSchema.refine(
+  (source) =>
+    source.review.decision === "approved" ||
+    (source.kind === "treatment" && source.review.decision === "configured"),
+  { path: ["review"], message: "Source is not enabled for manual fetching" },
+);
 
 export const approvedSourceSchema = sourceDefinitionSchema.refine(
   (source) => source.review.decision === "approved",

@@ -34,7 +34,10 @@ export function evaluateSourceDestination(
   if (!result.success) return { allowed: false, reason: "INVALID_SOURCE" };
   const source = result.data;
   if (!source.enabled) return { allowed: false, reason: "SOURCE_DISABLED" };
-  if (source.review.decision !== "approved")
+  if (
+    source.review.decision !== "approved" &&
+    !(source.kind === "treatment" && source.review.decision === "configured")
+  )
     return { allowed: false, reason: "SOURCE_NOT_APPROVED" };
   if (
     typeof urlInput !== "string" ||

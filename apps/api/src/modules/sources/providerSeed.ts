@@ -75,7 +75,7 @@ export async function seedProvider(
       await client.query(
         `INSERT INTO source_catalog
            (id, name, kind, url, api_key, api_request_config, lifecycle, terms_review, access_decision, data_purpose)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, 'under_review', 'pending', 'pending', $7)`,
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, 'configured', 'pending', 'pending', $7)`,
         [
           SOURCE_ID,
           validated.name,
@@ -123,7 +123,7 @@ export async function seedProvider(
     await client.query(
       `UPDATE source_catalog SET
          name = $2, kind = $3, url = $4, api_key = $5,
-         api_request_config = $6::jsonb, lifecycle = 'under_review',
+         api_request_config = $6::jsonb, lifecycle = 'configured',
          access_decision = 'pending', terms_review = 'pending', source_cursor = NULL,
          allowed_locations = '[]'::jsonb, fetch_policy = NULL,
          reviewed_by = NULL, reviewed_at = NULL,

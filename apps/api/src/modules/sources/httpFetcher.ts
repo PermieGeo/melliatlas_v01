@@ -4,7 +4,10 @@ import https, { type RequestOptions } from "node:https";
 import { BlockList, isIP } from "node:net";
 import type { IncomingHttpHeaders } from "node:http";
 import { evaluateSourceDestination } from "./destinationPolicy.js";
-import { approvedSourceSchema, type ApprovedSource } from "./contracts.js";
+import {
+  manuallyFetchableSourceSchema,
+  type SourceDefinition,
+} from "./contracts.js";
 import type { ProviderRequest } from "./providerConfiguration.js";
 
 export type ResolvedAddress = { address: string; family: 4 | 6 };
@@ -267,9 +270,9 @@ export class RestrictedSourceFetcher {
     request: ProviderRequest,
     signal?: AbortSignal,
   ): Promise<FetchedSourceResponse> {
-    const parsed = approvedSourceSchema.safeParse(sourceInput);
+    const parsed = manuallyFetchableSourceSchema.safeParse(sourceInput);
     if (!parsed.success) throw new SourceFetchFailure("SOURCE_UNAPPROVED");
-    const source: ApprovedSource = parsed.data;
+    const source: SourceDefinition = parsed.data;
     if (!source.enabled) throw new SourceFetchFailure("SOURCE_UNAPPROVED");
     if (this.active >= 2) throw new SourceFetchFailure("BUSY");
     const previous = this.lastStarted.get(source.id);
@@ -298,7 +301,7 @@ export class RestrictedSourceFetcher {
   }
 
   private async fetchWithPolicy(
-    source: ApprovedSource,
+    source: SourceDefinition,
     request: ProviderRequest,
     signal?: AbortSignal,
   ): Promise<FetchedSourceResponse> {

@@ -80,6 +80,31 @@ describe("restricted source fetcher", () => {
     );
   });
 
+  it("fetches a manually configured treatment source without documentary approval", async () => {
+    const transport = vi.fn(async () => ok());
+    const { fetcher } = withStub(transport);
+    await expect(
+      fetcher.fetch({ ...source, review: { decision: "configured" } }, request),
+    ).resolves.toMatchObject({ canonicalUrl: request.url });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not allow configured municipal sources to bypass source approval", async () => {
+    const transport = vi.fn(async () => ok());
+    const { fetcher } = withStub(transport);
+    await expect(
+      fetcher.fetch(
+        {
+          ...source,
+          kind: "municipal_notice",
+          review: { decision: "configured" },
+        },
+        request,
+      ),
+    ).rejects.toMatchObject({ code: "SOURCE_UNAPPROVED" });
+    expect(transport).not.toHaveBeenCalled();
+  });
+
   it("rejects unreviewed, disabled and malformed source registrations before DNS", async () => {
     const transport = vi.fn(async () => ok());
     const { fetcher, resolver } = withStub(transport);

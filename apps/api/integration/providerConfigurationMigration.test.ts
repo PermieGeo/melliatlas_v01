@@ -49,7 +49,6 @@ describe("Provider configuration migration against PostgreSQL", () => {
     expect(row.providerName).toBe("External treatment provider");
     expect(row).toMatchObject({
       revision: "1",
-      accessDecision: "pending",
       collectionEnabled: false,
       request: {
         regionCode: 55,
