@@ -1,10 +1,10 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.SATURN_CONFIGURATION
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   apiErrorSchema,
-  saturnConfigurationEditSchema,
-  type SaturnConfiguration,
-  type SaturnConfigurationEdit,
+  providerConfigurationEditSchema,
+  type ProviderConfiguration,
+  type ProviderConfigurationEdit,
   locationQuerySchema,
   type Coordinates,
   type InspectionResponse,
@@ -19,9 +19,9 @@ export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;
   listSources(): Promise<SourceCatalogEntry[]>;
   checkReadiness(): Promise<boolean>;
-  saturnConfiguration?: {
-    get(): Promise<SaturnConfiguration>;
-    update(input: SaturnConfigurationEdit): Promise<SaturnConfiguration>;
+  providerConfiguration?: {
+    get(): Promise<ProviderConfiguration>;
+    update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration>;
   };
 };
 
@@ -83,7 +83,7 @@ export function createApp(
 
   // The operator token is supplied only through the backend environment and never returned to browsers.
   const requireOperator: express.RequestHandler = (req, _res, next) => {
-    if (!options.operatorToken || !services.saturnConfiguration) {
+    if (!options.operatorToken || !services.providerConfiguration) {
       return next(new ApiFailure(503, "OPERATOR_UNAVAILABLE", "Operator configuration is unavailable"));
     }
     const authorization = req.header("authorization");
@@ -97,23 +97,23 @@ export function createApp(
     next();
   };
 
-  app.get("/api/v1/operator/saturn", requireOperator, async (_req, res, next) => {
+  app.get("/api/v1/operator/provider", requireOperator, async (_req, res, next) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await services.saturnConfiguration!.get());
+      res.json(await services.providerConfiguration!.get());
     } catch (error) {
       next(error);
     }
   });
 
-  app.put("/api/v1/operator/saturn", requireOperator, async (req, res, next) => {
-    const parsed = saturnConfigurationEditSchema.safeParse(req.body);
+  app.put("/api/v1/operator/provider", requireOperator, async (req, res, next) => {
+    const parsed = providerConfigurationEditSchema.safeParse(req.body);
     if (!parsed.success) {
-      return next(new ApiFailure(400, "INVALID_SATURN_CONFIG", "Invalid Saturn configuration"));
+      return next(new ApiFailure(400, "INVALID_PROVIDER_CONFIG", "Invalid provider configuration"));
     }
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await services.saturnConfiguration!.update(parsed.data));
+      res.json(await services.providerConfiguration!.update(parsed.data));
     } catch (error) {
       next(error);
     }

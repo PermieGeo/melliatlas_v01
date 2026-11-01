@@ -31,9 +31,9 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 | SRC-R09 | Bound source fetch duration, payload size, concurrency, network destination, retry count and cache staleness                                                                        | Redirect to a private IP, oversized body, timeouts and rate limits fail closed and are recorded         |
 | SRC-R10 | Expose job diagnostics for the operator: last attempt/success, item counts, failures and selected source version                                                                    | Repeated jobs and server restarts do not lose status or duplicate current observations                  |
 | SRC-R11 | Preserve bootstrap Open-Meteo location inspection as a real, independently attributed forecast endpoint                                                                             | Valid coordinates succeed with a real provider; invalid/malformed/offline cases return typed errors     |
-| SRC-R12 | Prioritize a configurable FGIS Saturn Beekeeper Portal connector ahead of municipal adapters. Accept endpoint, HTTP method, region field/code and bounded request parameters through authenticated operator UI and typed programmatic inputs. Persist settings with revisions, but keep collection off until reviewed access and a safe fetcher exist. | Unauthorized edits fail; concurrent writes do not overwrite configuration; tests inject request settings without network; no unreviewed endpoint triggers retrieval. |
+| SRC-R12 | Prioritize a configurable structured treatment-plan provider ahead of municipal adapters. Accept a provider label, HTTPS endpoint, HTTP method, nested region field/code and bounded JSON request parameters through authenticated operator UI and typed programmatic inputs. Persist settings with revisions, but keep collection off until reviewed access and a safe fetcher exist. | Unauthorized edits fail; concurrent writes do not overwrite configuration; tests inject request settings without network; no unreviewed endpoint triggers retrieval. |
 
-**Source acquisition gate:** FGIS Saturn is the **first integration priority**, followed by the two independently verified municipal notice sources required by `SRC-R02`. Public Beekeeper Portal browsing is reported as unauthenticated, but the reference `POST https://bee-saturn.ru/backend/beemaster/planapplybees` endpoint, request schema and automated-reuse permission remain provisional. An operator may save a candidate endpoint without granting network permission. No collection or publication begins until access review, a restricted transport, and evidence validation have passed. User-visible records must correspond to inspected original documents.
+**Source acquisition gate:** The structured treatment feed illustrated by the FGIS Saturn reference archive is the **first integration priority**, followed by the two independently verified municipal notice sources required by `SRC-R02`. Public Beekeeper Portal browsing is reported as unauthenticated, but the reference `POST https://bee-saturn.ru/backend/beemaster/planapplybees` endpoint, request schema and automated-reuse permission remain provisional. An operator may save a candidate endpoint without granting network permission. No collection or publication begins until access review, a restricted transport, and evidence validation have passed. User-visible records must correspond to inspected original documents.
 
 ## 3. API and persistent data
 
@@ -46,9 +46,9 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 
 **Authenticated operator configuration slice (no collection):**
 
-- `GET /api/v1/operator/saturn` reads the candidate Saturn endpoint, request method/region/parameters and registry revision; `PUT /api/v1/operator/saturn` accepts a complete validated configuration and `expectedRevision`, returning 409 on conflict. Both require an operator bearer token configured server-side and return 503 if disabled. No credentials are persisted in browser storage or included in responses.
-- `apps/api/migrations/003_saturn_api_configuration.sql` adds inert request settings to `source_catalog` and inserts a pending `treatment` source. The registry's existing approval gate does not grant Saturn network access; a future additive change must explicitly support reviewed treatment sources.
-- The request builder is a pure programmatic interface accepting the endpoint and typed request parameters; it sends no network requests and makes no authorization decisions.
+- `GET /api/v1/operator/provider` reads the candidate provider label, endpoint, request method/region/parameters and registry revision; `PUT /api/v1/operator/provider` accepts a complete validated configuration and `expectedRevision`, returning 409 on conflict. Both require an operator bearer token configured server-side and return 503 if disabled. No credentials are persisted in browser storage or included in responses.
+- `apps/api/migrations/003_saturn_api_configuration.sql` is immutable historical bootstrap. Migration `004_provider_connection.sql` creates a provider-neutral pending `treatment-feed` configuration and disables the legacy record without removing history. The registry's existing approval gate does not grant Saturn network access; a future additive change must explicitly support reviewed treatment sources.
+- `buildProviderRequest` is a pure programmatic interface accepting the endpoint and typed JSON request parameters, including nested region filters; it sends no network requests and makes no authorization decisions. `parseBeekeeperPlanPage` is a separate reference-shape parser and never claims records are verified or safe to publish.
 
 **Planned endpoints for this stage:**
 
@@ -95,7 +95,7 @@ A beekeeper selects an area in Smolensk Oblast and sees **actual published notic
 | SRC-T10 | Source data contains instructions targeting the AI/parser/worker          | Content stored as evidence, never executed or granted privileges                               |
 | SRC-T11 | Open-Meteo malformed response, outage or invalid lat/lon                  | Typed 503/400; no fake weather, no leaked upstream stack trace                                 |
 
-### Saturn configuration coverage
+### Provider configuration coverage
 
 - **SRC-T12:** Unauthorized or missing operator credentials cannot read or mutate settings; no configured token fails closed.
 - **SRC-T13:** A valid operator change persists across reads with a monotonic revision; a stale revision returns 409 and leaves the latest record intact.

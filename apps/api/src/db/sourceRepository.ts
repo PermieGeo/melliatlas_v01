@@ -20,7 +20,7 @@ export class SourceRepository {
 
   async list(): Promise<SourceCatalogEntry[]> {
     const result = await this.pool.query<SourceRow>(
-      "SELECT id, name, kind, lifecycle, url, terms_review, last_successful_ingest_at FROM source_catalog ORDER BY name",
+      "SELECT id, name, kind, lifecycle, url, terms_review, last_successful_ingest_at FROM source_catalog WHERE disabled_reason IS DISTINCT FROM 'superseded-by-configurable-provider' ORDER BY name",
     );
     return sourceCatalogResponseSchema.parse({
       sources: result.rows.map((row) => ({

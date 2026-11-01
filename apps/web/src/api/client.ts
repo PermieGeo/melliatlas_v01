@@ -1,10 +1,10 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.SATURN_CONFIGURATION
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION
 import {
   apiErrorSchema,
-  saturnConfigurationSchema,
-  saturnConfigurationEditSchema,
-  type SaturnConfiguration,
-  type SaturnConfigurationEdit,
+  providerConfigurationSchema,
+  providerConfigurationEditSchema,
+  type ProviderConfiguration,
+  type ProviderConfigurationEdit,
   inspectionResponseSchema,
   sourceCatalogResponseSchema,
   type Coordinates,
@@ -54,24 +54,24 @@ export async function loadSourceCatalog(
 }
 
 
-export async function loadSaturnConfiguration(token: string): Promise<SaturnConfiguration> {
-  const response = await fetch("/api/v1/operator/saturn", {
+export async function loadProviderConfiguration(token: string): Promise<ProviderConfiguration> {
+  const response = await fetch("/api/v1/operator/provider", {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
-  return saturnConfigurationSchema.parse(await decodeApiResponse(response));
+  return providerConfigurationSchema.parse(await decodeApiResponse(response));
 }
 
-export async function saveSaturnConfiguration(
+export async function saveProviderConfiguration(
   token: string,
-  input: SaturnConfigurationEdit,
-): Promise<SaturnConfiguration> {
-  const validated = saturnConfigurationEditSchema.parse(input);
-  const response = await fetch("/api/v1/operator/saturn", {
+  input: ProviderConfigurationEdit,
+): Promise<ProviderConfiguration> {
+  const validated = providerConfigurationEditSchema.parse(input);
+  const response = await fetch("/api/v1/operator/provider", {
     method: "PUT",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(validated),
     cache: "no-store",
   });
-  return saturnConfigurationSchema.parse(await decodeApiResponse(response));
+  return providerConfigurationSchema.parse(await decodeApiResponse(response));
 }

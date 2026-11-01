@@ -121,9 +121,10 @@ describe("MelliAtlas public API", () => {
   });
 });
 
-describe("Saturn operator configuration HTTP boundary", () => {
+describe("Provider operator configuration HTTP boundary", () => {
   const operatorToken = "a-long-development-test-token-at-least-32-bytes";
   const configuration = {
+    providerName: "Example Provider",
     endpoint: "https://example.org/plans",
     request: { method: "POST" as const, regionParameter: "subject", regionCode: 55, parameters: {} },
     revision: "1",
@@ -132,7 +133,7 @@ describe("Saturn operator configuration HTTP boundary", () => {
   };
   const adminServices: ApiServices = {
     ...services,
-    saturnConfiguration: {
+    providerConfiguration: {
       get: async () => configuration,
       update: async (value) => ({ ...configuration, endpoint: value.endpoint, revision: "2" }),
     },
@@ -140,28 +141,28 @@ describe("Saturn operator configuration HTTP boundary", () => {
 
   it("does not allow public or invalid-credential access", async () => {
     const app = createApp(adminServices, { operatorToken });
-    const anonymous = await request(app).get("/api/v1/operator/saturn");
+    const anonymous = await request(app).get("/api/v1/operator/provider");
     expect(anonymous.status).toBe(401);
     expect(anonymous.body.error.code).toBe("UNAUTHORIZED");
-    const invalid = await request(app).put("/api/v1/operator/saturn")
+    const invalid = await request(app).put("/api/v1/operator/provider")
       .set("Authorization", "Bearer wrong")
       .send({ endpoint: "https://example.org/plans" });
     expect(invalid.status).toBe(401);
     expect(invalid.headers["cache-control"]).not.toBe("public");
-    const unconfigured = await request(createApp(adminServices)).get("/api/v1/operator/saturn");
+    const unconfigured = await request(createApp(adminServices)).get("/api/v1/operator/provider");
     expect(unconfigured.status).toBe(503);
   });
 
   it("returns a revisioned configuration and accepts a valid operator edit", async () => {
     const app = createApp(adminServices, { operatorToken });
-    const loaded = await request(app).get("/api/v1/operator/saturn")
+    const loaded = await request(app).get("/api/v1/operator/provider")
       .set("Authorization", `Bearer ${operatorToken}`);
     expect(loaded.status).toBe(200);
     expect(loaded.body).toEqual(configuration);
     expect(loaded.headers["cache-control"]).toBe("no-store");
-    const changed = await request(app).put("/api/v1/operator/saturn")
+    const changed = await request(app).put("/api/v1/operator/provider")
       .set("Authorization", `Bearer ${operatorToken}`)
-      .send({ endpoint: "https://example.org/new-plans", request: configuration.request, expectedRevision: "1" });
+      .send({ providerName: "Updated Provider", endpoint: "https://example.org/new-plans", request: configuration.request, expectedRevision: "1" });
     expect(changed.status).toBe(200);
     expect(changed.body.endpoint).toBe("https://example.org/new-plans");
     expect(changed.body.collectionEnabled).toBe(false);
@@ -169,10 +170,10 @@ describe("Saturn operator configuration HTTP boundary", () => {
 
   it("rejects schema violations before persisting", async () => {
     const app = createApp(adminServices, { operatorToken });
-    const invalid = await request(app).put("/api/v1/operator/saturn")
+    const invalid = await request(app).put("/api/v1/operator/provider")
       .set("Authorization", `Bearer ${operatorToken}`)
-      .send({ endpoint: "https://example.org/plans", request: configuration.request, expectedRevision: "0", unexpected: true });
+      .send({ providerName: "Example Provider", endpoint: "https://example.org/plans", request: configuration.request, expectedRevision: "0", unexpected: true });
     expect(invalid.status).toBe(400);
-    expect(invalid.body.error.code).toBe("INVALID_SATURN_CONFIG");
+    expect(invalid.body.error.code).toBe("INVALID_PROVIDER_CONFIG");
   });
 });

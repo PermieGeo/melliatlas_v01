@@ -32,24 +32,24 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 
 **Module boundary rule:** Every proposed `modules/sources/`, `modules/geo/` or future business module MUST introduce a root `contract.md` with owned data, public entry points, dependencies and invariants. Reuse shared Zod HTTP schemas from `packages/contracts`; put source-specific parsing and persistence inside their owning modules. No cross-module private-table or implementation imports.
 
-## A.1. Priority change — configurable Saturn source (2026-11-01)
+## A.1. Priority change — configurable structured provider (2026-11-01)
 
-**Normative requirement:** `SRC-R12` in [source-ingestion.md](source-ingestion.md). **Decision:** implement FGIS Saturn first, retain two municipal sources as a later independent coverage requirement. The public portal is documented; the historical prototype's `planapplybees` endpoint and `subject: 55` are **candidate configuration**, not an independently verified public API contract or permission to automate collection. Official Saturn SE-API documentation describes a different integration surface; do not mix provider write/authorization workflows with public bee-portal reads.
+**Normative requirement:** `SRC-R12` in [source-ingestion.md](source-ingestion.md). **Decision:** implement provider-neutral structured treatment collection first (with the FGIS Saturn prototype as a reference), retain two municipal sources as a later independent coverage requirement. The public portal is documented; the historical prototype's `planapplybees` endpoint and `subject: 55` are **candidate configuration**, not an independently verified public API contract or permission to automate collection. Official Saturn SE-API documentation describes a different integration surface; do not mix provider write/authorization workflows with public bee-portal reads.
 
 **Verified owning paths:** `apps/api/src/app.ts`, `apps/api/src/server.ts`, `apps/api/src/config.ts`, `apps/api/src/modules/sources/{contracts,destinationPolicy,municipalSourceRegistry}.ts`, `apps/api/migrations/001_source_core.sql`, `apps/api/migrations/002_source_access_registry.sql`, `packages/contracts/src/index.ts`, `apps/web/src/{App.tsx,api/client.ts}`. Read real integrations/tests before changes. The compiled snapshot omits the tracked `apps/api/.env.example` contents; do not replace that file based on assumptions.
 
 ### S1 — Operator-configurable connection (current increment)
 
 1. Extend the public Zod wire contract with `endpoint`, `method`, `regionParameter`, `regionCode`, bounded flat `parameters` and optimistic `expectedRevision`. Reject unknown fields, region-key collisions, IP literals, plaintext HTTP, URL credentials, fragments and unsafe path encodings. Keep the endpoint a candidate, not an approved access policy.
-2. Add `003_saturn_api_configuration.sql` (new, additive): one `source_catalog` row with kind `treatment`, `under_review`/`pending` access, and `api_request_config` JSONB. Preserve existing `002` registry/history triggers and their append-only revision snapshots; never modify `001` or `002`.
-3. Implement `apps/api/src/modules/sources/saturnConfiguration.ts`: versioned `get/update`, compare-and-set update on revision, pure `buildSaturnRequest(endpoint, settings)` for GET/POST. Do not call fetch, do not store secrets and do not treat this module as a safe transport.
-4. Expose `GET/PUT /api/v1/operator/saturn` from `apps/api/src/app.ts`; add injected optional backend operator token in `config.ts` and `server.ts`. If no token/owner exists, return 503. Reject missing/wrong bearer token with 401; validate 400, revision conflict 409. Response is no-store, never includes the token.
-5. Implement `apps/web/src/components/SaturnSettings.tsx` and a dedicated navigation tab; keep the operator token only in component memory, disable save until authorized, show `pending` and explicitly state collection is off. `apps/web/src/api/client.ts` validates all wire responses.
+2. Add `003_saturn_api_configuration.sql` (already delivered, immutable): one `source_catalog` row with kind `treatment`, `under_review`/`pending` access, and `api_request_config` JSONB. Preserve existing `002` registry/history triggers and their append-only revision snapshots; never modify `001` or `002`.
+3. Implement `apps/api/src/modules/sources/providerConfiguration.ts`: versioned `get/update`, compare-and-set update on revision, pure `buildProviderRequest(endpoint, settings)` for GET/POST. Do not call fetch, do not store secrets and do not treat this module as a safe transport.
+4. Expose `GET/PUT /api/v1/operator/provider` from `apps/api/src/app.ts`; add injected optional backend operator token in `config.ts` and `server.ts`. If no token/owner exists, return 503. Reject missing/wrong bearer token with 401; validate 400, revision conflict 409. Response is no-store, never includes the token.
+5. Implement historical `apps/web/src/components/SaturnSettings.tsx` (now replaced by `ProviderSettings.tsx`) and a dedicated navigation tab; keep the operator token only in component memory, disable save until authorized, show `pending` and explicitly state collection is off. `apps/web/src/api/client.ts` validates all wire responses.
 6. Test isolated GET/POST request shaping, negative URL/input cases, unauthorized HTTP actions, optimistic concurrency, UI changes, and live PostGIS upgrade/revision behavior. Use no source network during unit tests.
 
 **Completion evidence:** API/React tests, migration tests against real PostGIS, TS checks, no successful collection claim. Failure recovery: if operator token is unset the editor fails closed; a conflict requires reloading; an invalid edit never mutates the database. Roll forward by additive migration, do not roll back a deployed SQL version. The UI is not a full identity management solution; production deployment must secure its operator credential distribution.
 
-### S2 — Restricted Saturn fetch and access decision (next)
+### S2 — Restricted provider fetch and access decision (next)
 
 1. Investigate current official Saturn portal endpoints and contract with authorized access, exact HTTP examples, rate limits and redistribution conditions. Keep evidence in `docs/source-register.md`, update operator review policy and scope of permitted HTTPS host/path.
 2. Generalize access-check semantics to approved `treatment` sources through a **new** SQL migration and narrow public registry interface. `002` currently only permits `municipal_notice` approval. Do not silently bypass this DB check or broaden permissions to arbitrary data sources.
@@ -58,9 +58,9 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 
 **Failure and recovery:** an invalid or denied endpoint stays pending; error classifications are persisted to a later run record, not silently retried forever. Access review and permission revocation are operator operations, not UI-controlled bypasses.
 
-### S3 — Saturn adapter and durable records (following)
+### S3 — Configured provider adapter and durable records (following)
 
-1. Implement `SaturnSourceAdapter` against verified response schemas only, with an injected transport and injected `SaturnRequestSettings`. Preserve pagination and publication-source citations; do not assume `subject: 55` until the live API response is checked.
+1. Implement `TreatmentPlanSourceAdapter` against verified response schemas only, with an injected transport and injected `ProviderRequestSettings`. Preserve pagination and publication-source citations; do not assume `subject: 55` until the live API response is checked.
 2. Write immutable raw versions and idempotent ingestion runs to PostGIS before parsing; preserve provider record IDs, date windows, geometry precision and original publication URLs.
 3. Normalize `Polygon`/`MultiPolygon` only after CRS and topology validation. Distinguish provisional plans from completed treatments, expired and contradictory records; no synthetic risk score or hazard claims.
 4. Add API and map evidence layers behind review, then continue municipal adapters and remaining SRC-01 items. Prove duplicates, changed content, worker crash/restart, rate limits, malformed geometry, and desktop/mobile UI with deterministic tests plus limited permitted live verification.
@@ -146,3 +146,16 @@ pnpm e2e
 ```
 
 Extend the commands with real PostGIS integration tests and bounded-load checks in Batch D. Record output, DB version and source URLs actually tested. A clean TypeScript build alone cannot prove source permissions, field-level extraction quality, environmental validity or developer acceptance.
+
+### S1b — Provider-neutral configuration and reference response research (2026-11-01)
+
+**Scope:** Implements the provider-neutral extension of `SRC-R12`; does not complete `S2` or `S3`.
+
+1. Add immutable `004_provider_connection.sql` after migrations 001–003; copy existing candidate request settings to the neutral `treatment-feed` row without approval, disable legacy source and preserve immutable history. Verify both clean and upgraded databases.
+2. Rename `saturnConfiguration.ts` to `providerConfiguration.ts`; expose `ProviderConfigurationRepository` and `buildProviderRequest`. Persist operator-editable provider name and endpoint; restrict JSON nesting, size and forbidden key names. Keep revision compare-and-set.
+3. Rename operator route to `/api/v1/operator/provider` and UI to `ProviderSettings.tsx`. Use `SOURCE_OPERATOR_TOKEN` with the previously deployed token setting as a compatibility fallback; never leak either value. New UI text uses only generic provider vocabulary.
+4. Support `regionContainer` so the archived prototype's `beekeperSearchFilter.subject` can be assembled without any fixed provider URL. Do not make authenticated external calls, automatically approve hostnames or enable ingestion.
+5. Add `beekeeperPlanPage.ts` as a pure response parser for the reference `content`/`beeAcreage`/`allPatList` shape. Preserve null for absent fields; reject invalid geometries. Avoid synthetic hazard, satellite, treatment, or temporal data.
+6. Update cross-references and module contracts; independently test nested request body, authorization, revision history and parser boundaries. No new ingestion worker, credentials, map layers or trusted notice status.
+
+**Failure/recovery:** A partial migration fails transactionally and leaves migration 003 intact. Old candidate configuration remains auditable; the new feed is disabled for collection. An invalid request or response fails without side effects. `S2` must independently verify provider terms and secure network behavior; `S3` will handle versioned storage, normalizing shape and review.
