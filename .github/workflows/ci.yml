@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: melliatlas
+          POSTGRES_USER: melliatlas
+          POSTGRES_PASSWORD: local_ci_only
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U melliatlas -d melliatlas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://melliatlas:local_ci_only@127.0.0.1:5433/melliatlas
+      OPEN_METEO_TIMEOUT_MS: 8000
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: python3 tools/specs/validate_state.py
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm db:migrate
+      - run: pnpm db:migrate
+      - run: pnpm --dir apps/api test:db
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e

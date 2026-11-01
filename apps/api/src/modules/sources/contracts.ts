@@ -2,7 +2,7 @@
 import { isIP } from "node:net";
 import { z } from "zod";
 
-const sourceId = z.string().regex(/^[a-z][a-z0-9-]{1,63}$/);
+export const sourceIdSchema = z.string().regex(/^[a-z][a-z0-9-]{1,63}$/);
 const timestamp = z.string().datetime({ offset: true });
 const hostname = z
   .string()
@@ -64,7 +64,7 @@ const approvedReview = z
 
 export const sourceDefinitionSchema = z
   .object({
-    id: sourceId,
+    id: sourceIdSchema,
     name: z.string().min(1).max(200),
     kind: z.literal("municipal_notice"),
     enabled: z.boolean(),
@@ -128,7 +128,7 @@ export type ApprovedSource = z.infer<typeof approvedSourceSchema>;
 export const sourceDocumentSchema = z
   .object({
     id: z.string().uuid(),
-    sourceId,
+    sourceId: sourceIdSchema,
     ingestionRunId: z.string().uuid(),
     canonicalUrl: z.string().url(),
     retrievedAt: timestamp,
@@ -141,7 +141,7 @@ export const sourceDocumentSchema = z
 export const ingestionRunSchema = z
   .object({
     id: z.string().uuid(),
-    sourceId,
+    sourceId: sourceIdSchema,
     status: z.enum(["started", "succeeded", "failed", "partial"]),
     startedAt: timestamp,
     completedAt: timestamp.nullable(),
@@ -159,7 +159,7 @@ export const ingestionRunSchema = z
 export const noticeCandidateSchema = z
   .object({
     sourceDocumentId: z.string().uuid(),
-    sourceId,
+    sourceId: sourceIdSchema,
     canonicalUrl: z.string().url(),
     retrievedAt: timestamp,
     publishedAt: timestamp.nullable(),

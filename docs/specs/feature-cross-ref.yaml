@@ -12,9 +12,12 @@ features:
       - apps/api/src/db/sourceRepository.ts
       - apps/api/src/app.ts
       - apps/api/src/modules/sources/contracts.ts
+      - apps/api/src/modules/sources/municipalSourceRegistry.ts
     test_paths:
       - apps/api/test/app.test.ts
       - apps/api/test/sourcePolicy.test.ts
+      - apps/api/test/municipalSourceRegistry.test.ts
+      - apps/api/integration/sourceCatalogMigration.test.ts
   - id: SOURCES.DOCUMENT_HISTORY
     stage_ids:
       - SRC-01
@@ -38,8 +41,11 @@ features:
     code_paths:
       - apps/api/src/modules/sources/contracts.ts
       - apps/api/src/modules/sources/destinationPolicy.ts
+      - apps/api/src/modules/sources/municipalSourceRegistry.ts
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
+      - apps/api/test/municipalSourceRegistry.test.ts
+      - apps/api/integration/sourceCatalogMigration.test.ts
   - id: NOTICES.EXTRACTION
     stage_ids:
       - SRC-01
