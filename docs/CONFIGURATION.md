@@ -32,10 +32,15 @@ Source configuration is kept server-side in PostgreSQL. The operator UI calls `G
 - `003_saturn_api_configuration.sql` creates a historical candidate row; the migration filename remains for compatibility and must not be rewritten.
 - `004_provider_connection.sql` creates the neutral `treatment-feed` candidate and disables the legacy row without deleting its history.
 - `005_treatment_source_approval.sql` permits explicit treatment-source approval **only when complete review metadata and policy are present**; it does not approve existing connections.
+- `006_optional_provider_api_key.sql` adds nullable `api_key` to the existing `source_catalog` (which already contains `name`, `kind` and `url`) and excludes credentials from future policy snapshots.
 
-Operators can edit the provider name, HTTPS endpoint, HTTP method, region key/optional container/code and bounded JSON parameters. Every edit revokes previous source approval and returns it to pending review. The web editor **cannot grant source access approval**. Configuring an endpoint does not create a fetch job, import source documents or display pesticide treatments. Endpoint credentials and signed query parameters are not currently supported as general source settings.
+Operators can edit the provider name, HTTPS endpoint, HTTP method, region key/optional container/code and bounded JSON parameters. Every edit revokes previous source approval and returns it to pending review. The web editor **cannot grant source access approval**. Configuring an endpoint does not create a fetch job, import source documents or display pesticide treatments. The optional provider API key can be seeded from a server environment variable via `apiKeyEnv` in a local preset file; the UI intentionally cannot display or edit it. The reference portal does not use a key. Do not store real long-lived secrets in a committed preset: the current DB column stores the key as text and requires appropriate database access controls/encryption at rest for production. The key is not yet injected into HTTP requests; provider-specific authentication belongs to a verified adapter.
 
 An internal `RestrictedSourceFetcher` exists for explicitly approved source definitions, with DNS/IP restrictions, direct TLS, redirect policy and bounded requests. It is **not wired to the HTTP API or to a scheduler**. Live use additionally requires verified access/redistribution terms and a confirmed source-specific response contract.
+
+## Reproducible provider presets
+
+Run `pnpm db:migrate` before `pnpm provider:seed:saturn`. The command seeds `treatment-feed` from `apps/api/config/providers/fgis-saturn.json` without granting ingestion permission. Default re-runs never overwrite a user-customized connection; an explicit `--replace` clears prior approval and credentials. `source_catalog.url` stores the full endpoint, and `source_catalog.api_request_config` stores the structured request. See [Usage](USAGE.md#initialize-the-reference-provider-from-the-command-line).
 
 ## Future configuration
 

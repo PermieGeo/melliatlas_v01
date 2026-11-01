@@ -1,0 +1,17 @@
+{
+  "name": "FGIS Saturn Beekeeper Portal",
+  "type": "treatment",
+  "url": "https://bee-saturn.ru/backend/beemaster/planapplybees",
+  "request": {
+    "method": "POST",
+    "regionParameter": "subject",
+    "regionContainer": "beekeperSearchFilter",
+    "regionCode": 55,
+    "parameters": {
+      "pageNumber": 0,
+      "pageSize": 40,
+      "sortColumn": "datePublishing",
+      "sortDirection": "desc"
+    }
+  }
+}

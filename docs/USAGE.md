@@ -16,6 +16,24 @@ Weather and map tiles need internet access. A network error is shown as an error
 
 The **Настройки источника** tab configures one candidate external treatment feed. The displayed provider name, endpoint and request shape are editable; the UI does not hard-code a provider brand. These settings do not initiate a network request or enable ingestion.
 
+### Initialize the reference provider from the command line
+
+After `docker compose up -d db` and `pnpm db:migrate`, run from the repository root:
+
+```bash
+pnpm provider:seed:saturn
+```
+
+This is a one-time or repeatable database seed, **not a live download**. Its preset is `apps/api/config/providers/fgis-saturn.json`, containing the source name, type `treatment`, full HTTPS URL, API request settings, and no API key (`NULL`). The endpoint and numeric region code reproduce the prototype's request and require separate verification before use. There is no external token for this preset. `SOURCE_OPERATOR_TOKEN` is separately used to protect editing through the web UI.
+
+A customized row is not overwritten. For deliberate replacement, use:
+
+```bash
+pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace
+```
+
+The `--replace` flag resets prior access approval, removes any saved API key and returns the source to review. Other provider files can be supplied to `pnpm --dir apps/api provider:seed <preset.json>`; the current seed supports one `treatment-feed` record and `treatment` type. Optional third-party keys must be passed through `apiKeyEnv` in the preset and the matching server environment variable, **not** as plaintext in checked-in JSON. Keys are stored in the database and are excluded from HTTP responses and registry revision snapshots; production credential encryption and least-privilege DB access remain operational responsibilities.
+
 ### Prepare operator access
 
 The operator bearer token protects the **MelliAtlas settings API**, not the external provider API. It is optional for ordinary map and weather use.

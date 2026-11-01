@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api db:migrate",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "provider:seed:saturn": "pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

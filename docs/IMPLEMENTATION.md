@@ -29,3 +29,7 @@ The backend remains a single Node.js deployment. Geospatial notice APIs, full id
 ## Restricted provider retrieval (SRC-01 / S2)
 
 `apps/api/src/modules/sources/httpFetcher.ts` implements a bounded, injectable HTTPS transport for explicitly approved source registrations. It pins a publicly routable DNS answer to direct TLS, validates certificates and the socket peer, rejects unsafe redirects, and caps response size, MIME, time and retries. It is not connected to an API endpoint, scheduler or public map. SQL migration `005_treatment_source_approval.sql` permits separately reviewed `treatment` registrations without approving any existing candidate. Any provider configuration edit revokes previous approval. A verified access decision and independently confirmed API contract are still prerequisites for actual collection.
+
+## Provider bootstrap configuration
+
+`apps/api/src/db/seedProvider.ts` is a manual CLI for seeding the one candidate `treatment-feed` record using an external JSON preset, not a running importer. `apps/api/src/modules/sources/providerSeed.ts` validates that preset, checks for a pristine migration placeholder and preserves custom operator changes by default. Migration `006_optional_provider_api_key.sql` adds nullable `source_catalog.api_key` and excludes credentials from future immutable policy snapshots. Explicit seeding resets review approvals; normal UI updates clear the previous provider API key to prevent reuse against a different endpoint. There is no automatic retrieval or key injection into outbound requests.
