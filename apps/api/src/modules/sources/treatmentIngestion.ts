@@ -196,7 +196,28 @@ export class TreatmentIngestionService {
           page = parseBeekeeperPlanPage(
             JSON.parse(response.bytes.toString("utf8")),
           );
-        } catch {
+        } catch (error) {
+          // Log only schema issue paths and codes, never upstream record contents.
+          const issuePaths =
+            error instanceof z.ZodError
+              ? error.issues.slice(0, 5).map((issue) => ({
+                  path: issue.path
+                    .map((part) =>
+                      typeof part === "number" ? "[]" : String(part),
+                    )
+                    .join("."),
+                  code: issue.code,
+                }))
+              : [];
+          console.error("Treatment provider page validation failed", {
+            reason:
+              error instanceof SyntaxError
+                ? "INVALID_JSON"
+                : error instanceof z.ZodError
+                  ? "SCHEMA_MISMATCH"
+                  : "PARSER_ERROR",
+            issuePaths,
+          });
           throw new ApiFailure(
             502,
             "INVALID_SOURCE_RESPONSE",
