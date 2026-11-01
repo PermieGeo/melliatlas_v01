@@ -21,6 +21,15 @@ Before changes, read the owning module's `contract.md`, nearest `AGENTS.md`, sel
 - Apply **DRY to behavior and contracts**: one owner for each rule/schema/normalizer. Extract shared logic only after genuine reuse; never create a generic framework for one caller. Keep domain-specific helpers in the owning module.
 - Add a new public API, dependency, data owner or module only with an explicit requirement and updated `contract.md`; avoid speculative microservices.
 
+## File growth and maintainability
+
+- Keep each hand-written source file cohesive and easy to review. Aim for at most **300 physical lines** (including comments and blank lines). Crossing that threshold MUST trigger an explicit responsibility and extraction review before adding another feature; it is not a mandate for arbitrary splitting.
+- New production files above **400 lines** require a documented, specific exception. Do not add new features to existing files above 400 lines without first extracting a cohesive responsibility. A localized defect fix may remain in place if it introduces no new responsibility; explain that exception in the handoff.
+- Split by capability and ownership, not line count alone: React components, hooks and feature state; backend use cases, provider adapters and persistence; shared HTTP schemas in `packages/contracts`. Keep composition roots (`App.tsx`, `app.ts`, `server.ts`) limited to orchestration and wiring.
+- Do not create generic `utils` dumping grounds, one-function wrapper files, extra public APIs or duplicate state just to reduce file length. Preserve acyclic dependencies, contracts and independently testable behavior.
+- Review growing test files by scenario or use case; split suites where it improves navigation without removing regression coverage. Apply the same cohesion rule to documentation: keep a canonical owner and link instead of repeating long content.
+- Before a repository-changing handoff, check the line counts of created or edited hand-written source files. Report threshold crossings, any justified exception and the relevant extraction decision. Pre-existing oversized files are technical debt to reduce when their owning feature is changed, not a reason for unrelated bulk refactoring.
+
 ## Implementation discipline
 
 - Make the smallest coherent change. Do not refactor unrelated areas or introduce unverified dependencies.
