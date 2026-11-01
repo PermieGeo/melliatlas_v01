@@ -1,25 +1,42 @@
 # Configuration
 
+This page is the reference for current runtime and persisted settings. See [Installation](INSTALLATION.md) for the first run and [Usage](USAGE.md) for the operator workflow.
+
 ## Backend environment
 
-Copy `apps/api/.env.example` to `apps/api/.env`. The API uses `dotenv` and validates its configuration with Zod at startup.
+Copy `apps/api/.env.example` to `apps/api/.env` once, then edit the private file. Both the API and the migration command load environment variables through `dotenv` and validate API runtime configuration with Zod.
 
-| Variable                | Default/example                                                            | Meaning                                               |
-| ----------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `NODE_ENV`              | `development`                                                              | `development`, `test`, `production`                   |
-| `SOURCE_OPERATOR_TOKEN` | Unset (operator API disabled) | Optional server-only bearer token (at least 32 characters); never commit or store in the browser |
-| `PORT`                  | `3001`                                                                     | API listening port, 1–65535                           |
-| `DATABASE_URL`          | `postgresql://melliatlas:local_development_only@127.0.0.1:5433/melliatlas` | Required PostgreSQL connection URL                    |
-| `OPEN_METEO_TIMEOUT_MS` | `8000`                                                                     | Weather-provider timeout; allowed range 1000–30000 ms |
+| Variable                | Default / example                                                          | Behavior                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`              | `development`                                                              | `development`, `test`, or `production`                                                                              |
+| `PORT`                  | `3001`                                                                     | Backend port, integer 1–65535                                                                                       |
+| `DATABASE_URL`          | `postgresql://melliatlas:local_development_only@127.0.0.1:5433/melliatlas` | Required PostgreSQL/PostGIS URL; port `5433` is the host-side Compose mapping                                       |
+| `OPEN_METEO_TIMEOUT_MS` | `8000`                                                                     | Weather timeout in milliseconds, valid range 1000–30000                                                             |
+| `SOURCE_OPERATOR_TOKEN` | Unset                                                                      | Optional, at least 32 characters; enables operator-only Provider settings endpoints when set                        |
+| `SATURN_OPERATOR_TOKEN` | Unset                                                                      | **Legacy compatibility fallback** for operator authentication; new installations should use `SOURCE_OPERATOR_TOKEN` |
 
-The Compose database uses `POSTGRES_PASSWORD` as an optional override, with a local-only default. If changed, update `DATABASE_URL` to match. The database is bound to `127.0.0.1:5433` in `compose.yaml`.
+When both operator variables are configured, `SOURCE_OPERATOR_TOKEN` takes precedence. The token is an application-level authorization secret for `GET/PUT /api/v1/operator/provider`, **not** a third-party API token. Without either token, public weather/map/catalog routes continue to work; the operator routes return HTTP 503. Wrong or missing Authorization credentials return HTTP 401 when the operator API is enabled. Do not commit `.env` or paste secrets into logs. Use HTTPS to protect operator requests outside isolated localhost development.
 
-## Web configuration
+The Compose database uses optional `POSTGRES_PASSWORD`, defaulting to `local_development_only`; PostgreSQL initializes credentials only when the persistent volume is first created. If you change the Compose password later, changing `DATABASE_URL` alone does not reset the existing database user's password. The database is bound to host loopback `127.0.0.1:5433`.
 
-`apps/web/vite.config.ts` serves the web UI on port 5173 and proxies `/api` to `http://127.0.0.1:3001` in local development. Its dev server binds to `127.0.0.1`. The client uses relative `/api/v1` paths; production hosting must provide equivalent routing.
+## Browser and local routing
 
-## Planned configuration
+`apps/web/vite.config.ts` configures port **5173** with `strictPort: true` and proxies `/api` to `http://127.0.0.1:3001`. The Vite host is not explicitly pinned in this version; use the **Local** URL printed at startup (normally `http://localhost:5173`). The application sends relative `/api/v1` requests and does not contain operator secrets in its build-time configuration. Deployment must implement equivalent API routing and HTTPS itself.
 
-Migration `002_source_access_registry.sql` stores proposed municipal-source hosts, paths, review decisions, fetch policy, polling interval and parser version in PostgreSQL; approved records can be read by an internal repository. **An authenticated operator Provider configuration API is available when `SOURCE_OPERATOR_TOKEN` is set; it does not fetch anything.** Migration `003_saturn_api_configuration.sql` bootstraps a legacy candidate source; migration `004_provider_connection.sql` promotes its settings to a provider-neutral treatment feed, with an operator-configurable label and private editable HTTPS endpoint, GET/POST mode, region field/code and bounded JSON parameters including an optional nested region filter. Serve the operator UI and API through HTTPS (localhost is acceptable for development). Only the API host process sees `SOURCE_OPERATOR_TOKEN`; the browser holds the supplied token in memory until navigating away/reloading. Existing catalog entries remain unapproved by default. Future AI-agent settings include provider/model, credentials, tool allowlist and run budgets. Do not add unimplemented variables to production deployment files.
+## Persisted candidate-provider settings
 
-Never commit `.env` files, API keys, personal coordinates or production credentials.
+Source configuration is kept server-side in PostgreSQL. The operator UI calls `GET/PUT /api/v1/operator/provider`, backed by `ProviderConfigurationRepository`, with optimistic revision checking. Only **one** editable candidate treatment feed is supported at present.
+
+- Migration `001_source_core.sql` creates the source catalog, ingestion evidence tables and PostGIS schema.
+- `002_source_access_registry.sql` adds review decisions, URL allowlists, request limits and append-only policy history.
+- `003_saturn_api_configuration.sql` creates a historical candidate row; the migration filename remains for compatibility and must not be rewritten.
+- `004_provider_connection.sql` creates the neutral `treatment-feed` candidate and disables the legacy row without deleting its history.
+- `005_treatment_source_approval.sql` permits explicit treatment-source approval **only when complete review metadata and policy are present**; it does not approve existing connections.
+
+Operators can edit the provider name, HTTPS endpoint, HTTP method, region key/optional container/code and bounded JSON parameters. Every edit revokes previous source approval and returns it to pending review. The web editor **cannot grant source access approval**. Configuring an endpoint does not create a fetch job, import source documents or display pesticide treatments. Endpoint credentials and signed query parameters are not currently supported as general source settings.
+
+An internal `RestrictedSourceFetcher` exists for explicitly approved source definitions, with DNS/IP restrictions, direct TLS, redirect policy and bounded requests. It is **not wired to the HTTP API or to a scheduler**. Live use additionally requires verified access/redistribution terms and a confirmed source-specific response contract.
+
+## Future configuration
+
+The AI agent's model/provider selection, credentials, tool permissions and run budgets are planned for `AGENT-01`; they are not current environment variables. Do not add speculative credentials or integration endpoints to the local runtime configuration.

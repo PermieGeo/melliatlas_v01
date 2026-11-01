@@ -4,6 +4,22 @@ MelliAtlas consists of a React/Vite web application, a Node.js API, shared TypeS
 
 This guide covers macOS (Intel and Apple Silicon), Windows with WSL 2 (recommended), and native Windows PowerShell. For Linux, follow the WSL terminal steps with a working Docker Engine and Compose plugin.
 
+## Quick start: existing macOS/Linux/WSL installation
+
+Use this if Node.js 22, pnpm 11.25.0, Docker, and repository dependencies are already installed. Run commands **from the MelliAtlas repository root** (the directory containing `package.json` and `compose.yaml`):
+
+```bash
+cd /path/to/melliatlas
+nvm use 22                         # Only if Node.js is managed by NVM
+docker compose up -d db
+pnpm db:migrate                    # First launch or after a new migration
+pnpm dev
+```
+
+The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the two development servers but leaves the database running.
+
+**Only configuring the external treatment provider?** The map/weather view does not need a token. Editing the provider settings requires the optional server-side `SOURCE_OPERATOR_TOKEN`, described in [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md). The current build does not automatically fetch or display treatment plans.
+
 ## Requirements and ports
 
 | Requirement        | Version / role                                                          |
@@ -14,11 +30,11 @@ This guide covers macOS (Intel and Apple Silicon), Windows with WSL 2 (recommend
 | PostgreSQL/PostGIS | Provided by `postgis/postgis:16-3.4` in `compose.yaml`                  |
 | Internet           | Dependency downloads, OpenStreetMap tiles, and live Open-Meteo requests |
 
-| Address                 | Service    | Notes                                            |
-| ----------------------- | ---------- | ------------------------------------------------ |
-| `http://127.0.0.1:5173` | Web UI     | Open this address in a browser                   |
-| `http://127.0.0.1:3001` | API        | Vite forwards `/api` requests here               |
-| `127.0.0.1:5433`        | PostgreSQL | Host port; Docker container internally uses 5432 |
+| Address                 | Service    | Notes                                              |
+| ----------------------- | ---------- | -------------------------------------------------- |
+| `http://localhost:5173` | Web UI     | Use the URL printed by Vite; normally this address |
+| `http://127.0.0.1:3001` | API        | Vite forwards `/api` requests here                 |
+| `127.0.0.1:5433`        | PostgreSQL | Host port; Docker container internally uses 5432   |
 
 Do not run an additional API process alongside the root `pnpm dev` command: it already starts both `@melliatlas/api` and `@melliatlas/web`.
 
@@ -182,18 +198,19 @@ Copy-Item apps/api/.env.example apps/api/.env
 
 These commands are for **first-time setup**. Do not overwrite an existing `apps/api/.env` that contains valid local settings.
 
-The provided example contains these local-development values:
+These are the expected local-development values based on the API configuration and `compose.yaml`; review the actual example before making changes:
 
 ```dotenv
 NODE_ENV=development
 PORT=3001
 DATABASE_URL=postgresql://melliatlas:local_development_only@127.0.0.1:5433/melliatlas
 OPEN_METEO_TIMEOUT_MS=8000
+# SOURCE_OPERATOR_TOKEN is optional; set it only if you need to edit provider settings.
 ```
 
 The default database password is **local-only**. If `POSTGRES_PASSWORD` was overridden when the Docker database was first initialized, update the password in `DATABASE_URL` accordingly. Docker does not automatically replace the password of an already-initialized persistent database when that environment variable changes.
 
-The API loads `apps/api/.env` through `dotenv`. Do not put credentials in source files or commit `.env`. See [CONFIGURATION](CONFIGURATION.md) for variable definitions.
+The API loads `apps/api/.env` through `dotenv`. Do not put credentials in source files or commit `.env`. If you want to edit provider settings, generate a private token (for example, `openssl rand -hex 32` on macOS/Linux), add `SOURCE_OPERATOR_TOKEN=<generated-value>` to `apps/api/.env`, and restart `pnpm dev`. This is an **MelliAtlas operator token**, not a token issued by the external provider. An unset token disables only the operator settings endpoints. See [CONFIGURATION](CONFIGURATION.md) for variable definitions.
 
 ### 3. Apply database migrations
 
@@ -211,7 +228,7 @@ pnpm dev
 
 Leave this terminal running. The root script builds `@melliatlas/contracts` and launches the API and web development servers in parallel.
 
-Open **http://127.0.0.1:5173** in a browser. The API listens on port 3001. Its readiness endpoints are:
+Open the **Local** URL printed by Vite (normally **http://localhost:5173**) in a browser. The API listens on port 3001. Its readiness endpoints are:
 
 ```bash
 curl -i http://127.0.0.1:3001/health/live
@@ -224,10 +241,11 @@ Both should return HTTP 200 when the API and database are available. In PowerShe
 
 - Stop the development servers with **Ctrl+C** in the `pnpm dev` terminal.
 - Stop only the database container with `docker compose stop db`. This preserves its volume.
-- To restart later: open the project, select Node.js 22 if using NVM, run `docker compose up -d db`, then `pnpm dev`.
+- To restart later: open the repository root, select Node.js 22 if using NVM, run `docker compose up -d db`, then `pnpm dev`.
+- After receiving a repository update, run `pnpm install --frozen-lockfile` if `pnpm-lock.yaml` or dependencies changed, and `pnpm db:migrate` if a new SQL migration was introduced (the current source history includes migrations `001` through `005`).
 - Do **not** use `docker compose down -v` during routine shutdown: the `-v` option removes the database volume and its data.
 
-`pnpm install`, environment-file creation, and migrations are not required on every normal restart.
+`pnpm install`, environment-file creation, and migrations are not required on every normal restart. Never re-copy `.env.example` over an existing `.env` merely to restart.
 
 ## pnpm blocked build scripts
 
@@ -245,7 +263,7 @@ pnpm rebuild esbuild
 pnpm install --frozen-lockfile
 ```
 
-In the interactive `pnpm approve-builds` menu, **Space selects a package; Enter confirms**. Pressing Enter without selecting packages may record `esbuild: false` in `pnpm-workspace.yaml`. The named command above records approval for `esbuild` as `true`. Review that configuration change before committing it. Do not blanket-approve unknown packages.
+In the interactive `pnpm approve-builds` menu, **Space selects a package; Enter confirms**. Pressing Enter without selecting packages may record `esbuild: false` in `pnpm-workspace.yaml`. The named command above records approval for `esbuild` as `true` in `pnpm-workspace.yaml`. The verified project snapshot already has `allowBuilds: { esbuild: true }`; run this recovery only if your local checkout differs or installation reports blocked builds. Review any configuration change before committing it. Do not blanket-approve unknown packages.
 
 ## Troubleshooting
 
@@ -260,6 +278,9 @@ In the interactive `pnpm approve-builds` menu, **Space selects a package; Enter 
 | Database rejects credentials               | Docker initialization settings and local `DATABASE_URL`          | Align credentials with the persistent database; do not delete the volume as a shortcut   |
 | Port 3001/5173/5433 already occupied       | Host port listeners and running development terminals            | Stop the conflicting process; avoid launching duplicate API/web instances                |
 | Map tiles or weather do not appear         | Browser network panel and internet access                        | Verify access to OpenStreetMap/Open-Meteo; the app does not invent fallback observations |
+| Provider editor returns 503                | `SOURCE_OPERATOR_TOKEN` and migrations `003`–`005`               | Set a valid operator token, restart the API, and run `pnpm db:migrate` if needed         |
+| Provider editor returns 401                | Token supplied in the UI                                         | Enter the same token that was configured in the backend environment                      |
+| Provider save returns 409                  | Another operator or tab updated the revision                     | Reload the settings and reapply your changes                                             |
 
 To isolate an API startup error, stop the root `pnpm dev` process and run `pnpm --dir apps/api dev` in a separate terminal. Do not run both simultaneously. See [DIAGNOSTIC](DIAGNOSTIC.md) for further checks and redacted bug reports.
 
@@ -281,7 +302,7 @@ pnpm exec playwright install chromium
 pnpm e2e
 ```
 
-The E2E configuration starts the development servers automatically; do not separately start another `pnpm dev` process for that test run. The repository's specification validator additionally requires Python 3:
+The E2E configuration starts `pnpm dev` automatically. It may reuse an existing web server outside CI; to avoid testing stale processes, stop a manually running `pnpm dev` first. The repository's specification validator additionally requires Python 3:
 
 ```bash
 python3 tools/specs/validate_state.py

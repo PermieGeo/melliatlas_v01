@@ -16,17 +16,20 @@ This repository is an independently deployable web/API monorepo. Its first runna
 
 ## Quick start (macOS/Linux/WSL)
 
-Prerequisites: Node.js 22+, pnpm 11, Docker with Compose.
+Prerequisites: Node.js 22 (or newer), **pnpm 11.25.0**, and a running Docker engine with Compose. See [Installation](docs/INSTALLATION.md) for macOS, WSL 2 and Windows PowerShell, first-time prerequisites, database setup and troubleshooting.
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+pnpm install --frozen-lockfile
+# Only for the first setup; do not overwrite existing private settings.
+cp -n apps/api/.env.example apps/api/.env
 docker compose up -d db
-pnpm install
 pnpm db:migrate
 pnpm dev
 ```
 
-Open `http://localhost:5173`; API listens on `http://localhost:3001` by default. Click a point on the map to request an attributed weather report. Internet connectivity is required for map tiles and Open-Meteo. Errors are reported rather than replaced by sample observations.
+Open the Local URL printed by Vite (normally `http://localhost:5173`); the API listens at `http://127.0.0.1:3001` by default. Click a point on the map to request attributed Open-Meteo weather. The source catalog and an optional operator-only provider-settings tab are available, but **treatment-plan ingestion is not running yet**. No operator token is required for normal map/weather use. See [Usage](docs/USAGE.md) for the provider configuration workflow and API examples.
+
+On later starts, normally use `docker compose up -d db` followed by `pnpm dev`. Re-run `pnpm db:migrate` when a new SQL migration is introduced. Internet access is required for map tiles and live weather; failures do not trigger synthetic fallback observations.
 
 ## Verification
 
