@@ -10,3 +10,5 @@
 - **Operator secrets:** Bearer tokens are passed only as Authorization headers, kept in component memory, never persisted by this module.
 - **Invariants:** Calls accept an `AbortSignal`, parse responses through shared schemas and expose HTTP failures as errors.
 - **Extension:** Add new clients here when server endpoints ship; keep provider-dependent parsing on the backend.
+
+- `loadMapTreatments` consumes `GET /api/v1/notices` via shared schema and never calls a provider directly. Operator-only access review, bounded sync, pending queue and review mutations use an ephemeral bearer token.

@@ -48,3 +48,7 @@ Proposed settings: `AI_PROVIDER`, `AI_MODEL`, provider API key, per-run token/ti
 ## Scope and provenance
 
 The supplied October 2026 reference prototype informed the map-centric layout and source domains. Its hard-coded fields, apiaries, sample weather, risk scores, unsupported satellite-confidence percentages, and agronomist/social flows were **not** imported as live product data. The first runnable vertical slice intentionally supports real Open-Meteo inspection and an honest source catalog. Later capability is described in specs rather than shipped as inert endpoints.
+
+### Manual provider-to-map evidence boundary
+
+The operator HTTP boundary (`apps/api/src/app.ts`) invokes `TreatmentIngestionService` only with bearer authorization. It relies on `ApprovedSourceRegistry` and the restricted transport before external retrieval. `source_documents` holds immutable raw page versions, `source_observations` holds source-derived candidates and spatial precision, and `source_observation_reviews` records the first operator verification/rejection decision. The public notices API projects verified WGS84 polygons only. The frontend renders these as sourced map overlays, with no direct browser-to-provider traffic. Automatic collection and conflict resolution are outside the current increment.

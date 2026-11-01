@@ -117,7 +117,7 @@ export class ProviderConfigurationRepository {
     const settings = providerRequestSettingsSchema.parse(input.request);
     const result = await this.pool.query<ProviderRow>(
       `UPDATE source_catalog SET name = $1, url = $2, api_request_config = $3::jsonb,
-         lifecycle = 'under_review', access_decision = 'pending', terms_review = 'pending', api_key = NULL,
+         lifecycle = 'under_review', access_decision = 'pending', terms_review = 'pending', api_key = NULL, source_cursor = NULL,
          allowed_locations = '[]'::jsonb, fetch_policy = NULL,
          reviewed_by = NULL, reviewed_at = NULL,
          permission_evidence_url = NULL, permission_basis = NULL, parser_version = NULL

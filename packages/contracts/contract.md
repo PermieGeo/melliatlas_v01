@@ -10,3 +10,5 @@
 - **Invariants:** Coordinates use WGS84 degrees; timestamps are ISO date-time strings; optional source-success time is explicit nullable; provider output must be mapped to public schema before returning.
 - **Provider configuration:** `saturnConfigurationSchema`, `saturnConfigurationEditSchema` and `saturnRequestSettingsSchema` validate method, flat bounded parameters, region code and optimistic revision. Endpoint destination safety is additionally checked on the backend; this schema does not grant fetching permission.
 - **Extension:** Update schema, backend, web consumer and independent tests together. Preserve existing `/api/v1` compatibility or introduce deliberate versioning.
+
+- `mapTreatmentSchema` and `mapTreatmentsResponseSchema` define WGS84 geometry, source-provenance and reviewed observation attributes for the public notice map. Unreviewed candidates never cross the public boundary.

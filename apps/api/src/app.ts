@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   apiErrorSchema,
@@ -14,11 +14,19 @@ import express, { type ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { ApiFailure } from "./lib/errors.js";
+import { providerAccessReviewSchema } from "./modules/sources/treatmentIngestion.js";
 
 export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;
   listSources(): Promise<SourceCatalogEntry[]>;
   checkReadiness(): Promise<boolean>;
+  treatmentFeed?: {
+    approveAccess(input: { reviewer: string; evidenceUrl: string; permissionBasis: string }): Promise<void>;
+    syncOnePage(): Promise<{ runId: string; pageNumber: number; received: number; stored: number; nextPage: number }>;
+    pending(): Promise<Array<{ id: string; sourceUrl: string; retrievedAt: string; contractorName: string | null; cadastralNumber: string | null; geometryAvailable: boolean; startAt: string | null; endAt: string | null; treatments: Array<{ name: string | null; crop: string | null; beeHazardClass: number | null }> }>>;
+    review(id: string, decision: "verified" | "rejected", reviewer: string, evidenceNote: string): Promise<void>;
+    published(bbox?: [number, number, number, number]): Promise<unknown[]>;
+  };
   providerConfiguration?: {
     get(): Promise<ProviderConfiguration>;
     update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration>;
@@ -83,7 +91,7 @@ export function createApp(
 
   // The operator token is supplied only through the backend environment and never returned to browsers.
   const requireOperator: express.RequestHandler = (req, _res, next) => {
-    if (!options.operatorToken || !services.providerConfiguration) {
+    if (!options.operatorToken || (!services.providerConfiguration && !services.treatmentFeed)) {
       return next(new ApiFailure(503, "OPERATOR_UNAVAILABLE", "Operator configuration is unavailable"));
     }
     const authorization = req.header("authorization");
@@ -117,6 +125,65 @@ export function createApp(
     } catch (error) {
       next(error);
     }
+  });
+
+  app.get("/api/v1/notices", async (req, res, next) => {
+    if (!services.treatmentFeed) return next(new ApiFailure(503, "NOTICES_UNAVAILABLE", "Notice storage unavailable"));
+    const bbox = req.query.bbox;
+    let bounds: [number, number, number, number] | undefined;
+    if (bbox !== undefined) {
+      if (typeof bbox !== "string" || !/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(bbox)) {
+        return next(new ApiFailure(400, "INVALID_BBOX", "Invalid geographic bounds"));
+      }
+      const [west, south, east, north] = bbox.split(",").map(Number);
+      if (![west, south, east, north].every(Number.isFinite) || west < -180 || east > 180 || south < -90 || north > 90 || west >= east || south >= north) {
+        return next(new ApiFailure(400, "INVALID_BBOX", "Invalid geographic bounds"));
+      }
+      bounds = [west, south, east, north];
+    }
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ notices: await services.treatmentFeed.published(bounds) });
+    } catch (error) { next(error); }
+  });
+
+  app.post("/api/v1/operator/provider/approve", requireOperator, async (req, res, next) => {
+    if (!services.treatmentFeed) return next(new ApiFailure(503, "NOTICES_UNAVAILABLE", "Ingestion unavailable"));
+    const parsed = providerAccessReviewSchema.safeParse(req.body);
+    if (!parsed.success) return next(new ApiFailure(400, "INVALID_ACCESS_REVIEW", "Valid reviewer and permission evidence required"));
+    try {
+      await services.treatmentFeed.approveAccess(parsed.data);
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ status: "reviewed" });
+    } catch (error) { next(error); }
+  });
+
+  app.post("/api/v1/operator/provider/sync", requireOperator, async (_req, res, next) => {
+    if (!services.treatmentFeed) return next(new ApiFailure(503, "NOTICES_UNAVAILABLE", "Ingestion unavailable"));
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await services.treatmentFeed.syncOnePage());
+    } catch (error) { next(error); }
+  });
+
+  app.get("/api/v1/operator/notices", requireOperator, async (_req, res, next) => {
+    if (!services.treatmentFeed) return next(new ApiFailure(503, "NOTICES_UNAVAILABLE", "Review unavailable"));
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ notices: await services.treatmentFeed.pending() });
+    } catch (error) { next(error); }
+  });
+
+  app.post("/api/v1/operator/notices/:id/review", requireOperator, async (req, res, next) => {
+    if (!services.treatmentFeed) return next(new ApiFailure(503, "NOTICES_UNAVAILABLE", "Review unavailable"));
+    if ((req.body?.decision !== "verified" && req.body?.decision !== "rejected") || typeof req.body?.reviewer !== "string" || typeof req.body?.evidenceNote !== "string") {
+      return next(new ApiFailure(400, "INVALID_REVIEW", "Expected verified or rejected decision"));
+    }
+    try {
+      await services.treatmentFeed.review(req.params.id, req.body.decision, req.body.reviewer, req.body.evidenceNote);
+      res.setHeader("Cache-Control", "no-store");
+      res.json({ status: req.body.decision });
+    } catch (error) { next(error); }
   });
 
   app.get("/api/v1/locations/inspect", async (req, res, next) => {

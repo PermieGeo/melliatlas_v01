@@ -1,6 +1,8 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import {
   apiErrorSchema,
+  mapTreatmentsResponseSchema,
+  type MapTreatment,
   providerConfigurationSchema,
   providerConfigurationEditSchema,
   type ProviderConfiguration,
@@ -74,4 +76,39 @@ export async function saveProviderConfiguration(
     cache: "no-store",
   });
   return providerConfigurationSchema.parse(await decodeApiResponse(response));
+}
+
+
+export async function loadMapTreatments(signal: AbortSignal): Promise<MapTreatment[]> {
+  const response = await fetch("/api/v1/notices", { signal, cache: "no-store" });
+  return mapTreatmentsResponseSchema.parse(await decodeApiResponse(response)).notices;
+}
+
+async function operatorRequest(token: string, path: string, method = "GET", body?: unknown): Promise<unknown> {
+  const response = await fetch(path, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    cache: "no-store",
+  });
+  return decodeApiResponse(response);
+}
+
+export async function approveProviderAccess(token: string, input: { reviewer: string; evidenceUrl: string; permissionBasis: string }): Promise<void> {
+  await operatorRequest(token, "/api/v1/operator/provider/approve", "POST", input);
+}
+export async function syncProviderPage(token: string): Promise<{ received: number; stored: number; nextPage: number }> {
+  return await operatorRequest(token, "/api/v1/operator/provider/sync", "POST", {}) as { received: number; stored: number; nextPage: number };
+}
+export type PendingTreatment = {
+  id: string; sourceUrl: string; retrievedAt: string;
+  contractorName: string | null; cadastralNumber: string | null; geometryAvailable: boolean;
+  startAt: string | null; endAt: string | null; treatments: Array<{ name: string | null; crop: string | null; beeHazardClass: number | null }>;
+};
+export async function loadPendingTreatments(token: string): Promise<PendingTreatment[]> {
+  const result = await operatorRequest(token, "/api/v1/operator/notices") as { notices: PendingTreatment[] };
+  return result.notices;
+}
+export async function reviewTreatment(token: string, id: string, decision: "verified" | "rejected", reviewer: string, evidenceNote: string): Promise<void> {
+  await operatorRequest(token, `/api/v1/operator/notices/${encodeURIComponent(id)}/review`, "POST", { decision, reviewer, evidenceNote });
 }

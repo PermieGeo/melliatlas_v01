@@ -325,3 +325,19 @@ Python is **not** required to run MelliAtlas itself. See [TESTS](TESTS.md) for t
 ## Deployment boundary
 
 These steps configure a **local development environment**, not a production deployment. The Compose file supplies only a local PostGIS database; it is not a production stack. Production hosting requires managed secrets, HTTPS, persistent backups, explicit network controls, and deployment-specific health monitoring. Do not expose private apiary coordinates or local database credentials. See [ARCHITECTURE](ARCHITECTURE.md) and [CONFIGURATION](CONFIGURATION.md) for service boundaries.
+
+### Provider plans and map layer after migration 007
+
+Apply source migrations before using operator ingestion:
+
+```bash
+cd /path/to/melliatlas
+docker compose up -d db
+pnpm db:migrate
+pnpm provider:seed:saturn
+pnpm dev
+```
+
+The seed updates a pristine candidate only; it does not approve an API or initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, use the authenticated source settings UI. Enter `SOURCE_OPERATOR_TOKEN` in `apps/api/.env` (at least 32 characters) and restart the API to enable operator-only routes; this is an application administrator token, **not** a token required by the public reference provider.
+
+The map remains empty until permission has been independently reviewed, an operator explicitly fetches a page, and individual polygon candidates are verified. Never fabricate permission evidence or automatically mark public content as verified.

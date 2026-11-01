@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.PROVIDER_CONFIGURATION
+// Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import { z } from "zod";
 
 export const coordinatesSchema = z
@@ -145,3 +145,30 @@ export const providerConfigurationSchema = z.object({
 export type ProviderConfiguration = z.infer<typeof providerConfigurationSchema>;
 export type ProviderConfigurationEdit = z.infer<typeof providerConfigurationEditSchema>;
 export type ProviderRequestSettings = z.infer<typeof providerRequestSettingsSchema>;
+
+// Feature IDs: NOTICES.MAP_OVERLAY
+export const treatmentGeometrySchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("Polygon"), coordinates: z.array(z.array(z.tuple([z.number(), z.number()]))) }).strict(),
+  z.object({ type: z.literal("MultiPolygon"), coordinates: z.array(z.array(z.array(z.tuple([z.number(), z.number()])))) }).strict(),
+]);
+
+export const mapTreatmentSchema = z.object({
+  id: z.string().uuid(),
+  sourceName: z.string().min(1),
+  sourceUrl: z.string().url(),
+  retrievedAt: z.string().datetime(),
+  publishedAt: z.string().datetime().nullable(),
+  startAt: z.string().datetime().nullable(),
+  endAt: z.string().datetime().nullable(),
+  contractorName: z.string().nullable(),
+  cadastralNumber: z.string().nullable(),
+  treatments: z.array(z.object({
+    name: z.string().nullable(),
+    crop: z.string().nullable(),
+    beeHazardClass: z.number().int().min(1).max(3).nullable(),
+  }).strict()),
+  geometry: treatmentGeometrySchema,
+  spatialPrecision: z.literal("exact_polygon"),
+}).strict();
+export const mapTreatmentsResponseSchema = z.object({ notices: z.array(mapTreatmentSchema) }).strict();
+export type MapTreatment = z.infer<typeof mapTreatmentSchema>;

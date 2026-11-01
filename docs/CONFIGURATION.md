@@ -45,3 +45,7 @@ Run `pnpm db:migrate` before `pnpm provider:seed:saturn`. The command seeds `tre
 ## Future configuration
 
 The AI agent's model/provider selection, credentials, tool permissions and run budgets are planned for `AGENT-01`; they are not current environment variables. Do not add speculative credentials or integration endpoints to the local runtime configuration.
+
+### Manual treatment-feed ingest
+
+The source name, HTTPS endpoint, method, region filter and pagination parameters remain in `source_catalog.api_request_config`. Migration `007` adds an observation-review audit table and a duplicate-candidate index; no new environment variables are required. Set `SOURCE_OPERATOR_TOKEN` for operator-only approval, manual sync and review APIs. The optional `source_catalog.api_key` is not sent by the current public-portal adapter; providers that require credentials need a separately reviewed authorization-header adapter. Approval stores a reviewed hostname/path and conservative policy and is invalidated by connection edits. The default seeded candidate remains `pending`, with no automatic external calls.

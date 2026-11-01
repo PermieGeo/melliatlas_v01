@@ -1,10 +1,10 @@
 // Feature IDs: SOURCES.PROVIDER_CONFIGURATION
 import type { ProviderConfiguration, ProviderConfigurationEdit } from "@melliatlas/contracts";
 import { useRef, useState } from "react";
-import { loadProviderConfiguration, saveProviderConfiguration } from "../api/client";
+import { loadProviderConfiguration, saveProviderConfiguration, approveProviderAccess, syncProviderPage, loadPendingTreatments, reviewTreatment, type PendingTreatment } from "../api/client";
 
 /** Operator-only editor; the bearer token is intentionally kept in component memory. */
-export function ProviderSettings() {
+export function ProviderSettings({ onPublished }: { onPublished?: () => void } = {}) {
   const [token, setToken] = useState("");
   const requestGeneration = useRef(0);
   const [config, setConfig] = useState<ProviderConfiguration | null>(null);
@@ -17,6 +17,12 @@ export function ProviderSettings() {
   const [parameters, setParameters] = useState("{}");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [reviewer, setReviewer] = useState("");
+  const [permissionEvidenceUrl, setPermissionEvidenceUrl] = useState("");
+  const [permissionBasis, setPermissionBasis] = useState("");
+  const [evidenceNote, setEvidenceNote] = useState("");
+  const [pendingTreatments, setPendingTreatments] = useState<PendingTreatment[]>([]);
+  const [collectionMessage, setCollectionMessage] = useState("");
 
   function populate(value: ProviderConfiguration) {
     setConfig(value);
@@ -77,10 +83,22 @@ export function ProviderSettings() {
     }
   }
 
+  async function operatorAction(action: () => Promise<void>) {
+    setPending(true);
+    setCollectionMessage("");
+    try {
+      await action();
+    } catch (error) {
+      setCollectionMessage(error instanceof Error ? error.message : "Операция не выполнена");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <section aria-label="Настройки источника данных" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
       <h2 className="font-display text-lg font-bold">Подключение источника обработок</h2>
-      <p className="text-sm text-slate-600">Чтобы увидеть и изменить подробные параметры запроса, введите токен оператора и нажмите «Открыть настройки». Это локальный токен MelliAtlas, а не ключ внешнего API. Автоматический сбор и отображение обработок пока не включены.</p>
+      <p className="text-sm text-slate-600">Чтобы увидеть и изменить подробные параметры запроса, введите токен оператора и нажмите «Открыть настройки». Это локальный токен MelliAtlas, а не ключ внешнего API. Планы загружаются только вручную после проверки разрешений; на карте показываются записи, подтверждённые оператором.</p>
       <label className="block text-sm font-semibold text-slate-800">
         Токен оператора
         <input type="password" autoComplete="off" value={token} onChange={(event) => { requestGeneration.current += 1; setToken(event.target.value); setConfig(null); setPending(false); }} className="mt-1 block w-full rounded-lg border border-slate-300 p-2" />
@@ -116,6 +134,70 @@ export function ProviderSettings() {
           </label>
           <button type="button" disabled={pending} onClick={() => void save()} className="rounded-lg bg-indigo-700 px-4 py-2 text-sm text-white disabled:opacity-50">Сохранить конфигурацию</button>
         </div>
+      )}
+      {config && (
+        <section aria-label="Сбор и проверка данных" className="space-y-3 border-t border-slate-200 pt-4">
+          <h3 className="font-semibold">Сбор и проверка планов</h3>
+          <p className="text-xs text-slate-600">Доступность публичного сайта не означает разрешение на автоматизированное использование. Подтверждайте доступ только при наличии проверенного основания. Загрузка производится по одной странице, без фонового опроса.</p>
+          {config.accessDecision !== "approved" && (
+            <div className="space-y-2 rounded-lg bg-amber-50 p-3">
+              <label className="block text-xs">Имя проверяющего
+                <input aria-label="Имя проверяющего" value={reviewer} onChange={(event) => setReviewer(event.target.value)} className="mt-1 w-full rounded border p-2" />
+              </label>
+              <label className="block text-xs">Ссылка на подтверждение прав доступа
+                <input aria-label="Ссылка на разрешение" value={permissionEvidenceUrl} onChange={(event) => setPermissionEvidenceUrl(event.target.value)} className="mt-1 w-full rounded border p-2" />
+              </label>
+              <label className="block text-xs">Обоснование автоматизированной загрузки и повторного использования
+                <textarea aria-label="Обоснование доступа" value={permissionBasis} onChange={(event) => setPermissionBasis(event.target.value)} className="mt-1 w-full rounded border p-2" rows={3} />
+              </label>
+              <button type="button" disabled={pending || !reviewer || !permissionEvidenceUrl || permissionBasis.length < 20} onClick={() => void operatorAction(async () => {
+                await approveProviderAccess(token, { reviewer, evidenceUrl: permissionEvidenceUrl, permissionBasis });
+                setCollectionMessage("Разрешение зафиксировано. Повторно откройте настройки для обновления статуса.");
+              })} className="rounded bg-amber-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Подтвердить проверенный доступ</button>
+            </div>
+          )}
+          {config.accessDecision === "approved" && (
+            <button type="button" disabled={pending} onClick={() => void operatorAction(async () => {
+              const result = await syncProviderPage(token);
+              setCollectionMessage(`Страница получена: ${result.received}; новых кандидатов: ${result.stored}; следующая страница: ${result.nextPage}`);
+              setPendingTreatments(await loadPendingTreatments(token));
+            })} className="rounded bg-indigo-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Загрузить одну страницу</button>
+          )}
+          <button type="button" disabled={pending} onClick={() => void operatorAction(async () => {
+            setPendingTreatments(await loadPendingTreatments(token));
+          })} className="rounded border border-slate-300 px-3 py-2 text-xs font-semibold disabled:opacity-50">Показать ожидающие проверки записи</button>
+          {pendingTreatments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-600">Проверьте оригинальный источник и геометрию до публикации. Непроверенные записи скрыты с публичной карты.</p>
+              <label className="block text-xs">Описание проверенных сведений и основания решения (не менее 20 символов)
+                <textarea aria-label="Основание проверки записи" rows={2} value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} className="mt-1 w-full rounded border p-2" />
+              </label>
+              {pendingTreatments.map((item) => (
+                <article key={item.id} className="rounded border border-slate-200 p-3 text-xs">
+                  <p>{item.contractorName || "Организация не указана"} · {item.cadastralNumber || "Кадастр не указан"}</p>
+                  <p>Период: {item.startAt ?? "не указан"} — {item.endAt ?? "не указан"}</p>
+                  <p>Препараты: {item.treatments.map((t) => t.name).filter(Boolean).join(", ") || "не указаны"}</p>
+                  <p>Дата загрузки: {item.retrievedAt} · Полигон: {item.geometryAvailable ? "валидный" : "отсутствует или некорректен"}</p>
+                  <a className="text-indigo-700 underline" href={item.sourceUrl} rel="noopener noreferrer" target="_blank">Открыть источник</a>
+                  <div className="mt-2 flex gap-2">
+                    {(["verified", "rejected"] as const).map((decision) => (
+                      <button key={decision} type="button" disabled={pending || !reviewer.trim() || evidenceNote.trim().length < 20 || (decision === "verified" && !item.geometryAvailable)}
+                        onClick={() => void operatorAction(async () => {
+                          await reviewTreatment(token, item.id, decision, reviewer, evidenceNote);
+                          setPendingTreatments(await loadPendingTreatments(token));
+                          onPublished?.();
+                        })}
+                        className="rounded border border-slate-300 px-2 py-1 disabled:opacity-50">
+                        {decision === "verified" ? "Подтвердить и опубликовать" : "Отклонить"}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          {collectionMessage && <p role="status" className="text-sm text-slate-700">{collectionMessage}</p>}
+        </section>
       )}
       {message && <p role="status" className="text-sm text-slate-700">{message}</p>}
     </section>

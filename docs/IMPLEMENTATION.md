@@ -33,3 +33,7 @@ The backend remains a single Node.js deployment. Geospatial notice APIs, full id
 ## Provider bootstrap configuration
 
 `apps/api/src/db/seedProvider.ts` is a manual CLI for seeding the one candidate `treatment-feed` record using an external JSON preset, not a running importer. `apps/api/src/modules/sources/providerSeed.ts` validates that preset, checks for a pristine migration placeholder and preserves custom operator changes by default. Migration `006_optional_provider_api_key.sql` adds nullable `source_catalog.api_key` and excludes credentials from future immutable policy snapshots. Explicit seeding resets review approvals; normal UI updates clear the previous provider API key to prevent reuse against a different endpoint. There is no automatic retrieval or key injection into outbound requests.
+
+## SRC-01/S3a manual provider evidence pipeline
+
+`apps/api/src/modules/sources/treatmentIngestion.ts` now connects the approved source registry, the restricted S2 HTTPS fetcher, immutable raw JSON in `source_documents`, run records in `ingestion_runs`, and pending `source_observations`. Migration `007` prevents duplicate record candidates per exact document version and records operator review evidence. A guarded, authenticated manual fetch reads one page at a time; an independent review decision is required before `GET /api/v1/notices` can return a polygon. `MapCanvas.tsx` displays only those verified features. No scheduler, automatic source permission, endpoint probing, or risk classification is enabled.

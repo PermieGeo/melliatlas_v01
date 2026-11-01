@@ -1,8 +1,9 @@
-// Feature IDs: MAP.POINT_SELECTION, SOURCES.CATALOG, UX.MOBILE_MAP, WEATHER.POINT_FORECAST
+// Feature IDs: MAP.POINT_SELECTION, SOURCES.CATALOG, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY
 import type {
   Coordinates,
   InspectionResponse,
   SourceCatalogEntry,
+  MapTreatment,
 } from "@melliatlas/contracts";
 import {
   AlertCircle,
@@ -20,7 +21,7 @@ import {
   Wind,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { inspectLocation, loadSourceCatalog } from "./api/client";
+import { inspectLocation, loadSourceCatalog, loadMapTreatments } from "./api/client";
 import { MapCanvas } from "./components/MapCanvas";
 import { ProviderSettings } from "./components/ProviderSettings";
 
@@ -134,6 +135,8 @@ export default function App() {
   const [inspection, setInspection] = useState<RemoteState<InspectionResponse>>(
     { status: "idle" },
   );
+  const [treatmentState, setTreatmentState] = useState<RemoteState<MapTreatment[]>>({ status: "loading" });
+  const [treatmentRefresh, setTreatmentRefresh] = useState(0);
   const [sourceCatalog, setSourceCatalog] = useState<
     RemoteState<SourceCatalogEntry[]>
   >({ status: "loading" });
@@ -152,6 +155,17 @@ export default function App() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setTreatmentState({ status: "loading" });
+    loadMapTreatments(controller.signal)
+      .then((value) => { if (!controller.signal.aborted) setTreatmentState({ status: "loaded", value }); })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setTreatmentState({ status: "error", message: error instanceof Error ? error.message : "Ошибка загрузки планов" });
+      });
+    return () => controller.abort();
+  }, [treatmentRefresh]);
 
   useEffect(() => {
     if (!selected) {
@@ -354,11 +368,20 @@ export default function App() {
                     {locationLabel}
                   </span>
                 </div>
+                <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-700">
+                  <span role="status">
+                    {treatmentState.status === "loaded"
+                      ? `Проверенных полигонов: ${treatmentState.value.length}`
+                      : treatmentState.status === "error" ? `Ошибка слоя: ${treatmentState.message}` : "Загрузка планов…"}
+                  </span>
+                  <button type="button" className="font-semibold text-indigo-700" onClick={() => setTreatmentRefresh((n) => n + 1)}>Обновить слой</button>
+                </div>
                 <MapCanvas
                   focus={focus}
                   selected={selected}
                   radiusKm={radiusKm}
                   onSelect={setSelected}
+                  treatments={treatmentState.status === "loaded" ? treatmentState.value : []}
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-1 pt-3 text-xs text-slate-600">
                   <span className="inline-flex items-center gap-1.5">
@@ -603,10 +626,10 @@ export default function App() {
               <p className="text-xs leading-relaxed text-slate-600">
                 Эти общедоступные сведения берутся из каталога. Подробные
                 параметры запроса можно открыть ниже с токеном оператора.
-                Импорт планов и их отображение на карте пока не реализованы.
+                После проверки доступа оператор может загрузить и проверить записи. На карте отображаются только подтверждённые геометрии.
               </p>
             </section>
-            <ProviderSettings />
+            <ProviderSettings onPublished={() => setTreatmentRefresh((n) => n + 1)} />
           </div>
         ) : (
           <section aria-label="Реестр источников" className="space-y-4">

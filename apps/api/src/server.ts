@@ -5,6 +5,7 @@ import { loadConfig } from "./config.js";
 import { createDatabasePool } from "./db/pool.js";
 import { SourceRepository } from "./db/sourceRepository.js";
 import { ProviderConfigurationRepository } from "./modules/sources/providerConfiguration.js";
+import { TreatmentIngestionService } from "./modules/sources/treatmentIngestion.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
 import { describeStartupFailure } from "./startupDiagnostics.js";
 
@@ -17,8 +18,10 @@ async function start(): Promise<void> {
     const sources = new SourceRepository(pool);
     const weather = new OpenMeteoAdapter(fetch, config.OPEN_METEO_TIMEOUT_MS);
     const providerConfiguration = new ProviderConfigurationRepository(pool);
+    const treatmentFeed = new TreatmentIngestionService(pool);
     const app = createApp({
       providerConfiguration,
+      treatmentFeed,
       inspectLocation: (point) => weather.inspect(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {

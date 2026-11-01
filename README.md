@@ -2,7 +2,7 @@
 
 MelliAtlas is a source-backed geospatial workspace for beekeepers. The initial pilot covers Smolensk Oblast, Russia.
 
-This repository is an independently deployable web/API monorepo. Its first runnable feature is inspection of a map location with current, attributed weather from Open-Meteo. Source ingestion, verified treatment notices, satellite phenology, private apiaries, and the AI agent are defined in the [umbrella specification](docs/specs/active/spec-umbrella-melliatlas.md) and [selected source-ingestion sub-specification](docs/specs/active/subspecs/source-ingestion.md).
+This repository is an independently deployable web/API monorepo. Its first runnable feature is inspection of a map location with current, attributed weather from Open-Meteo. Operator-triggered source ingestion and individually verified polygon overlays are implemented as an initial evidence slice; full scheduled ingestion, satellite phenology, private apiaries, and the AI agent are defined in the [umbrella specification](docs/specs/active/spec-umbrella-melliatlas.md) and [selected source-ingestion sub-specification](docs/specs/active/subspecs/source-ingestion.md).
 
 ## Repository layout
 
