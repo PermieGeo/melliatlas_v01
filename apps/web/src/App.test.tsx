@@ -122,3 +122,44 @@ it("reports source catalog failure instead of a fake empty catalog", async () =>
   expect(await screen.findByRole("alert")).toBeTruthy();
   expect(screen.queryByText("Подключённые источники отсутствуют.")).toBeNull();
 });
+
+it("shows the seeded treatment provider publicly without operator credentials", async () => {
+  const source = {
+    id: "treatment-feed",
+    name: "Fixture treatment feed",
+    kind: "treatment",
+    lifecycle: "under_review",
+    url: "https://provider.example.org/api/treatments",
+    termsReview: "pending",
+    lastSuccessfulIngestAt: null,
+  };
+  const fetcher = vi.fn(async () =>
+    new Response(JSON.stringify({ sources: [source] }), { status: 200 }),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
+  expect(await screen.findByText("Fixture treatment feed")).toBeTruthy();
+  expect(screen.getByText(source.url)).toBeTruthy();
+  expect(screen.getByText("На проверке")).toBeTruthy();
+  expect(screen.getByText("Не выполнялась")).toBeTruthy();
+  expect(
+    screen.getByText(/Импорт планов и их отображение на карте пока не/),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher).toHaveBeenCalledWith("/api/v1/sources", expect.any(Object));
+});
+
+it("shows a missing treatment provider instead of inventing settings", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ sources: [] }))),
+  );
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
+  expect(
+    await screen.findByText(/Источник обработок не найден в реестре/),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText("Адрес API источника")).toBeNull();
+});

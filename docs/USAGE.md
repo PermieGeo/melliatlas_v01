@@ -16,6 +16,8 @@ Weather and map tiles need internet access. A network error is shown as an error
 
 The **Настройки источника** tab configures one candidate external treatment feed. The displayed provider name, endpoint and request shape are editable; the UI does not hard-code a provider brand. These settings do not initiate a network request or enable ingestion.
 
+The tab shows public source-catalog metadata (name, type, URL, lifecycle and last successful ingestion) without authentication. This is not an API connectivity test: metadata can exist even while access is pending and ingestion has never run. The detailed request configuration and editing form remain behind the operator bearer token; the provider API key is never shown. The absence of treatment overlays on the map is expected until a reviewed source and the durable ingestion/map pipeline are implemented.
+
 ### Initialize the reference provider from the command line
 
 After `docker compose up -d db` and `pnpm db:migrate`, run from the repository root:
