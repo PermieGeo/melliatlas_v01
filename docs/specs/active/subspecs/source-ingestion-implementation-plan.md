@@ -32,11 +32,47 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 
 **Module boundary rule:** Every proposed `modules/sources/`, `modules/geo/` or future business module MUST introduce a root `contract.md` with owned data, public entry points, dependencies and invariants. Reuse shared Zod HTTP schemas from `packages/contracts`; put source-specific parsing and persistence inside their owning modules. No cross-module private-table or implementation imports.
 
+## A.1. Priority change — configurable Saturn source (2026-11-01)
+
+**Normative requirement:** `SRC-R12` in [source-ingestion.md](source-ingestion.md). **Decision:** implement FGIS Saturn first, retain two municipal sources as a later independent coverage requirement. The public portal is documented; the historical prototype's `planapplybees` endpoint and `subject: 55` are **candidate configuration**, not an independently verified public API contract or permission to automate collection. Official Saturn SE-API documentation describes a different integration surface; do not mix provider write/authorization workflows with public bee-portal reads.
+
+**Verified owning paths:** `apps/api/src/app.ts`, `apps/api/src/server.ts`, `apps/api/src/config.ts`, `apps/api/src/modules/sources/{contracts,destinationPolicy,municipalSourceRegistry}.ts`, `apps/api/migrations/001_source_core.sql`, `apps/api/migrations/002_source_access_registry.sql`, `packages/contracts/src/index.ts`, `apps/web/src/{App.tsx,api/client.ts}`. Read real integrations/tests before changes. The compiled snapshot omits the tracked `apps/api/.env.example` contents; do not replace that file based on assumptions.
+
+### S1 — Operator-configurable connection (current increment)
+
+1. Extend the public Zod wire contract with `endpoint`, `method`, `regionParameter`, `regionCode`, bounded flat `parameters` and optimistic `expectedRevision`. Reject unknown fields, region-key collisions, IP literals, plaintext HTTP, URL credentials, fragments and unsafe path encodings. Keep the endpoint a candidate, not an approved access policy.
+2. Add `003_saturn_api_configuration.sql` (new, additive): one `source_catalog` row with kind `treatment`, `under_review`/`pending` access, and `api_request_config` JSONB. Preserve existing `002` registry/history triggers and their append-only revision snapshots; never modify `001` or `002`.
+3. Implement `apps/api/src/modules/sources/saturnConfiguration.ts`: versioned `get/update`, compare-and-set update on revision, pure `buildSaturnRequest(endpoint, settings)` for GET/POST. Do not call fetch, do not store secrets and do not treat this module as a safe transport.
+4. Expose `GET/PUT /api/v1/operator/saturn` from `apps/api/src/app.ts`; add injected optional backend operator token in `config.ts` and `server.ts`. If no token/owner exists, return 503. Reject missing/wrong bearer token with 401; validate 400, revision conflict 409. Response is no-store, never includes the token.
+5. Implement `apps/web/src/components/SaturnSettings.tsx` and a dedicated navigation tab; keep the operator token only in component memory, disable save until authorized, show `pending` and explicitly state collection is off. `apps/web/src/api/client.ts` validates all wire responses.
+6. Test isolated GET/POST request shaping, negative URL/input cases, unauthorized HTTP actions, optimistic concurrency, UI changes, and live PostGIS upgrade/revision behavior. Use no source network during unit tests.
+
+**Completion evidence:** API/React tests, migration tests against real PostGIS, TS checks, no successful collection claim. Failure recovery: if operator token is unset the editor fails closed; a conflict requires reloading; an invalid edit never mutates the database. Roll forward by additive migration, do not roll back a deployed SQL version. The UI is not a full identity management solution; production deployment must secure its operator credential distribution.
+
+### S2 — Restricted Saturn fetch and access decision (next)
+
+1. Investigate current official Saturn portal endpoints and contract with authorized access, exact HTTP examples, rate limits and redistribution conditions. Keep evidence in `docs/source-register.md`, update operator review policy and scope of permitted HTTPS host/path.
+2. Generalize access-check semantics to approved `treatment` sources through a **new** SQL migration and narrow public registry interface. `002` currently only permits `municipal_notice` approval. Do not silently bypass this DB check or broaden permissions to arbitrary data sources.
+3. Implement `httpFetcher.ts` with DNS resolution and connection pinning, public-address filtering (IPv4 and IPv6), TLS certificate verification, redirect-by-redirect revalidation, content/MIME/response limits, timeouts, controlled concurrency, bounded 429/503 retries and safe proxy behavior.
+4. Inject an HTTP transport and resolver for deterministic tests; use fixture responses and blocked private-IP, rebinding, redirect, timeout, decompression and rate-limit tests. No automatic job until reviewed permission, positive tests and transport security all pass.
+
+**Failure and recovery:** an invalid or denied endpoint stays pending; error classifications are persisted to a later run record, not silently retried forever. Access review and permission revocation are operator operations, not UI-controlled bypasses.
+
+### S3 — Saturn adapter and durable records (following)
+
+1. Implement `SaturnSourceAdapter` against verified response schemas only, with an injected transport and injected `SaturnRequestSettings`. Preserve pagination and publication-source citations; do not assume `subject: 55` until the live API response is checked.
+2. Write immutable raw versions and idempotent ingestion runs to PostGIS before parsing; preserve provider record IDs, date windows, geometry precision and original publication URLs.
+3. Normalize `Polygon`/`MultiPolygon` only after CRS and topology validation. Distinguish provisional plans from completed treatments, expired and contradictory records; no synthetic risk score or hazard claims.
+4. Add API and map evidence layers behind review, then continue municipal adapters and remaining SRC-01 items. Prove duplicates, changed content, worker crash/restart, rate limits, malformed geometry, and desktop/mobile UI with deterministic tests plus limited permitted live verification.
+
+**Acceptance:** verified live evidence, approved reuse basis, non-public raw audit, map attribution, source freshness and independent developer acceptance. Absence of Saturn notices does not imply absence of spraying.
+
 ## B. Requirements-to-evidence matrix
 
 | Requirements      | Batches | Required evidence                                                               |
 | ----------------- | ------- | ------------------------------------------------------------------------------- |
 | SRC-R01, R09      | A, B    | Approved host policy; blocked SSRF/redirect/rate-limit tests                    |
+| SRC-R12           | S1–S3   | Operator configuration + revision, restricted Saturn fetch, cited real evidence |
 | SRC-R02, R03, R10 | A, B    | Original URLs and permitted sample documents; idempotent runs and restart tests |
 | SRC-R04, R05, R06 | C       | Field-level evidence, ambiguity handling, geometry precision, revision tests    |
 | SRC-R07, R08      | D       | Paginated spatial API; real map overlays; mobile E2E tests                      |

@@ -1,8 +1,10 @@
+// Feature IDs: SOURCES.SATURN_CONFIGURATION
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { createDatabasePool } from "./db/pool.js";
 import { SourceRepository } from "./db/sourceRepository.js";
+import { SaturnConfigurationRepository } from "./modules/sources/saturnConfiguration.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
 import { describeStartupFailure } from "./startupDiagnostics.js";
 
@@ -14,14 +16,16 @@ async function start(): Promise<void> {
     await pool.query("SELECT 1");
     const sources = new SourceRepository(pool);
     const weather = new OpenMeteoAdapter(fetch, config.OPEN_METEO_TIMEOUT_MS);
+    const saturnConfiguration = new SaturnConfigurationRepository(pool);
     const app = createApp({
+      saturnConfiguration,
       inspectLocation: (point) => weather.inspect(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {
         await pool.query("SELECT 1");
         return true;
       },
-    });
+    }, { operatorToken: config.SATURN_OPERATOR_TOKEN });
 
     const server = app.listen(config.PORT, () => {
       console.info(`MelliAtlas API listening on port ${config.PORT}`);

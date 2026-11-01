@@ -1,6 +1,10 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.SATURN_CONFIGURATION
 import {
   apiErrorSchema,
+  saturnConfigurationSchema,
+  saturnConfigurationEditSchema,
+  type SaturnConfiguration,
+  type SaturnConfigurationEdit,
   inspectionResponseSchema,
   sourceCatalogResponseSchema,
   type Coordinates,
@@ -47,4 +51,27 @@ export async function loadSourceCatalog(
   const response = await fetch("/api/v1/sources", { signal });
   return sourceCatalogResponseSchema.parse(await decodeApiResponse(response))
     .sources;
+}
+
+
+export async function loadSaturnConfiguration(token: string): Promise<SaturnConfiguration> {
+  const response = await fetch("/api/v1/operator/saturn", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  return saturnConfigurationSchema.parse(await decodeApiResponse(response));
+}
+
+export async function saveSaturnConfiguration(
+  token: string,
+  input: SaturnConfigurationEdit,
+): Promise<SaturnConfiguration> {
+  const validated = saturnConfigurationEditSchema.parse(input);
+  const response = await fetch("/api/v1/operator/saturn", {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(validated),
+    cache: "no-store",
+  });
+  return saturnConfigurationSchema.parse(await decodeApiResponse(response));
 }

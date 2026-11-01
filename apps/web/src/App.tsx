@@ -22,8 +22,9 @@ import {
 import { useEffect, useState } from "react";
 import { inspectLocation, loadSourceCatalog } from "./api/client";
 import { MapCanvas } from "./components/MapCanvas";
+import { SaturnSettings } from "./components/SaturnSettings";
 
-type Tab = "map" | "sources";
+type Tab = "map" | "sources" | "saturn";
 type RemoteState<T> =
   | { status: "idle" | "loading" }
   | { status: "loaded"; value: T }
@@ -203,6 +204,7 @@ export default function App() {
             [
               ["map", "Карта и радиусы"],
               ["sources", "Источники данных"],
+              ["saturn", "Настройки Сатурн"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -233,6 +235,7 @@ export default function App() {
           [
             ["map", "Карта"],
             ["sources", "Источники"],
+            ["saturn", "Сатурн"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -290,12 +293,12 @@ export default function App() {
             <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
               {tab === "map"
                 ? "Карта и обзор территории"
-                : "Источники и происхождение данных"}
+                : tab === "saturn" ? "Настройки ФГИС «Сатурн»" : "Источники и происхождение данных"}
             </h1>
             <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-slate-600">
               {tab === "map"
                 ? "Выберите любую точку карты, чтобы получить актуальную метеосводку с указанием источника и времени обновления."
-                : "Текущие интеграции, условия доступа и история фактических загрузок в систему."}
+                : tab === "saturn" ? "Настройки подключения без включения автоматического сбора данных." : "Текущие интеграции, условия доступа и история фактических загрузок в систему."}
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-600">
@@ -530,6 +533,8 @@ export default function App() {
               </article>
             </div>
           </div>
+        ) : tab === "saturn" ? (
+          <SaturnSettings />
         ) : (
           <section aria-label="Реестр источников" className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-white p-5">

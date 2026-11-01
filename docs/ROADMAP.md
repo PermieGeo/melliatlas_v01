@@ -2,7 +2,7 @@
 
 | Order          | Feature                                                                                | Intended evidence                                                                              |
 | -------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| **1 — SRC-01** | Durable source registry, approved municipal ingestion, live source-backed map overlays | Verified source links, provenance, real geometries/uncertainty, source failure and retry tests |
+| **1 — SRC-01** | Configurable Saturn integration first, then approved municipal ingestion and live evidence map overlays | Authenticated Saturn settings, verified access, cited source links, geometry precision, failure/retry tests |
 | 2 — BEE-01     | Private apiary records and proximity queries                                           | Authenticated ownership, no exact-coordinate exposure, spatial tests                           |
 | 3 — AGENT-01   | Configurable source-reading AI agent                                                   | Strict extraction schemas, cited tool evidence, injection defenses, human review               |
 | 4 — SAT-01     | Sentinel-2 and phenology research path                                                 | Licensed access, time-series storage, independently validated field observations               |

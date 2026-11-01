@@ -1,7 +1,10 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST
-import { randomUUID } from "node:crypto";
+// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.SATURN_CONFIGURATION
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   apiErrorSchema,
+  saturnConfigurationEditSchema,
+  type SaturnConfiguration,
+  type SaturnConfigurationEdit,
   locationQuerySchema,
   type Coordinates,
   type InspectionResponse,
@@ -16,9 +19,16 @@ export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;
   listSources(): Promise<SourceCatalogEntry[]>;
   checkReadiness(): Promise<boolean>;
+  saturnConfiguration?: {
+    get(): Promise<SaturnConfiguration>;
+    update(input: SaturnConfigurationEdit): Promise<SaturnConfiguration>;
+  };
 };
 
-export function createApp(services: ApiServices): express.Express {
+export function createApp(
+  services: ApiServices,
+  options: { operatorToken?: string } = {},
+): express.Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -65,6 +75,45 @@ export function createApp(services: ApiServices): express.Express {
     try {
       res.setHeader("Cache-Control", "no-store");
       res.json({ sources: await services.listSources() });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+
+  // The operator token is supplied only through the backend environment and never returned to browsers.
+  const requireOperator: express.RequestHandler = (req, _res, next) => {
+    if (!options.operatorToken || !services.saturnConfiguration) {
+      return next(new ApiFailure(503, "OPERATOR_UNAVAILABLE", "Operator configuration is unavailable"));
+    }
+    const authorization = req.header("authorization");
+    const supplied = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length)
+      : "";
+    const digest = (token: string) => createHash("sha256").update(token).digest();
+    if (!supplied || !timingSafeEqual(digest(supplied), digest(options.operatorToken))) {
+      return next(new ApiFailure(401, "UNAUTHORIZED", "Operator authentication required"));
+    }
+    next();
+  };
+
+  app.get("/api/v1/operator/saturn", requireOperator, async (_req, res, next) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await services.saturnConfiguration!.get());
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/v1/operator/saturn", requireOperator, async (req, res, next) => {
+    const parsed = saturnConfigurationEditSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return next(new ApiFailure(400, "INVALID_SATURN_CONFIG", "Invalid Saturn configuration"));
+    }
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await services.saturnConfiguration!.update(parsed.data));
     } catch (error) {
       next(error);
     }

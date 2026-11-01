@@ -27,7 +27,7 @@ Each owned module has a `contract.md` describing its published interface, data, 
 
 Future source jobs use the explicit path: **source registry -> approved fetch -> immutable fetch record -> extraction -> validation -> deduplication -> geospatial normalization -> review status -> published observation**. Each observation retains a direct source link, publication/retrieval times, run ID, raw content fingerprint, geometry precision and claim status. Unknown is different from safe. Provider failures preserve the previous verified snapshot with freshness markers, or return unavailable when no valid snapshot exists.
 
-First-party, institutional and third-party sources each require their own license/access decision. Source adapters are separately switchable. Primary candidates are public municipal notices, a **provisionally identified** Saturn portal, OpenStreetMap/Overpass, Open-Meteo and Copernicus Data Space. The purported Saturn endpoint, region mapping and unrestricted usage asserted in the reference prototype are **not** treated as verified contracts.
+First-party, institutional and third-party sources each require their own license/access decision. Source adapters are separately switchable. The first source priority is a **provisionally identified and configurable** Saturn portal, followed by municipal notices, OpenStreetMap/Overpass, Open-Meteo and Copernicus Data Space. The purported Saturn endpoint, region mapping and unrestricted usage asserted in the reference prototype are **not** treated as verified contracts.
 
 ## Spatial processing
 

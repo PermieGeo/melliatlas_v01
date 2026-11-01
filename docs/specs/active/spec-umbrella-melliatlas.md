@@ -68,7 +68,7 @@ The stages below are **work packages**. They are not feature IDs. A capability c
 
 An operator approves each source and its access policy before collection. Bounded retrieval jobs fetch documents, preserve raw revisions and link every parsed field to its evidence. Deduplication protects against repeated downloads; restart-safe run history explains what happened when a job fails. A human review gate controls uncertain or potentially harmful claims. Published observations are searchable by location and time with stable pagination and explicit uncertainty.
 
-Initial ingestion will use at least **two independently verified municipal sources** in the pilot. Any Saturn-related source remains a candidate until its real API, permissions and field meanings are confirmed. Public network availability is not permission to scrape.
+The next integration priority is a **configurable FGIS Saturn source**, followed by at least **two independently verified municipal sources** in the pilot. Saturn portal information is public to browse, but the proposed data endpoint, automated-collection rights and record semantics remain candidates pending confirmation. UI and programmatic configuration never imply permission to fetch. Public network availability is not permission to scrape.
 
 **Ready for review when:** real original documents can be followed from the map, operator diagnostics work, repeated/restarted jobs do not duplicate records, and negative security/location/date scenarios pass. This is the currently selected stage.
 

@@ -48,3 +48,11 @@ The registry introduced in `002_source_access_registry.sql` must keep these cand
 
 1. **SRC-01 / Batch A, step 5:** Authenticated source administration with reviewed decisions, revocation and no arbitrary URLs. This register alone does not authorize approval.
 2. **SRC-01 / Batch B, step 6:** Restricted HTTP fetcher with DNS/address validation, redirect revalidation, strict size/MIME/time limits and deterministic denial tests. It must remain disconnected from automatic jobs until access approval.
+
+## Priority integration: FGIS Saturn Beekeeper Portal (2026-11-01)
+
+The FGIS Saturn Beekeeper Portal is the first integration priority, ahead of municipal adapters. Its public, unauthenticated **human-facing** view of proposed pesticide applications is described by Rosselkhoznadzor (2025-03-26): https://base.garant.ru/411752129/ . The agency's 2026-03-27 communication lists `https://bee-saturn.ru` as the portal: https://base.garant.ru/414000975/ . A separate institutional SE-API integration guide exists at https://fgis-saturn.ru/api/seapi_%D0%B1%D1%8B%D1%81%D1%82%D1%80%D1%8B%D0%B9_%D1%81%D1%82%D0%B0%D1%80%D1%82.v2022.12.21_0900.pdf ; it does not establish the public portal's machine-readable export contract.
+
+**Candidate-only settings:** `https://bee-saturn.ru/backend/beemaster/planapplybees`, `POST`, `subject: 55` from the earlier prototype. These identifiers and the current response schema have **not** been independently verified for production access. The configuration can be edited, versioned and used in offline request-builder tests, but is stored with `pending` permission and cannot initiate requests.
+
+**Required before a live adapter:** inspect the official current endpoint and authentication behavior; confirm terms for automatic reads, permitted polling and downstream display; document real request/response shapes and pagination; set operator-reviewed allowlists; test TLS/DNS/redirect/size/time defenses; reconcile source status and actual field geometries. Do not treat the separately documented SE-API submission methods as a public read interface. Records must retain the original source URL and uncertainty, and historical plans must not be shown as current treatments.
