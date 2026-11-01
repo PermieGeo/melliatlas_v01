@@ -19,25 +19,21 @@ async function start(): Promise<void> {
     const weather = new OpenMeteoAdapter(fetch, config.OPEN_METEO_TIMEOUT_MS);
     const providerConfiguration = new ProviderConfigurationRepository(pool);
     const treatmentFeed = new TreatmentIngestionService(pool);
-    const app = createApp(
-      {
-        providerConfiguration,
-        treatmentFeed,
-        inspectLocation: (point) => weather.inspect(point),
-        listSources: () => sources.list(),
-        checkReadiness: async () => {
-          await pool.query("SELECT 1");
-          return true;
-        },
+    const app = createApp({
+      providerConfiguration,
+      treatmentFeed,
+      inspectLocation: (point) => weather.inspect(point),
+      listSources: () => sources.list(),
+      checkReadiness: async () => {
+        await pool.query("SELECT 1");
+        return true;
       },
-      {
-        operatorToken:
-          config.SOURCE_OPERATOR_TOKEN ?? config.SATURN_OPERATOR_TOKEN,
-      },
-    );
+    });
 
-    const server = app.listen(config.PORT, () => {
-      console.info(`MelliAtlas API listening on port ${config.PORT}`);
+    const server = app.listen(config.PORT, "127.0.0.1", () => {
+      console.info(
+        `MelliAtlas local admin API listening at http://127.0.0.1:${config.PORT}`,
+      );
     });
     const stop = () => {
       server.close(() => {

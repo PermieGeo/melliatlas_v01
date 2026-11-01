@@ -31,6 +31,7 @@ export type MapTreatment = {
   treatments: BeekeeperPlan["treatments"];
   geometry: NonNullable<BeekeeperPlan["geometry"]>;
   spatialPrecision: "exact_polygon";
+  reviewStatus?: "pending" | "verified";
 };
 
 const geometrySchema = z
@@ -514,6 +515,18 @@ export class TreatmentIngestionService {
   async published(
     bbox?: [number, number, number, number],
   ): Promise<MapTreatment[]> {
+    return this.spatial(false, bbox);
+  }
+
+  /** Local administrator map preview includes validated but unreviewed polygons. */
+  async preview(): Promise<MapTreatment[]> {
+    return this.spatial(true);
+  }
+
+  private async spatial(
+    includePending: boolean,
+    bbox?: [number, number, number, number],
+  ): Promise<MapTreatment[]> {
     const result = await this.pool.query<{
       id: string;
       name: string;
@@ -524,16 +537,18 @@ export class TreatmentIngestionService {
       end_at: Date | null;
       attributes: Record<string, unknown>;
       geometry: unknown;
+      review_status: "pending" | "verified";
     }>(
       `SELECT o.id, s.name, d.canonical_url, d.retrieved_at, d.published_at,
-           o.start_at, o.end_at, o.attributes, ST_AsGeoJSON(o.geometry)::json AS geometry
+           o.start_at, o.end_at, o.attributes, o.review_status, ST_AsGeoJSON(o.geometry)::json AS geometry
        FROM source_observations o JOIN source_documents d ON d.id=o.source_document_id
        JOIN source_catalog s ON s.id=d.source_id
-       WHERE d.source_id=$1 AND s.lifecycle='configured' AND o.observation_type='treatment_plan' AND o.review_status='verified'
+       WHERE d.source_id=$1 AND s.lifecycle='configured' AND d.canonical_url=s.url
+         AND o.observation_type='treatment_plan' AND (o.review_status='verified' OR ($6::boolean AND o.review_status='pending'))
          AND o.geometry IS NOT NULL
          AND ($2::float8 IS NULL OR ST_Intersects(o.geometry,ST_MakeEnvelope($2,$3,$4,$5,4326)))
        ORDER BY d.retrieved_at DESC, o.id LIMIT 200`,
-      [SOURCE_ID, ...(bbox ?? [null, null, null, null])],
+      [SOURCE_ID, ...(bbox ?? [null, null, null, null]), includePending],
     );
     return result.rows.map((r) => ({
       id: r.id,
@@ -559,6 +574,7 @@ export class TreatmentIngestionService {
         : [],
       geometry: r.geometry as MapTreatment["geometry"],
       spatialPrecision: "exact_polygon",
+      reviewStatus: r.review_status,
     }));
   }
 }

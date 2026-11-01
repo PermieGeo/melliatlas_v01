@@ -18,7 +18,7 @@ pnpm dev
 
 The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the two development servers but leaves the database running.
 
-**Only configuring the external treatment provider?** The map/weather view does not need a token. Editing the provider settings requires the optional server-side `SOURCE_OPERATOR_TOKEN`, described in [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md). Manual, operator-triggered plan import and separate polygon review are available, but saving an API URL does not trigger a fetch or publish map polygons.
+**Only configuring the external treatment provider?** The map/weather view does not need a token. The locally bound administrator editor needs no token: saving settings triggers one bounded page fetch. Valid source polygons appear as unverified previews; public notices remain verified-only. See [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md).
 
 ## Requirements and ports
 
@@ -205,12 +205,12 @@ NODE_ENV=development
 PORT=3001
 DATABASE_URL=postgresql://melliatlas:local_development_only@127.0.0.1:5433/melliatlas
 OPEN_METEO_TIMEOUT_MS=8000
-# SOURCE_OPERATOR_TOKEN is optional; set it only if you need to edit provider settings.
+# No administrator token is needed for localhost-only provider settings.
 ```
 
 The default database password is **local-only**. If `POSTGRES_PASSWORD` was overridden when the Docker database was first initialized, update the password in `DATABASE_URL` accordingly. Docker does not automatically replace the password of an already-initialized persistent database when that environment variable changes.
 
-The API loads `apps/api/.env` through `dotenv`. Do not put credentials in source files or commit `.env`. If you want to edit provider settings, generate a private token (for example, `openssl rand -hex 32` on macOS/Linux), add `SOURCE_OPERATOR_TOKEN=<generated-value>` to `apps/api/.env`, and restart `pnpm dev`. This is an **MelliAtlas operator token**, not a token issued by the external provider. An unset token disables only the operator settings endpoints. See [CONFIGURATION](CONFIGURATION.md) for variable definitions.
+The API loads `apps/api/.env` through `dotenv`. The source editor no longer requires `SOURCE_OPERATOR_TOKEN`: its administrative API binds to `127.0.0.1`. Do not expose it via a public reverse proxy. See [CONFIGURATION](CONFIGURATION.md) for deployment boundaries.
 
 ### 3. Apply database migrations
 
@@ -290,7 +290,7 @@ In the interactive `pnpm approve-builds` menu, **Space selects a package; Enter 
 | Database rejects credentials               | Docker initialization settings and local `DATABASE_URL`          | Align credentials with the persistent database; do not delete the volume as a shortcut   |
 | Port 3001/5173/5433 already occupied       | Host port listeners and running development terminals            | Stop the conflicting process; avoid launching duplicate API/web instances                |
 | Map tiles or weather do not appear         | Browser network panel and internet access                        | Verify access to OpenStreetMap/Open-Meteo; the app does not invent fallback observations |
-| Provider editor returns 503                | `SOURCE_OPERATOR_TOKEN` and migrations `003`–`005`               | Set a valid operator token, restart the API, and run `pnpm db:migrate` if needed         |
+| Provider editor returns 503                | Local API readiness and migrations `003`–`009`                   | Confirm loopback API connectivity and run `pnpm db:migrate` if needed                    |
 | Provider editor returns 401                | Token supplied in the UI                                         | Enter the same token that was configured in the backend environment                      |
 | Provider save returns 409                  | Another operator or tab updated the revision                     | Reload the settings and reapply your changes                                             |
 
@@ -338,7 +338,7 @@ pnpm provider:seed:saturn
 pnpm dev
 ```
 
-The seed updates a pristine candidate only; it does not initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, use the authenticated source settings UI. Enter `SOURCE_OPERATOR_TOKEN` in `apps/api/.env` (at least 32 characters) and restart the API to enable operator-only routes; this is an application administrator token, **not** a token required by the public reference provider.
+The seed updates a pristine candidate only; it does not initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, open the local source settings UI and save. One bounded page is then retrieved, and valid source geometries appear as unverified administrator previews. No operator token is required. Check live provider connectivity separately with `node scripts/check-saturn-api.mjs`.
 
 The map remains empty until an operator explicitly fetches a page and reviews candidate polygons for data quality. Configuring the URL alone does not download records or invent missing geometry.
 

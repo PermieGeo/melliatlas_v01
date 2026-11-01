@@ -93,13 +93,15 @@ migration and browser installation.
 
 Provider-specific coverage includes `apps/api/test/beekeeperPlanPage.test.ts`
 (malformed geometry is retained as text-only evidence),
-`apps/api/test/app.test.ts` (private diagnostics authentication),
+`apps/api/test/app.test.ts` (local administrator diagnostics and cross-origin refusal),
 `apps/api/integration/treatmentIngestion.test.ts` (real PostGIS access,
 collection, duplicate handling and publication), and
 `apps/web/src/components/ProviderSettings.test.tsx` (visible import status).
 No unit or CI test establishes the availability, contract or reuse rights of a
-live external API; the only supported live fetch remains explicit and operator-authenticated.
+live external API; the only supported live fetch remains explicit and restricted to the loopback administrator API.
 
 ### Manual configured treatment feed regressions
 
-`apps/api/test/httpFetcher.test.ts` proves a configured manual treatment source can use the restricted transport, but a merely configured municipal source cannot bypass its separate approval policy. `apps/api/test/app.test.ts` verifies the removed approval route and bearer-protected one-page sync. `apps/web/src/components/ProviderSettings.test.tsx` verifies that sync is immediately available after opening configured settings, with no permission form. The real-PostGIS ingestion test applies migrations 001–008 and uses a stubbed provider response to verify the full raw-document, candidate and verified-publication path. These tests run under the existing `run-tests.sh` / `apatch CHK`; they do not call the live reference provider.
+`apps/api/test/httpFetcher.test.ts` proves a configured manual treatment source can use the restricted transport, but a merely configured municipal source cannot bypass its separate approval policy. `apps/api/test/app.test.ts` verifies the removed approval route and local token-free one-page sync and cross-origin refusal. `apps/web/src/components/ProviderSettings.test.tsx` verifies that sync is available without credentials and triggered on successful save, with no permission form. The real-PostGIS ingestion test applies migrations 001–008 and uses a stubbed provider response to verify the full raw-document, candidate and verified-publication path. These tests run under the existing `run-tests.sh` / `apatch CHK`; they do not call the live reference provider.
+
+The dependency-free `node --test scripts/check-saturn-api.test.mjs` uses an injected fetcher; it never calls the external service. Run `node scripts/check-saturn-api.mjs` manually for a single live upstream probe when network access is available.

@@ -4,7 +4,7 @@ import type {
   ProviderConfiguration,
   ProviderConfigurationEdit,
 } from "@melliatlas/contracts";
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   loadProviderConfiguration,
   saveProviderConfiguration,
@@ -15,12 +15,10 @@ import {
   type PendingTreatment,
 } from "../api/client";
 
-/** Operator-only editor; the bearer token is intentionally kept in component memory. */
+/** Local administrator editor with explicit source-fetch and review actions. */
 export function ProviderSettings({
   onPublished,
 }: { onPublished?: () => void } = {}) {
-  const [token, setToken] = useState("");
-  const requestGeneration = useRef(0);
   const [config, setConfig] = useState<ProviderConfiguration | null>(null);
   const [providerName, setProviderName] = useState("");
   const [endpoint, setEndpoint] = useState("");
@@ -52,45 +50,45 @@ export function ProviderSettings({
     setParameters(JSON.stringify(value.request.parameters, null, 2));
   }
 
-  async function open() {
-    const generation = ++requestGeneration.current;
-    setPending(true);
-    setMessage("");
-    try {
-      const result = await loadProviderConfiguration(token);
-      if (requestGeneration.current === generation) {
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      setPending(true);
+      try {
+        const result = await loadProviderConfiguration();
+        if (!active) return;
         populate(result);
         try {
-          const status = await loadProviderCollectionStatus(token);
-          if (requestGeneration.current === generation) {
+          const status = await loadProviderCollectionStatus();
+          if (active) {
             setCollectionStatus(status);
             setStatusError("");
           }
         } catch (error) {
-          if (requestGeneration.current === generation) {
-            setCollectionStatus(null);
+          if (active)
             setStatusError(
-              error instanceof Error
-                ? error.message
-                : "Не удалось получить состояние импорта",
+              error instanceof Error ? error.message : "Ошибка диагностики",
             );
-          }
         }
+      } catch (error) {
+        if (active)
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Не удалось открыть настройки",
+          );
+      } finally {
+        if (active) setPending(false);
       }
-    } catch (error) {
-      if (requestGeneration.current === generation) {
-        setConfig(null);
-        setCollectionStatus(null);
-        setMessage(error instanceof Error ? error.message : "Ошибка доступа");
-      }
-    } finally {
-      if (requestGeneration.current === generation) setPending(false);
     }
-  }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function save() {
     if (!config) return;
-    const generation = ++requestGeneration.current;
     setPending(true);
     setMessage("");
     try {
@@ -110,20 +108,34 @@ export function ProviderSettings({
             values as ProviderConfigurationEdit["request"]["parameters"],
         },
       };
-      const result = await saveProviderConfiguration(token, edit);
-      if (requestGeneration.current === generation) {
-        populate(result);
-        setMessage("Конфигурация сохранена. Можно загрузить страницу вручную.");
+      const result = await saveProviderConfiguration(edit);
+      populate(result);
+      setMessage("Конфигурация сохранена.");
+      try {
+        const page = await syncProviderPage();
+        setCollectionMessage(
+          `Получено записей: ${page.received}; новых: ${page.stored}.`,
+        );
+        onPublished?.();
+        setPendingTreatments(await loadPendingTreatments());
+      } catch (error) {
+        setCollectionMessage(
+          `Настройки сохранены, но загрузка не выполнена: ${error instanceof Error ? error.message : "Ошибка запроса"}`,
+        );
+      }
+      try {
+        setCollectionStatus(await loadProviderCollectionStatus());
+      } catch {
+        setStatusError("Не удалось обновить диагностику");
       }
     } catch (error) {
-      if (requestGeneration.current === generation)
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "Не удалось сохранить настройки",
-        );
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Не удалось сохранить настройки",
+      );
     } finally {
-      if (requestGeneration.current === generation) setPending(false);
+      setPending(false);
     }
   }
 
@@ -132,9 +144,10 @@ export function ProviderSettings({
     setCollectionMessage("");
     try {
       await action();
+      onPublished?.();
       const updated = await Promise.all([
-        loadProviderConfiguration(token),
-        loadProviderCollectionStatus(token),
+        loadProviderConfiguration(),
+        loadProviderCollectionStatus(),
       ]);
       populate(updated[0]);
       setCollectionStatus(updated[1]);
@@ -157,40 +170,15 @@ export function ProviderSettings({
         Подключение источника обработок
       </h2>
       <p className="text-sm text-slate-600">
-        Чтобы увидеть и изменить подробные параметры запроса, введите токен
-        оператора и нажмите «Открыть настройки». Это локальный токен MelliAtlas,
-        а не ключ внешнего API. Загрузка запускается вручную; на карте
-        показываются только записи, подтверждённые оператором.
+        Настройки доступны в локальном админском приложении. Сохранение
+        запускает загрузку одной страницы. Реальные полигоны сразу появятся в
+        предварительном слое карты с отметкой «не проверено».
       </p>
-      <label className="block text-sm font-semibold text-slate-800">
-        Токен оператора
-        <input
-          type="password"
-          autoComplete="off"
-          value={token}
-          onChange={(event) => {
-            requestGeneration.current += 1;
-            setToken(event.target.value);
-            setConfig(null);
-            setCollectionStatus(null);
-            setStatusError("");
-            setPending(false);
-          }}
-          className="mt-1 block w-full rounded-lg border border-slate-300 p-2"
-        />
-      </label>
-      <button
-        type="button"
-        disabled={pending || !token}
-        onClick={() => void open()}
-        className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-white disabled:opacity-50"
-      >
-        Открыть настройки
-      </button>
+      {pending && !config && <p role="status">Загружаем настройки…</p>}
       {config && (
         <div className="space-y-3 border-t border-slate-200 pt-4">
           <p className="text-xs text-slate-500">
-            Ревизия: {config.revision} · Автозагрузка: отключена
+            Ревизия: {config.revision} · Фоновая загрузка отключена
           </p>
           <label className="block text-sm font-medium">
             Название источника
@@ -273,7 +261,7 @@ export function ProviderSettings({
             onClick={() => void save()}
             className="rounded-lg bg-indigo-700 px-4 py-2 text-sm text-white disabled:opacity-50"
           >
-            Сохранить конфигурацию
+            Сохранить и загрузить страницу
           </button>
         </div>
       )}
@@ -304,7 +292,7 @@ export function ProviderSettings({
                   геометрии: {collectionStatus.missingGeometry}
                 </p>
                 <p>
-                  Опубликованные полигоны:{" "}
+                  Подтверждённые полигоны:{" "}
                   {collectionStatus.verifiedWithGeometry}
                 </p>
                 {collectionStatus.latestRun ? (
@@ -318,8 +306,8 @@ export function ProviderSettings({
                   </p>
                 ) : (
                   <p>
-                    Загрузка ещё не выполнялась. Сохранённый URL сам по себе не
-                    загружает данные.
+                    Загрузка ещё не выполнялась. Сохраните настройки, чтобы
+                    запросить первую страницу.
                   </p>
                 )}
                 {collectionStatus.pendingWithGeometry > 0 && (
@@ -336,11 +324,11 @@ export function ProviderSettings({
             disabled={pending || collectionStatus?.sourceConfigured === false}
             onClick={() =>
               void operatorAction(async () => {
-                const result = await syncProviderPage(token);
+                const result = await syncProviderPage();
                 setCollectionMessage(
                   `Страница получена: ${result.received}; новых кандидатов: ${result.stored}; следующая страница: ${result.nextPage}`,
                 );
-                setPendingTreatments(await loadPendingTreatments(token));
+                setPendingTreatments(await loadPendingTreatments());
               })
             }
             className="rounded bg-indigo-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
@@ -352,7 +340,7 @@ export function ProviderSettings({
             disabled={pending}
             onClick={() =>
               void operatorAction(async () => {
-                setPendingTreatments(await loadPendingTreatments(token));
+                setPendingTreatments(await loadPendingTreatments());
               })
             }
             className="rounded border border-slate-300 px-3 py-2 text-xs font-semibold disabled:opacity-50"
@@ -433,16 +421,12 @@ export function ProviderSettings({
                         onClick={() =>
                           void operatorAction(async () => {
                             await reviewTreatment(
-                              token,
                               item.id,
                               decision,
                               reviewer,
                               evidenceNote,
                             );
-                            setPendingTreatments(
-                              await loadPendingTreatments(token),
-                            );
-                            onPublished?.();
+                            setPendingTreatments(await loadPendingTreatments());
                           })
                         }
                         className="rounded border border-slate-300 px-2 py-1 disabled:opacity-50"

@@ -150,6 +150,12 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       pageNumber: 0,
     });
     expect(await service.published()).toEqual([]);
+    const preview = await service.preview();
+    expect(preview).toHaveLength(1);
+    expect(preview[0]).toMatchObject({
+      reviewStatus: "pending",
+      geometry: { type: "Polygon" },
+    });
     const candidates = await service.pending();
     expect(candidates).toHaveLength(1);
     expect(candidates[0].geometryAvailable).toBe(true);
@@ -170,6 +176,7 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       "Compared the published polygon with source document evidence.",
     );
     expect(await service.published()).toHaveLength(1);
+    expect((await service.preview())[0].reviewStatus).toBe("verified");
     expect(await service.status()).toMatchObject({
       pendingReview: 0,
       verifiedWithGeometry: 1,
@@ -189,6 +196,7 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       "UPDATE source_catalog SET lifecycle='disabled' WHERE id='treatment-feed'",
     );
     expect(await service.published()).toEqual([]);
+    expect(await service.preview()).toEqual([]);
     await expect(service.syncOnePage()).rejects.toMatchObject({
       code: "SOURCE_NOT_CONFIGURED",
     });

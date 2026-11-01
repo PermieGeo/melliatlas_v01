@@ -57,27 +57,20 @@ export async function loadSourceCatalog(
     .sources;
 }
 
-export async function loadProviderConfiguration(
-  token: string,
-): Promise<ProviderConfiguration> {
+export async function loadProviderConfiguration(): Promise<ProviderConfiguration> {
   const response = await fetch("/api/v1/operator/provider", {
-    headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   return providerConfigurationSchema.parse(await decodeApiResponse(response));
 }
 
 export async function saveProviderConfiguration(
-  token: string,
   input: ProviderConfigurationEdit,
 ): Promise<ProviderConfiguration> {
   const validated = providerConfigurationEditSchema.parse(input);
   const response = await fetch("/api/v1/operator/provider", {
     method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validated),
     cache: "no-store",
   });
@@ -87,7 +80,7 @@ export async function saveProviderConfiguration(
 export async function loadMapTreatments(
   signal: AbortSignal,
 ): Promise<MapTreatment[]> {
-  const response = await fetch("/api/v1/notices", {
+  const response = await fetch("/api/v1/operator/notices/map-preview", {
     signal,
     cache: "no-store",
   });
@@ -96,33 +89,35 @@ export async function loadMapTreatments(
 }
 
 async function operatorRequest(
-  token: string,
   path: string,
   method = "GET",
   body?: unknown,
 ): Promise<unknown> {
   const response = await fetch(path, {
     method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-    },
+    headers: body === undefined ? {} : { "Content-Type": "application/json" },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     cache: "no-store",
   });
   return decodeApiResponse(response);
 }
 
-export async function syncProviderPage(
-  token: string,
-): Promise<{ received: number; stored: number; nextPage: number }> {
+export async function syncProviderPage(): Promise<{
+  received: number;
+  stored: number;
+  nextPage: number;
+}> {
   return (await operatorRequest(
-    token,
     "/api/v1/operator/provider/sync",
     "POST",
     {},
-  )) as { received: number; stored: number; nextPage: number };
+  )) as {
+    received: number;
+    stored: number;
+    nextPage: number;
+  };
 }
+
 export type PendingTreatment = {
   id: string;
   sourceUrl: string;
@@ -138,34 +133,28 @@ export type PendingTreatment = {
     beeHazardClass: number | null;
   }>;
 };
-export async function loadPendingTreatments(
-  token: string,
-): Promise<PendingTreatment[]> {
-  const result = (await operatorRequest(token, "/api/v1/operator/notices")) as {
+export async function loadPendingTreatments(): Promise<PendingTreatment[]> {
+  const result = (await operatorRequest("/api/v1/operator/notices")) as {
     notices: PendingTreatment[];
   };
   return result.notices;
 }
 export async function reviewTreatment(
-  token: string,
   id: string,
   decision: "verified" | "rejected",
   reviewer: string,
   evidenceNote: string,
 ): Promise<void> {
   await operatorRequest(
-    token,
     `/api/v1/operator/notices/${encodeURIComponent(id)}/review`,
     "POST",
     { decision, reviewer, evidenceNote },
   );
 }
 
-/** Source diagnostics require operator authentication and never expose raw records. */
-export async function loadProviderCollectionStatus(
-  token: string,
-): Promise<ProviderCollectionStatus> {
+/** Source diagnostics describe persisted ingestion without returning raw provider records. */
+export async function loadProviderCollectionStatus(): Promise<ProviderCollectionStatus> {
   return providerCollectionStatusSchema.parse(
-    await operatorRequest(token, "/api/v1/operator/provider/status"),
+    await operatorRequest("/api/v1/operator/provider/status"),
   );
 }
