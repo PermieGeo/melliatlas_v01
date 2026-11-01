@@ -90,7 +90,7 @@ describe("Provider request configuration", () => {
     expect(result.collectionEnabled).toBe(false);
     expect(result.revision).toBe("7");
     expect(query).toHaveBeenCalledWith(expect.stringContaining("registry_revision = $4::bigint"), [
-      "Example Provider", "https://example.org", JSON.stringify({ endpoint: "https://example.org/plans", request }), "6",
+      "Example Provider", "https://example.org/plans", JSON.stringify({ endpoint: "https://example.org/plans", request }), "6",
     ]);
   });
 

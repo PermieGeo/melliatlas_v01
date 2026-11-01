@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run test/",
     "test:db": "vitest run integration/",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "provider:seed": "tsx src/db/seedProvider.ts"
   },
   "dependencies": {
     "@melliatlas/contracts": "workspace:*",

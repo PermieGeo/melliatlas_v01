@@ -27,6 +27,8 @@ features:
       - SRC-R12
     code_paths:
       - apps/api/src/modules/sources/providerConfiguration.ts
+      - apps/api/src/modules/sources/providerSeed.ts
+      - apps/api/src/db/seedProvider.ts
       - apps/api/src/modules/sources/beekeeperPlanPage.ts
       - apps/api/src/app.ts
       - apps/api/src/server.ts
@@ -35,6 +37,8 @@ features:
       - packages/contracts/src/index.ts
     test_paths:
       - apps/api/test/providerConfiguration.test.ts
+      - apps/api/test/providerSeed.test.ts
+      - apps/api/integration/providerSeedMigration.test.ts
       - apps/api/test/beekeeperPlanPage.test.ts
       - apps/api/test/app.test.ts
       - apps/api/integration/providerConfigurationMigration.test.ts

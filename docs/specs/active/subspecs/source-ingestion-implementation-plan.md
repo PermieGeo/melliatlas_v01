@@ -49,6 +49,8 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 
 **Completion evidence:** API/React tests, migration tests against real PostGIS, TS checks, no successful collection claim. Failure recovery: if operator token is unset the editor fails closed; a conflict requires reloading; an invalid edit never mutates the database. Roll forward by additive migration, do not roll back a deployed SQL version. The UI is not a full identity management solution; production deployment must secure its operator credential distribution.
 
+**Out-of-sequence provider bootstrap increment (non-acceptance):** migration `006_optional_provider_api_key.sql` adds an optional credential field to the existing source catalog, excluding it from future revision snapshots. `providerSeed.ts` and `db/seedProvider.ts` load operator-selected JSON presets without HTTP access or implicit approval. The default updates only the untouched migration placeholder; deliberate replacement resets access policy and any prior key. Run `pnpm provider:seed:saturn` after migration as a reference setup. Test idempotency, no clobbering of operator edits, and real-PostGIS revision/credential isolation. S2 external API/access verification and S3 durable ingestion are still separate prerequisites.
+
 ### S2 — Restricted provider fetch and access decision (next)
 
 1. Investigate current official Saturn portal endpoints and contract with authorized access, exact HTTP examples, rate limits and redistribution conditions. Keep evidence in `docs/source-register.md`, update operator review policy and scope of permitted HTTPS host/path.

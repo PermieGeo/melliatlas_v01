@@ -12,7 +12,7 @@ Run commands from the repository root after [installation](INSTALLATION.md). For
 | `python3 tools/feature_context.py WEATHER.POINT_FORECAST` | One capability's owners/tests                                                                                                  | Python 3 (standard library)                          |
 | `python3 tools/feature_context.py SRC-01`                 | Features within a delivery stage                                                                                               | Python 3 (standard library)                          |
 | `pnpm db:migrate`                                         | Apply checksummed SQL migrations to PostgreSQL                                                                                 | Running PostGIS database                             |
-| `pnpm --dir apps/api test:db`                             | Run independent real-PostGIS tests covering migrations `001`–`005`, including approval/history and treatment-source revocation | Running PostGIS database and `DATABASE_URL`          |
+| `pnpm --dir apps/api test:db`                             | Run independent real-PostGIS tests covering migrations `001`–`006`, including approval/history and treatment-source revocation | Running PostGIS database and `DATABASE_URL`          |
 | `pnpm e2e`                                                | Playwright desktop/mobile Chromium browser flows                                                                               | Running PostGIS; installed Chromium browser binaries |
 
 Install browsers once where required:
@@ -42,6 +42,7 @@ New behavior needs independently derived positive, negative, boundary and regres
 
 - Restricted outbound transport: `apps/api/test/httpFetcher.test.ts` uses synthetic public/private DNS answers and injected HTTPS responses; real network/TLS behavior is not established by these fakes.
 - Treatment approval migration and revocation: `apps/api/integration/treatmentAccessMigration.test.ts` requires an isolated real PostGIS connection and checks migration `005` after `001`–`004`.
+- Provider seed contract and overwrite guards: `apps/api/test/providerSeed.test.ts`; secret-excluding revision snapshots, database seeding and credential reset: `apps/api/integration/providerSeedMigration.test.ts` (real PostGIS, migrations `001`–`006`).
 
 ### Useful post-installation sequence
 

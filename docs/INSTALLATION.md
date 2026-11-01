@@ -220,7 +220,19 @@ pnpm db:migrate
 
 The root command builds the shared contracts and runs the API's checksummed SQL migrations. Run it before the first API launch and after pulling updates that introduce new migrations. Do not edit historical SQL migrations that have already been applied.
 
-### 4. Start API and web together
+### 4. Initialize the reference treatment provider (optional)
+
+After migrations, populate the existing `source_catalog` row using the repository-owned preset:
+
+```bash
+pnpm provider:seed:saturn
+```
+
+This loads `apps/api/config/providers/fgis-saturn.json`: provider name, `treatment` type, full HTTPS endpoint, `POST` request settings and **no external API key** (`api_key` is SQL `NULL`). It does not contact the provider, approve access, or import treatment plans. The reference endpoint and region filter are taken from the historical prototype and are **not independently verified** for automated collection.
+
+The command is repeatable. It updates only the untouched migration placeholder; subsequent runs are no-ops, while operator-modified settings are preserved. To intentionally reset to the preset, run `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace`. This clears any saved provider key and revokes prior access approval. See [Usage](USAGE.md#initialize-the-reference-provider-from-the-command-line) for details.
+
+### 5. Start API and web together
 
 ```bash
 pnpm dev
@@ -242,7 +254,7 @@ Both should return HTTP 200 when the API and database are available. In PowerShe
 - Stop the development servers with **Ctrl+C** in the `pnpm dev` terminal.
 - Stop only the database container with `docker compose stop db`. This preserves its volume.
 - To restart later: open the repository root, select Node.js 22 if using NVM, run `docker compose up -d db`, then `pnpm dev`.
-- After receiving a repository update, run `pnpm install --frozen-lockfile` if `pnpm-lock.yaml` or dependencies changed, and `pnpm db:migrate` if a new SQL migration was introduced (the current source history includes migrations `001` through `005`).
+- After receiving a repository update, run `pnpm install --frozen-lockfile` if `pnpm-lock.yaml` or dependencies changed, and `pnpm db:migrate` if a new SQL migration was introduced (the current source history includes migrations `001` through `006`).
 - Do **not** use `docker compose down -v` during routine shutdown: the `-v` option removes the database volume and its data.
 
 `pnpm install`, environment-file creation, and migrations are not required on every normal restart. Never re-copy `.env.example` over an existing `.env` merely to restart.
