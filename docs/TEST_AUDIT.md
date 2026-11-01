@@ -1,5 +1,7 @@
 # Test Audit — 2026-10-31
 
+**Progress note (2026-11-01):** The `SRC-01` source-policy contract and registry now have independent unit tests. Migration `002` has a dedicated PostGIS-backed upgrade, approval, revision-history and fail-closed integration suite (`apps/api/integration/sourceCatalogMigration.test.ts`) included in CI. This suite has **not** been executed in the current artifact environment because PostgreSQL/PostGIS is unavailable; its actual result must be checked in CI or against local PostGIS. The original-baseline counts and remaining coverage risks below refer to the initial audit and are not updated coverage percentages.
+
 This is a **source-level review**, not a certified coverage report. It uses the starter implementation and the existing test sources; test execution results must be recorded separately. The review distinguishes implemented bootstrap behavior from work that only exists in the SRC-01 specification.
 
 ## 1. What the original tests actually covered

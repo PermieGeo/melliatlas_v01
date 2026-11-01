@@ -19,6 +19,6 @@ The Compose database uses `POSTGRES_PASSWORD` as an optional override, with a lo
 
 ## Planned configuration
 
-Future source-ingestion settings include per-source approved domains, access policy, polling interval, quotas and parser versions. Future AI-agent settings include provider/model, credentials, tool allowlist and run budgets. **These settings are specified in the umbrella, but are not recognized by the current executable API.** Do not add unimplemented variables to production deployment files.
+Migration `002_source_access_registry.sql` stores proposed municipal-source hosts, paths, review decisions, fetch policy, polling interval and parser version in PostgreSQL; approved records can be read by an internal repository. **No public operator API, source-fetch worker or configuration environment variables are active yet.** Existing catalog entries remain unapproved by default. Future AI-agent settings include provider/model, credentials, tool allowlist and run budgets. Do not add unimplemented variables to production deployment files.
 
 Never commit `.env` files, API keys, personal coordinates or production credentials.
