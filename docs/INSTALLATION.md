@@ -18,7 +18,7 @@ pnpm dev
 
 The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the three development servers but leaves the database running.
 
-**Only configuring the external treatment provider?** The map/weather view does not need a token. The separate local administrator frontend at `http://127.0.0.1:5174` needs no token in this localhost-only slice; saving settings does not fetch. Explicit import fetches one batch. Pending polygons appear only in the administrator preview; public notices remain verified-only. See [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md).
+**Only configuring the external treatment provider?** The map/weather view does not need a token. The separate local administrator frontend at `http://127.0.0.1:5174` needs no token in this localhost-only slice; saving settings does not fetch. Explicit import fetches one batch. Valid structured pending polygons also appear on the beekeeper map with an unverified label; administrator-only evidence and review actions remain separate. See [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md).
 
 ## Requirements and ports
 
@@ -30,12 +30,12 @@ The `apps/api/.env` file must already exist and point to the database on host po
 | PostgreSQL/PostGIS | Provided by `postgis/postgis:16-3.4` in `compose.yaml`                  |
 | Internet           | Dependency downloads, OpenStreetMap tiles, and live Open-Meteo requests |
 
-| Address                 | Service      | Notes                                               |
-| ----------------------- | ------------ | --------------------------------------------------- |
-| `http://localhost:5173` | Beekeeper UI | Public/read-only map, forecast and verified notices |
-| `http://localhost:5174` | Admin UI     | Local-only source settings, import, evidence review |
-| `http://127.0.0.1:3001` | API          | Vite forwards `/api` requests here                  |
-| `127.0.0.1:5433`        | PostgreSQL   | Host port; Docker container internally uses 5432    |
+| Address                 | Service      | Notes                                                                                   |
+| ----------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `http://localhost:5173` | Beekeeper UI | Public/read-only map, forecast and source-attributed treatment plans with review status |
+| `http://localhost:5174` | Admin UI     | Local-only source settings, import, evidence review                                     |
+| `http://127.0.0.1:3001` | API          | Vite forwards `/api` requests here                                                      |
+| `127.0.0.1:5433`        | PostgreSQL   | Host port; Docker container internally uses 5432                                        |
 
 Do not run an additional API process alongside the root `pnpm dev` command: it already starts `@melliatlas/api`, `@melliatlas/web` and `@melliatlas/admin`.
 

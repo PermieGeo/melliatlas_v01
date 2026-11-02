@@ -131,7 +131,7 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     );
   });
 
-  it("stores raw evidence, requires manual review, and remains idempotent", async () => {
+  it("publishes valid attributed structured candidates without operator verification and remains idempotent", async () => {
     const requests: string[] = [];
     const service = new TreatmentIngestionService(pool, {
       fetch: async (_source, request) => {
@@ -149,7 +149,14 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       regionalFilter: { subject: 55 },
       pageNumber: 0,
     });
-    expect(await service.published()).toEqual([]);
+    const publicPending = await service.published();
+    expect(publicPending).toHaveLength(1);
+    expect(publicPending[0]).toMatchObject({
+      reviewStatus: "pending",
+      geometry: { type: "Polygon" },
+      sourceUrl: sourceFixture.url,
+    });
+    expect(await service.published([0, 0, 1, 1])).toEqual([]);
     const preview = await service.preview();
     expect(preview).toHaveLength(1);
     expect(preview[0]).toMatchObject({
@@ -159,6 +166,23 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     const candidates = await service.pending();
     expect(candidates).toHaveLength(1);
     expect(candidates[0].geometryAvailable).toBe(true);
+    await pool.query(
+      "UPDATE source_observations SET extraction_method='model' WHERE id=$1",
+      [candidates[0].id],
+    );
+    expect(await service.published()).toEqual([]);
+    expect(await service.preview()).toHaveLength(1);
+    await pool.query(
+      "UPDATE source_observations SET extraction_method='structured', review_status='rejected' WHERE id=$1",
+      [candidates[0].id],
+    );
+    expect(await service.published()).toEqual([]);
+    expect(await service.preview()).toEqual([]);
+    await pool.query(
+      "UPDATE source_observations SET review_status='pending' WHERE id=$1",
+      [candidates[0].id],
+    );
+    expect(await service.published()).toHaveLength(1);
     expect(await service.status()).toMatchObject({
       sourceConfigured: true,
       pendingReview: 1,

@@ -1,6 +1,6 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
-import { Layers3, MapPin, RefreshCw, ShieldCheck } from "lucide-react";
+import { Layers3, MapPin, RefreshCw, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { inspectLocation, loadMapTreatments } from "./api/client";
 import { MapCanvas } from "./components/MapCanvas";
@@ -68,8 +68,8 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden items-center gap-1.5 text-xs text-emerald-800 sm:flex">
-              <ShieldCheck size={15} />
-              {t("publishedOnly")}
+              <Info size={15} />
+              {t("sourceReviewNotice")}
             </span>
             <label className="flex items-center gap-2 text-xs text-slate-600">
               {t("language")}
@@ -122,7 +122,7 @@ export default function App() {
               {t("treatments")}
             </label>
             <p className="text-xs leading-relaxed text-slate-500">
-              {t("publishedOnly")}
+              {t("sourceReviewNotice")}
             </p>
             <div className="border-t border-slate-100 pt-4">
               <label className="text-sm font-semibold" htmlFor="radius">

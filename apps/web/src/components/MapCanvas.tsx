@@ -76,10 +76,10 @@ export function MapCanvas({
               ring.map(([lon, lat]) => [lat, lon] as [number, number]),
             )}
             pathOptions={{
-              color: notice.reviewStatus === "pending" ? "#d97706" : "#c2410c",
+              color: notice.reviewStatus !== "verified" ? "#d97706" : "#c2410c",
               weight: 2,
-              dashArray: notice.reviewStatus === "pending" ? "5 5" : undefined,
-              fillOpacity: notice.reviewStatus === "pending" ? 0.12 : 0.22,
+              dashArray: notice.reviewStatus !== "verified" ? "5 5" : undefined,
+              fillOpacity: notice.reviewStatus !== "verified" ? 0.12 : 0.22,
             }}
           >
             <Popup>
@@ -117,9 +117,9 @@ export function MapCanvas({
                   {t("original")}
                 </a>
                 <p>
-                  {notice.reviewStatus === "pending"
-                    ? t("unverified")
-                    : t("verified")}
+                  {notice.reviewStatus === "verified"
+                    ? t("verified")
+                    : t("unverified")}
                 </p>
               </div>
             </Popup>

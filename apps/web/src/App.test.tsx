@@ -47,7 +47,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("reads the verified public map endpoint without accessing administrator routes", async () => {
+it("reads the public attributed map endpoint without accessing administrator routes", async () => {
   const fetcher = vi.fn(async (url: string) => {
     if (url === "/api/v1/notices")
       return new Response(JSON.stringify({ notices: [] }));
@@ -55,9 +55,7 @@ it("reads the verified public map endpoint without accessing administrator route
   });
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
-  expect(
-    await screen.findByText(/Проверенных полигонов пока нет/),
-  ).toBeTruthy();
+  expect(await screen.findByText(/Полигонов обработок пока нет/)).toBeTruthy();
   expect(screen.getByText("Features: 0")).toBeTruthy();
   expect(screen.queryByText("Конфигурация")).toBeNull();
   expect(fetcher).toHaveBeenCalledWith("/api/v1/notices", expect.any(Object));
@@ -117,4 +115,49 @@ it("does not invent forecast data after failed fetch and allows retry", async ()
   fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
   await waitFor(() => expect(screen.getByText("10.0 °C")).toBeTruthy());
   expect(attempts).toBe(2);
+});
+
+it("renders an unreviewed structured map feature without requiring admin access", async () => {
+  const pending = {
+    id: "00000000-0000-4000-8000-000000000011",
+    sourceName: "Fixture treatment source",
+    sourceUrl: "https://example.invalid/plans",
+    retrievedAt: "2026-11-01T08:00:00.000Z",
+    publishedAt: null,
+    startAt: null,
+    endAt: null,
+    contractorName: null,
+    cadastralNumber: null,
+    treatments: [],
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [32.0, 54.7],
+          [32.1, 54.7],
+          [32.1, 54.8],
+          [32.0, 54.7],
+        ],
+      ],
+    },
+    spatialPrecision: "exact_polygon",
+    reviewStatus: "pending",
+  };
+  const fetcher = vi.fn(
+    async (url: string) =>
+      new Response(
+        JSON.stringify(
+          url === "/api/v1/notices" ? { notices: [pending] } : forecast,
+        ),
+      ),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  expect(await screen.findByText("Features: 1")).toBeTruthy();
+  expect(
+    screen.getAllByText(/включая записи без независимой проверки/),
+  ).toHaveLength(2);
+  expect(fetcher.mock.calls.every(([url]) => !url.includes("/operator/"))).toBe(
+    true,
+  );
 });

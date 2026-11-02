@@ -20,7 +20,7 @@ const forecast = (lat: number, lon: number) => ({
   },
 });
 
-test("beekeeper map only reads the public reviewed notice endpoint", async ({
+test("beekeeper map only reads the public source-attributed notice endpoint", async ({
   page,
 }) => {
   const requested: string[] = [];
@@ -35,7 +35,7 @@ test("beekeeper map only reads the public reviewed notice endpoint", async ({
   await expect(
     page.getByRole("heading", { name: "Карта обработок" }),
   ).toBeVisible();
-  await expect(page.getByText(/Проверенных полигонов пока нет/)).toBeVisible();
+  await expect(page.getByText(/Полигонов обработок пока нет/)).toBeVisible();
   expect(requested.length).toBeGreaterThan(0);
   expect(requested.every((url) => !url.includes("operator"))).toBe(true);
   await expect(page.getByText("Конфигурация")).toHaveCount(0);
@@ -94,4 +94,58 @@ test("map selection shows attributed forecast with a localized retry", async ({
     () => document.documentElement.scrollWidth > innerWidth + 1,
   );
   expect(overflow).toBe(false);
+});
+
+test("public map displays unreviewed sourced polygons without an administrator API call", async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  const pending = {
+    id: "00000000-0000-4000-8000-000000000021",
+    sourceName: "Fixture publisher",
+    sourceUrl: "https://example.invalid/plans",
+    retrievedAt: "2026-11-01T08:00:00.000Z",
+    publishedAt: null,
+    startAt: null,
+    endAt: null,
+    contractorName: null,
+    cadastralNumber: null,
+    treatments: [],
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [32.0, 54.75],
+          [32.09, 54.75],
+          [32.09, 54.82],
+          [32.0, 54.82],
+          [32.0, 54.75],
+        ],
+      ],
+    },
+    spatialPrecision: "exact_polygon",
+    reviewStatus: "pending",
+  };
+  await page.route("**/api/v1/notices", async (route) => {
+    requests.push(route.request().url());
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ notices: [pending] }),
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByText("Полигонов: 1")).toBeVisible();
+  await expect(
+    page.locator("aside").getByText(/без независимой проверки/),
+  ).toBeVisible();
+  const polygon = page.locator(
+    ".leaflet-overlay-pane path.leaflet-interactive",
+  );
+  await expect(polygon).toHaveCount(1);
+  await polygon.click();
+  await expect(
+    page.getByText("Не проверено. Не является оценкой безопасности."),
+  ).toBeVisible();
+  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.every((url) => !url.includes("operator"))).toBe(true);
 });

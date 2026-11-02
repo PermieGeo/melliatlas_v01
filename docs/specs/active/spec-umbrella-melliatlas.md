@@ -42,7 +42,7 @@ Steps 1 and the weather part of step 2 exist in the starter. The remaining steps
 
 ## 3. What is available today
 
-The bootstrap and subsequent source-ingestion increments include a React/Leaflet map with adjustable radius and Open-Meteo weather, a separate localhost administrator frontend, a reviewed-only public polygon API, and a PostGIS-backed operator preview and evidence review workflow. Responses carry source details and are schema-validated.
+The bootstrap and subsequent source-ingestion increments include a React/Leaflet map with adjustable radius and Open-Meteo weather, a separate localhost administrator frontend, a provenance-labelled public polygon API that distinguishes validated structured pending records from operator-verified records, and a PostGIS-backed operator preview and evidence review workflow. Responses carry source details and are schema-validated.
 
 It does **not** yet collect municipal announcements, publish notice geometries, store private apiaries, estimate flowering, send alerts or call an AI provider. There are no legitimate substitutes for those missing integrations. UI states for future functionality must remain clearly identified as future work.
 
