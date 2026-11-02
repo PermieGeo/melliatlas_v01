@@ -1,6 +1,6 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY, NOTICES.EXTRACTION, NOTICES.MAP_OVERLAY, NOTICES.SPATIAL_PRECISION
 import { createHash } from "node:crypto";
-import type { Pool, PoolClient } from "pg";
+import type { Pool } from "pg";
 import { z } from "zod";
 import { ApiFailure } from "../../lib/errors.js";
 import {
