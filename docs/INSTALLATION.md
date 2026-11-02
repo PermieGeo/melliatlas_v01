@@ -1,6 +1,6 @@
 # Installation and Local Development
 
-MelliAtlas consists of a React/Vite web application, a Node.js API, shared TypeScript contracts, and a PostgreSQL/PostGIS database. For local development, **the database runs in Docker; the API and web app run on your computer**. The root `pnpm dev` command starts both applications.
+MelliAtlas consists of two React/Vite applications, a Node.js API, shared TypeScript contracts, and a PostgreSQL/PostGIS database. For local development, **the database runs in Docker; the API and two frontends run on your computer**. The root `pnpm dev` command starts all three applications.
 
 This guide covers macOS (Intel and Apple Silicon), Windows with WSL 2 (recommended), and native Windows PowerShell. For Linux, follow the WSL terminal steps with a working Docker Engine and Compose plugin.
 
@@ -16,9 +16,9 @@ pnpm db:migrate                    # First launch or after a new migration
 pnpm dev
 ```
 
-The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the two development servers but leaves the database running.
+The `apps/api/.env` file must already exist and point to the database on host port `5433`. For the first installation, follow the platform instructions below; they include `pnpm install --frozen-lockfile` and environment-file creation. Open the local URL printed by Vite (normally `http://localhost:5173`) and check `http://127.0.0.1:3001/health/ready` in another terminal. `Ctrl+C` stops the three development servers but leaves the database running.
 
-**Only configuring the external treatment provider?** The map/weather view does not need a token. The locally bound administrator editor needs no token: saving settings triggers one bounded page fetch. Valid source polygons appear as unverified previews; public notices remain verified-only. See [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md).
+**Only configuring the external treatment provider?** The map/weather view does not need a token. The separate local administrator frontend at `http://127.0.0.1:5174` needs no token in this localhost-only slice; saving settings does not fetch. Explicit import fetches one batch. Pending polygons appear only in the administrator preview; public notices remain verified-only. See [CONFIGURATION](CONFIGURATION.md) and [USAGE](USAGE.md).
 
 ## Requirements and ports
 
@@ -30,13 +30,14 @@ The `apps/api/.env` file must already exist and point to the database on host po
 | PostgreSQL/PostGIS | Provided by `postgis/postgis:16-3.4` in `compose.yaml`                  |
 | Internet           | Dependency downloads, OpenStreetMap tiles, and live Open-Meteo requests |
 
-| Address                 | Service    | Notes                                              |
-| ----------------------- | ---------- | -------------------------------------------------- |
-| `http://localhost:5173` | Web UI     | Use the URL printed by Vite; normally this address |
-| `http://127.0.0.1:3001` | API        | Vite forwards `/api` requests here                 |
-| `127.0.0.1:5433`        | PostgreSQL | Host port; Docker container internally uses 5432   |
+| Address                 | Service      | Notes                                               |
+| ----------------------- | ------------ | --------------------------------------------------- |
+| `http://localhost:5173` | Beekeeper UI | Public/read-only map, forecast and verified notices |
+| `http://localhost:5174` | Admin UI     | Local-only source settings, import, evidence review |
+| `http://127.0.0.1:3001` | API          | Vite forwards `/api` requests here                  |
+| `127.0.0.1:5433`        | PostgreSQL   | Host port; Docker container internally uses 5432    |
 
-Do not run an additional API process alongside the root `pnpm dev` command: it already starts both `@melliatlas/api` and `@melliatlas/web`.
+Do not run an additional API process alongside the root `pnpm dev` command: it already starts `@melliatlas/api`, `@melliatlas/web` and `@melliatlas/admin`.
 
 ## macOS: first-time setup
 

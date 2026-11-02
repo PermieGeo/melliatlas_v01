@@ -32,8 +32,8 @@ features:
       - apps/api/src/modules/sources/beekeeperPlanPage.ts
       - apps/api/src/app.ts
       - apps/api/src/server.ts
-      - apps/web/src/components/ProviderSettings.tsx
-      - apps/web/src/api/client.ts
+      - apps/admin/src/components/ProviderConfigurationForm.tsx
+      - apps/admin/src/api/client.ts
       - packages/contracts/src/index.ts
     test_paths:
       - apps/api/test/providerConfiguration.test.ts
@@ -43,7 +43,7 @@ features:
       - apps/api/test/beekeeperPlanPage.test.ts
       - apps/api/test/app.test.ts
       - apps/api/integration/providerConfigurationMigration.test.ts
-      - apps/web/src/components/ProviderSettings.test.tsx
+      - apps/admin/src/App.test.tsx
   - id: SOURCES.DOCUMENT_HISTORY
     stage_ids:
       - SRC-01

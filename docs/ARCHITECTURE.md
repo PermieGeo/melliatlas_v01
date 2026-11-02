@@ -6,14 +6,15 @@ MelliAtlas starts as one repository with **separately buildable and deployable a
 
 | Component            | Technology                                                     | Boundary                                                                                               |
 | -------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `apps/web`           | React 19, Vite, Tailwind CSS 4, Leaflet                        | UI state, map interaction, accessible source summaries                                                 |
+| `apps/web`           | React 19, Vite, Tailwind CSS 4, Leaflet                        | Read-only verified treatment map and attributed weather for beekeepers                                 |
+| `apps/admin`         | React 19, Vite, Tailwind CSS 4, Leaflet                        | Local operator settings, manual collection, source review and pending geometry previews                |
 | `apps/api`           | Node.js 22, TypeScript, Express                                | Authenticated integration gateway, validation, provenance, source jobs, AI orchestration               |
 | `packages/contracts` | Zod, TypeScript                                                | Versioned `/api/v1` JSON schemas                                                                       |
 | Database             | PostgreSQL 16 + PostGIS 3                                      | Source metadata, ingest runs, normalized observations, indexed geometries and private application data |
 | Background workers   | Dedicated Node.js process (planned in `SRC-01`)                | Scheduled fetch, parsing, normalization and idempotent persistence                                     |
 | AI provider          | Configurable server-side model adapter (planned in `AGENT-01`) | Tool-using extraction, cited explanation, constrained structured output                                |
 
-The web app never imports API internals. Both applications share HTTP schemas through `packages/contracts` and keep their runtime dependencies separate. Database credentials and AI/source credentials remain on the server. Both apps have independent local and production build commands.
+Neither frontend imports API internals. All three applications share HTTP schemas through `packages/contracts` and keep their runtime dependencies separate. Source credentials remain server-side. The two frontends have independent builds and use the same API and PostGIS database.
 
 ## Architecture decisions and module ownership
 
@@ -25,7 +26,7 @@ Each owned module has a `contract.md` describing its published interface, data, 
 
 ## Ingestion and evidence model
 
-The current implementation includes an **internal restricted HTTPS fetch transport** for explicitly reviewed sources, but it has no live caller, scheduler or stored results. It must not be mistaken for a running ingestion pipeline. Future source jobs use the explicit path: **source registry -> approved fetch -> immutable fetch record -> extraction -> validation -> deduplication -> geospatial normalization -> review status -> published observation**. Each observation retains a direct source link, publication/retrieval times, run ID, raw content fingerprint, geometry precision and claim status. Unknown is different from safe. Provider failures preserve the previous verified snapshot with freshness markers, or return unavailable when no valid snapshot exists.
+The current implementation has a **restricted HTTPS fetch transport** used by a manual local-administrator collector, with ingestion-run and evidence persistence; it has no region-wide worker or scheduler. Future source jobs use the explicit path: **source registry -> approved fetch -> immutable fetch record -> extraction -> validation -> deduplication -> geospatial normalization -> review status -> published observation**. Each observation retains a direct source link, publication/retrieval times, run ID, raw content fingerprint, geometry precision and claim status. Unknown is different from safe. Provider failures preserve the previous verified snapshot with freshness markers, or return unavailable when no valid snapshot exists.
 
 First-party, institutional and third-party sources each require their own license/access decision. Source adapters are separately switchable. The first source priority is a **configurable structured treatment provider** (the historical Saturn portal is a reference candidate), followed by municipal notices, OpenStreetMap/Overpass, Open-Meteo and Copernicus Data Space. The purported Saturn endpoint, region mapping and unrestricted usage asserted in the reference prototype are **not** treated as verified contracts.
 
@@ -52,3 +53,9 @@ The supplied October 2026 reference prototype informed the map-centric layout an
 ### Manual provider-to-map evidence boundary
 
 The operator HTTP boundary (`apps/api/src/app.ts`) invokes `TreatmentIngestionService` only with bearer authorization. It relies on `ApprovedSourceRegistry` and the restricted transport before external retrieval. `source_documents` holds immutable raw page versions, `source_observations` holds source-derived candidates and spatial precision, and `source_observation_reviews` records the first operator verification/rejection decision. The public notices API projects verified WGS84 polygons only. The frontend renders these as sourced map overlays, with no direct browser-to-provider traffic. Automatic collection and conflict resolution are outside the current increment.
+
+## Administrator and client boundary (S3a.4)
+
+The beekeeper client at `http://127.0.0.1:5173` calls only `GET /api/v1/notices` for reviewed field geometry and the weather inspection API. The separately built local administrator frontend at `http://127.0.0.1:5174` uses `/api/v1/operator/*` for connection editing, a bounded explicit import, record review, status and pending map preview. Configuration saves do not fetch the provider.
+
+The backend currently binds loopback; operator routes reject the beekeeper browser origin and allow the local administrator origin. **Browser origins and separate bundles are not authentication.** Never make operator routes publicly accessible without independent server-side administrator identity, authorization and network controls. In-app notification events, full-region background reconciliation and private apiaries are subsequent stages, not delivered by this frontend split.

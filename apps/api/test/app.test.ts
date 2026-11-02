@@ -248,9 +248,13 @@ describe("local administrator treatment evidence HTTP boundaries", () => {
     expect(blocked.status).toBe(403);
     expect(blocked.body.error.code).toBe("FORBIDDEN_ORIGIN");
     expect(syncCount).toBe(before);
-    const local = await request(app)
+    const publicUi = await request(app)
       .post("/api/v1/operator/provider/sync")
       .set("Origin", "http://localhost:5173");
+    expect(publicUi.status).toBe(403);
+    const local = await request(app)
+      .post("/api/v1/operator/provider/sync")
+      .set("Origin", "http://localhost:5174");
     expect(local.status).toBe(200);
   });
 

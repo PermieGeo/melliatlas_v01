@@ -7,9 +7,9 @@ Run commands from the repository root after [installation](INSTALLATION.md). For
 | `sh ./run-format.sh`                                                        | Prepare Prettier formatting (`FMT`); modifies files and is never a `CHK` command                                               | Installed dependencies                               |
 | `python3 -B -m unittest discover -s scripts -p "test_enable_apatch_fmt.py"` | Test non-destructive local apatch configuration setup                                                                          | Python 3 (standard library)                          |
 | `pnpm format:check`                                                         | Prettier validation                                                                                                            | Installed dependencies                               |
-| `pnpm typecheck`                                                            | Build shared schemas; type-check API and web                                                                                   | Installed dependencies                               |
+| `pnpm typecheck`                                                            | Build shared schemas; type-check API, web and admin                                                                            | Installed dependencies                               |
 | `pnpm test`                                                                 | API Vitest/Supertest and React component tests                                                                                 | No live provider required; HTTP is stubbed           |
-| `pnpm build`                                                                | Production TypeScript/API and Vite/web builds                                                                                  | Installed dependencies                               |
+| `pnpm build`                                                                | Production TypeScript/API and both Vite frontend builds                                                                        | Installed dependencies                               |
 | `python3 tools/specs/validate_state.py`                                     | Checkpoint, links and feature cross-reference                                                                                  | Python 3 (standard library)                          |
 | `python3 tools/feature_context.py WEATHER.POINT_FORECAST`                   | One capability's owners/tests                                                                                                  | Python 3 (standard library)                          |
 | `python3 tools/feature_context.py SRC-01`                                   | Features within a delivery stage                                                                                               | Python 3 (standard library)                          |
@@ -34,10 +34,10 @@ The E2E configuration starts `pnpm dev` automatically (or may reuse an existing 
 - Real migration compatibility, approval constraints, history and policy checks: `apps/api/integration/sourceCatalogMigration.test.ts` (explicit `test:db`, run on CI with PostGIS; tests roll back their temporary schema).
 - Provider request building/operator API: `apps/api/test/providerConfiguration.test.ts`, `apps/api/test/app.test.ts`.
 - Provider migration/optimistic revision: `apps/api/integration/providerConfigurationMigration.test.ts` (real PostgreSQL, requires DATABASE_URL).
-- Provider operator UI: `apps/web/src/components/ProviderSettings.test.tsx`.
+- Provider operator UI: `apps/admin/src/App.test.tsx`; save/configuration must not implicitly collect data.
 - Browser components: `apps/web/src/App.test.tsx`.
 - Browser response decoding and errors: `apps/web/src/api/client.test.ts`.
-- Desktop/mobile map interaction: `tests/e2e/map.spec.ts`.
+- Desktop/mobile map interaction: `tests/e2e/map.spec.ts`; local administrator isolation: `tests/e2e/admin.spec.ts`.
 - Worker restart/idempotency, source-adapter fixtures, immutable document persistence and bounded-load tests: **required by SRC-01**, not yet implemented. Migration upgrade has a dedicated PostGIS integration test; unit tests alone do not establish its result.
 
 New behavior needs independently derived positive, negative, boundary and regression tests. Stub providers at network boundaries, not with product fallbacks. Classify failures before changing assertions; never weaken, skip, mock away or silently retry to green. See the [test audit](TEST_AUDIT.md) for gaps.

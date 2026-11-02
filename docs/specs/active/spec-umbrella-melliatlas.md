@@ -42,11 +42,19 @@ Steps 1 and the weather part of step 2 exist in the starter. The remaining steps
 
 ## 3. What is available today
 
-The bootstrap contains a working React/Leaflet map, region selection, adjustable radius display, a source-catalog screen, a backend API, PostgreSQL/PostGIS migration, and an Open-Meteo weather adapter. Responses carry source details and are schema-validated.
+The bootstrap and subsequent source-ingestion increments include a React/Leaflet map with adjustable radius and Open-Meteo weather, a separate localhost administrator frontend, a reviewed-only public polygon API, and a PostGIS-backed operator preview and evidence review workflow. Responses carry source details and are schema-validated.
 
 It does **not** yet collect municipal announcements, publish notice geometries, store private apiaries, estimate flowering, send alerts or call an AI provider. There are no legitimate substitutes for those missing integrations. UI states for future functionality must remain clearly identified as future work.
 
 See [Features](../../FEATURES.md) for durable capability names, [Implementation](../../IMPLEMENTATION.md) for the actual code, and [Tests](../../TESTS.md) for verification limits.
+
+## Application separation and delivery principles
+
+- `apps/web` is the beekeeper map, forecast inspection and future private apiary and in-app change indicator. It cannot configure providers or request unverified records.
+- `apps/admin` is a separate local administrator workspace for source configuration, bounded collection, pending record verification and evidence preview. It shares the Node.js backend and PostgreSQL/PostGIS; it is **not** a new backend service. Internet-facing administration requires future server-side authentication, not a browser-held API key or an assumed protection from the separate frontend.
+- Map reloads read local persisted evidence only; they do not fetch Saturn. For the initial pilot the desired subsequent collection strategy is a complete, bounded refresh of the selected administrative region on a conservative schedule, potentially overnight. Completeness must be tracked; a single API page is not a completed regional refresh.
+- Persisted user-specific change events and an in-app polling indicator are preferred over push notification infrastructure in the initial user-alert stage. Exact apiary coordinates remain private. No danger verdict follows automatically from an unverified treatment plan.
+- All UI strings must be externalized for localization, and territories/provider filtering must not assume a single national data source.
 
 ## 4. Delivery stages
 
@@ -68,7 +76,7 @@ The stages below are **work packages**. They are not feature IDs. A capability c
 
 For municipal sources, an operator maintains reviewed access settings. For configured structured treatment feeds, a localhost administrator can initiate a bounded manual fetch without documentary access approval. Bounded retrieval jobs fetch documents, preserve raw revisions and link every parsed field to its evidence. Deduplication protects against repeated downloads; restart-safe run history explains what happened when a job fails. A human review gate controls uncertain or potentially harmful claims. Published observations are searchable by location and time with stable pagination and explicit uncertainty.
 
-The next integration priority is a **configurable FGIS Saturn source**, followed by at least **two independently verified municipal sources** in the pilot. The configured treatment feed may be fetched after saving its settings in the localhost administrator UI using a restricted HTTPS client. Source response compatibility and external usage conditions have not been independently confirmed; saving settings in the local administrator UI triggers a single bounded page request, but does not enable background polling.
+The next integration priority is a **configurable FGIS Saturn source**, followed by at least **two independently verified municipal sources** in the pilot. The configured treatment feed may be fetched explicitly from the separate localhost administrator UI using a restricted HTTPS client. Saving provider settings never fetches external data. Source use conditions and region-code mappings require independent verification; full-region scheduling and background polling are not implemented.
 
 **Ready for review when:** real original documents can be followed from the map, operator diagnostics work, repeated/restarted jobs do not duplicate records, and negative security/location/date scenarios pass. This is the currently selected stage.
 

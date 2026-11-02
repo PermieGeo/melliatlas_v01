@@ -16,8 +16,8 @@ Before changes, read the owning module's `contract.md`, nearest `AGENTS.md`, sel
 - Organize by cohesive **capability**, not global controller/service/repository layers. Each functional module owns its behavior, adapters, persistence access, tests and published API.
 - Every functional module MUST have a concise `contract.md` in its root: purpose, public entry points, owned data, allowed dependencies, forbidden access, invariants and extension points. Link to source; do not duplicate signatures.
 - Keep modules acyclic. Call another module through its documented public entry point; never import another module's private adapter or access its privately owned tables.
-- `apps/api/src/app.ts` and `server.ts` compose the backend and HTTP routes; `apps/web/src/App.tsx` composes the UI. Keep business rules outside composition roots.
-- `apps/web` talks to `apps/api` only via `/api/v1`. `packages/contracts` owns public Zod wire schemas and imports neither application.
+- `apps/api/src/app.ts` and `server.ts` compose the backend and HTTP routes; `apps/web/src/App.tsx` and `apps/admin/src/App.tsx` compose separate client/operator UIs. Keep business rules outside composition roots.
+- `apps/web` and `apps/admin` talk to `apps/api` only via `/api/v1`. Operator routes and pending previews must never be imported or called from `apps/web`. `packages/contracts` owns public Zod wire schemas and imports neither application.
 - Apply **DRY to behavior and contracts**: one owner for each rule/schema/normalizer. Extract shared logic only after genuine reuse; never create a generic framework for one caller. Keep domain-specific helpers in the owning module.
 - Add a new public API, dependency, data owner or module only with an explicit requirement and updated `contract.md`; avoid speculative microservices.
 
