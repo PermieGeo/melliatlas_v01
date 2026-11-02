@@ -41,3 +41,7 @@ This catalog describes **what the product can do or is intended to do**. It is o
 - When an implementation, test or requirement changes, update that cross-reference and the owning module's `contract.md`. Keep status statements here grounded in executable evidence.
 
 See [the umbrella specification](specs/active/spec-umbrella-melliatlas.md) for the intended product, [the roadmap](ROADMAP.md) for delivery order, and [current implementation](IMPLEMENTATION.md) for existing code.
+
+### SRC-01 / S3c incremental rollout
+
+District cache persistence (migration 011) and 24-hour completed-coverage semantics are available behind the verification gate. The public map remains database-only. The legacy region-wide worker no longer starts. Automatic/manual live district refresh is not enabled until the real upstream district/period request contract is verified. No email ingestion or beekeeper-specific cache has been implemented.

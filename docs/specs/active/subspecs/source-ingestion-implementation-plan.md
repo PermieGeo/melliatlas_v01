@@ -11,7 +11,7 @@ baseline: 2026-10-31 MelliAtlas starter assembled from user-provided reference f
 
 **Normative specification:** [Source ingestion](source-ingestion.md) · **Umbrella:** [MelliAtlas MVP](../spec-umbrella-melliatlas.md) · **Checkpoint:** [STATE.json](../../STATE.json).
 
-**Current next-delivery priority:** S3c district-scoped Saturn query validation and 24-hour cache, replacing S3b whole-region scanning for the MVP. Prior S3b implementation remains in source until an explicit migration removes/disables it; this plan change does not change runtime behavior.
+**Current next-delivery priority:** S3c district-scoped Saturn query validation and 24-hour cache, replacing S3b whole-region scanning for the MVP. The old S3b worker and manual start/pause UI are now disabled in the first S3c implementation increment; historical cursor and code remain for audit and regression. The verified live district fetch remains blocked.
 
 **Status:** Proposed implementation sequence. Refresh file paths, source access, dependencies and test commands against the actual checkout **before execution**. `SRC-01` remains `READY_FOR_IMPLEMENTATION`. This document grants no completion or acceptance.
 
@@ -280,7 +280,7 @@ Extend the commands with real PostGIS integration tests and bounded-load checks 
 
 ### S3c — Replace whole-region scanning with district-scoped freshness (current, advisory)
 
-**Normative contract:** [SRC-R26–SRC-R32](source-ingestion.md#s3c--on-demand-district-collection-and-24-hour-freshness-current-priority-2026-11-02). **Status:** design only; no implementation or new checkpoint claim. **Prerequisites:** S3a.5 public provenance gates, existing PostGIS storage, operator-only control boundary, restricted fetch transport and source authorization review. Prior S3b worker is existing code to retire, **not** a completed district cache. Stage steps are ordered; do not skip the evidence gate.
+**Normative contract:** [SRC-R26–SRC-R32](source-ingestion.md#s3c--on-demand-district-collection-and-24-hour-freshness-current-priority-2026-11-02). **Status:** first implementation increment (migration 011, coverage state model, read-only operator status, disabled legacy background scan); no verified live district refresh or checkpoint acceptance. **Prerequisites:** S3a.5 public provenance gates, existing PostGIS storage, operator-only control boundary, restricted fetch transport and source authorization review. Prior S3b worker is existing code to retire, **not** a completed district cache. Stage steps are ordered; do not skip the evidence gate.
 
 **S3c.1 — Verify portal identity, filters and access (blocking gate).**
 

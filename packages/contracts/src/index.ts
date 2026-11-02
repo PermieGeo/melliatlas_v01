@@ -252,6 +252,34 @@ export type ProviderCollectionStatus = z.infer<
   typeof providerCollectionStatusSchema
 >;
 
+// Feature IDs: SOURCES.DOCUMENT_HISTORY
+export const districtCacheEntrySchema = z
+  .object({
+    sourceId: z.string(),
+    revision: z.string(),
+    districtId: z.number().int().positive(),
+    filterHash: z.string().regex(/^[a-f0-9]{64}$/),
+    state: z.enum(["running", "paused", "completed", "failed"]),
+    nextPage: z.number().int().nonnegative(),
+    pagesFetched: z.number().int().nonnegative(),
+    recordsReceived: z.number().int().nonnegative(),
+    recordsStored: z.number().int().nonnegative(),
+    totalElements: z.number().int().nonnegative().nullable(),
+    completedAt: z.string().datetime().nullable(),
+    expiresAt: z.string().datetime().nullable(),
+    lastErrorCode: z.string().nullable(),
+    coverage: z.enum(["fresh", "stale", "partial", "unknown"]),
+  })
+  .strict();
+export const districtCacheStatusSchema = z
+  .object({
+    ttlHours: z.literal(24),
+    refreshEnabled: z.literal(false),
+    entries: z.array(districtCacheEntrySchema),
+  })
+  .strict();
+export type DistrictCacheStatus = z.infer<typeof districtCacheStatusSchema>;
+
 export const regionalScanStatusSchema = z
   .object({
     regionCode: z.number().int().positive().nullable(),

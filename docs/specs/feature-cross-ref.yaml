@@ -66,11 +66,15 @@ features:
       - packages/contracts/src/index.ts
       - apps/api/src/modules/sources/contracts.ts
       - apps/api/src/modules/sources/treatmentIngestion.ts
-      - apps/admin/src/components/RegionalCollectionPanel.tsx
+      - apps/admin/src/components/DistrictCachePanel.tsx
+      - apps/api/src/modules/sources/districtCacheState.ts
+      - apps/api/src/modules/sources/districtCacheRepository.ts
       - apps/admin/src/components/CollectionPanel.tsx
     test_paths:
       - apps/api/test/regionalScanState.test.ts
       - apps/api/integration/regionalCollection.test.ts
+      - apps/api/integration/districtCache.test.ts
+      - apps/api/test/districtCacheState.test.ts
       - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
