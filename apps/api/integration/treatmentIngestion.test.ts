@@ -75,6 +75,8 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       "006_optional_provider_api_key.sql",
       "007_treatment_observation_dedupe.sql",
       "008_manual_treatment_fetch.sql",
+      "009_legacy_treatment_endpoint_alignment.sql",
+      "010_provider_document_last_seen.sql",
     ]) {
       await pool.query(
         await readFile(
@@ -101,6 +103,32 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     if (rootPool) {
       await rootPool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
       await rootPool.end();
+    }
+  });
+
+  it("serializes competing ingestion sessions within the same database schema", async () => {
+    const blocker = await pool.connect();
+    try {
+      const lock = await blocker.query<{ acquired: boolean }>(
+        "SELECT pg_try_advisory_lock(hashtext(current_schema()), hashtext('melliatlas_treatment_ingestion')) AS acquired",
+      );
+      expect(lock.rows[0]?.acquired).toBe(true);
+      let fetchCount = 0;
+      const service = new TreatmentIngestionService(pool, {
+        fetch: async () => {
+          fetchCount++;
+          throw new Error("must not fetch while ingestion is locked");
+        },
+      });
+      await expect(service.syncOnePage()).rejects.toMatchObject({
+        code: "INGEST_BUSY",
+      });
+      expect(fetchCount).toBe(0);
+    } finally {
+      await blocker.query(
+        "SELECT pg_advisory_unlock(hashtext(current_schema()), hashtext('melliatlas_treatment_ingestion'))",
+      );
+      blocker.release();
     }
   });
 

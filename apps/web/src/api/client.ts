@@ -40,8 +40,12 @@ export async function inspectLocation(
 
 export async function loadMapTreatments(
   signal: AbortSignal,
+  bbox?: readonly [number, number, number, number],
 ): Promise<MapTreatment[]> {
-  const response = await fetch("/api/v1/notices", {
+  const query = bbox
+    ? `?bbox=${bbox.map((point) => point.toFixed(6)).join(",")}`
+    : "";
+  const response = await fetch(`/api/v1/notices${query}`, {
     signal,
     cache: "no-store",
   });

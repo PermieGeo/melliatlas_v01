@@ -8,6 +8,11 @@ import {
   type BeekeeperPlan,
 } from "./beekeeperPlanPage.js";
 import { RestrictedSourceFetcher, SourceFetchFailure } from "./httpFetcher.js";
+import { advanceSourceCursor, readSourceCursor } from "./regionalScanState.js";
+import {
+  listStoredMapTreatments,
+  type MapTreatment,
+} from "./treatmentMapProjection.js";
 import { validateProviderEndpoint } from "./providerConfiguration.js";
 import { buildProviderRequest } from "./providerConfiguration.js";
 import { sourceDefinitionSchema, type SourceDefinition } from "./contracts.js";
@@ -18,22 +23,6 @@ import {
 } from "@melliatlas/contracts";
 
 const SOURCE_ID = "treatment-feed";
-export type MapTreatment = {
-  id: string;
-  sourceName: string;
-  sourceUrl: string;
-  retrievedAt: string;
-  publishedAt: string | null;
-  startAt: string | null;
-  endAt: string | null;
-  contractorName: string | null;
-  cadastralNumber: string | null;
-  treatments: BeekeeperPlan["treatments"];
-  geometry: NonNullable<BeekeeperPlan["geometry"]>;
-  spatialPrecision: "exact_polygon";
-  reviewStatus?: "pending" | "verified";
-};
-
 const geometrySchema = z
   .object({
     type: z.enum(["Polygon", "MultiPolygon"]),
@@ -69,7 +58,7 @@ type ConnectionRow = {
   kind: string;
   lifecycle: string;
   url: string;
-  source_cursor: { pageNumber?: number } | null;
+  source_cursor: unknown;
 };
 
 const connectionSchema = z
@@ -131,7 +120,7 @@ export class TreatmentIngestionService {
     });
   }
 
-  async syncOnePage(): Promise<{
+  async syncOnePage(mode: "manual" | "scan" = "manual"): Promise<{
     runId: string;
     pageNumber: number;
     received: number;
@@ -143,7 +132,7 @@ export class TreatmentIngestionService {
     let runId: string | undefined;
     try {
       const result = await client.query<{ acquired: boolean }>(
-        "SELECT pg_try_advisory_lock(hashtext('melliatlas_treatment_ingestion')) AS acquired",
+        "SELECT pg_try_advisory_lock(hashtext(current_schema()), hashtext('melliatlas_treatment_ingestion')) AS acquired",
       );
       if (!result.rows[0]?.acquired)
         throw new ApiFailure(
@@ -164,6 +153,28 @@ export class TreatmentIngestionService {
         );
       }
       const source = this.configuredSource(row.rows[0]);
+      const cursor = readSourceCursor(row.rows[0].source_cursor);
+      if (
+        mode === "manual" &&
+        (cursor.scan?.state === "running" || cursor.scan?.state === "paused")
+      ) {
+        throw new ApiFailure(
+          409,
+          "REGION_SCAN_ACTIVE",
+          "Regional collection is running",
+        );
+      }
+      if (
+        mode === "scan" &&
+        (cursor.scan?.state !== "running" ||
+          cursor.scan.revision !== row.rows[0].registry_revision)
+      ) {
+        throw new ApiFailure(
+          409,
+          "REGION_SCAN_INACTIVE",
+          "Regional collection is not active",
+        );
+      }
       const revision = row.rows[0].registry_revision;
       const connection = connectionSchema.parse(
         row.rows[0]?.api_request_config,
@@ -176,10 +187,7 @@ export class TreatmentIngestionService {
           "Configure a pageSize between 1 and 100",
         );
       }
-      const pageNumber = Math.max(
-        0,
-        Math.min(100000, Number(row.rows[0]?.source_cursor?.pageNumber ?? 0)),
-      );
+      const pageNumber = cursor.pageNumber;
       const request = buildProviderRequest(connection.endpoint, {
         ...connection.request,
         parameters: { ...connection.request.parameters, pageNumber },
@@ -225,20 +233,33 @@ export class TreatmentIngestionService {
           );
         }
         const hash = createHash("sha256").update(response.bytes).digest("hex");
+        if (
+          page.totalElements !== null &&
+          page.plans.length === 0 &&
+          pageNumber * Number(size) < page.totalElements
+        ) {
+          throw new ApiFailure(
+            502,
+            "INCOMPLETE_SOURCE_PAGE",
+            "Provider returned an empty page before the reported end",
+          );
+        }
         const nextPage =
-          page.plans.length === 0 ||
-          page.plans.length < Number(size) ||
-          (page.totalElements !== null &&
-            (pageNumber + 1) * Number(size) >= page.totalElements)
-            ? 0
-            : pageNumber + 1;
+          page.totalElements !== null
+            ? (pageNumber + 1) * Number(size) >= page.totalElements
+              ? 0
+              : pageNumber + 1
+            : page.plans.length < Number(size)
+              ? 0
+              : pageNumber + 1;
         await client.query("BEGIN");
         const registry = await client.query<{
           registry_revision: string;
           lifecycle: string;
           url: string;
+          source_cursor: unknown;
         }>(
-          "SELECT registry_revision, lifecycle, url FROM source_catalog WHERE id=$1 FOR UPDATE",
+          "SELECT registry_revision, lifecycle, url, source_cursor FROM source_catalog WHERE id=$1 FOR UPDATE",
           [SOURCE_ID],
         );
         if (
@@ -252,14 +273,36 @@ export class TreatmentIngestionService {
             "Source configuration changed during collection",
           );
         }
+        const latestCursor = readSourceCursor(registry.rows[0].source_cursor);
+        if (
+          mode === "manual" &&
+          (latestCursor.scan?.state === "running" ||
+            latestCursor.scan?.state === "paused")
+        ) {
+          throw new ApiFailure(
+            409,
+            "REGION_SCAN_ACTIVE",
+            "Regional collection started during the fetch",
+          );
+        }
+        if (
+          mode === "scan" &&
+          (latestCursor.scan?.state !== "running" ||
+            latestCursor.scan.startedAt !== cursor.scan?.startedAt)
+        ) {
+          throw new ApiFailure(
+            409,
+            "REGION_SCAN_INACTIVE",
+            "Regional collection was paused during the fetch",
+          );
+        }
         const document = await client.query<{ id: string }>(
-          `WITH inserted AS (
-             INSERT INTO source_documents(source_id, ingestion_run_id, canonical_url, retrieved_at,
-               content_hash_sha256, content_type, raw_json)
-             VALUES($1,$2,$3,now(),$4,$5,$6::jsonb)
-             ON CONFLICT(source_id, canonical_url, content_hash_sha256) DO NOTHING RETURNING id
-           ) SELECT id FROM inserted UNION ALL
-           SELECT id FROM source_documents WHERE source_id=$1 AND canonical_url=$3 AND content_hash_sha256=$4 LIMIT 1`,
+          `INSERT INTO source_documents(source_id, ingestion_run_id, canonical_url, retrieved_at,
+             last_seen_at, content_hash_sha256, content_type, raw_json)
+           VALUES($1,$2,$3,now(),now(),$4,$5,$6::jsonb)
+           ON CONFLICT(source_id, canonical_url, content_hash_sha256)
+           DO UPDATE SET last_seen_at=GREATEST(source_documents.last_seen_at, EXCLUDED.last_seen_at)
+           RETURNING id`,
           [
             SOURCE_ID,
             runId,
@@ -330,7 +373,19 @@ export class TreatmentIngestionService {
         );
         await client.query(
           `UPDATE source_catalog SET last_successful_ingest_at=now(), source_cursor=$2::jsonb WHERE id=$1`,
-          [SOURCE_ID, JSON.stringify({ pageNumber: nextPage })],
+          [
+            SOURCE_ID,
+            JSON.stringify(
+              advanceSourceCursor(
+                latestCursor,
+                nextPage,
+                page.plans.length,
+                stored,
+                page.totalElements,
+                new Date(),
+              ),
+            ),
+          ],
         );
         await client.query("COMMIT");
         return {
@@ -359,7 +414,7 @@ export class TreatmentIngestionService {
     } finally {
       if (locked)
         await client.query(
-          "SELECT pg_advisory_unlock(hashtext('melliatlas_treatment_ingestion'))",
+          "SELECT pg_advisory_unlock(hashtext(current_schema()), hashtext('melliatlas_treatment_ingestion'))",
         );
       client.release();
     }
@@ -537,70 +592,11 @@ export class TreatmentIngestionService {
   async published(
     bbox?: [number, number, number, number],
   ): Promise<MapTreatment[]> {
-    return this.spatial(false, bbox);
+    return listStoredMapTreatments(this.pool, SOURCE_ID, false, bbox);
   }
 
   /** Local administrator map preview includes validated but unreviewed polygons. */
   async preview(): Promise<MapTreatment[]> {
-    return this.spatial(true);
-  }
-
-  private async spatial(
-    includePending: boolean,
-    bbox?: [number, number, number, number],
-  ): Promise<MapTreatment[]> {
-    const result = await this.pool.query<{
-      id: string;
-      name: string;
-      canonical_url: string;
-      retrieved_at: Date;
-      published_at: Date | null;
-      start_at: Date | null;
-      end_at: Date | null;
-      attributes: Record<string, unknown>;
-      geometry: unknown;
-      review_status: "pending" | "verified";
-    }>(
-      `SELECT o.id, s.name, d.canonical_url, d.retrieved_at, d.published_at,
-           o.start_at, o.end_at, o.attributes, o.review_status, ST_AsGeoJSON(o.geometry)::json AS geometry
-       FROM source_observations o JOIN source_documents d ON d.id=o.source_document_id
-       JOIN source_catalog s ON s.id=d.source_id
-       WHERE d.source_id=$1 AND s.lifecycle='configured' AND d.canonical_url=s.url
-         AND o.observation_type='treatment_plan'
-         AND (o.review_status='verified' OR
-              (o.review_status='pending' AND ($6::boolean OR o.extraction_method='structured')))
-         AND o.geometry IS NOT NULL AND o.spatial_precision='exact_polygon'
-         AND ST_GeometryType(o.geometry) IN ('ST_Polygon', 'ST_MultiPolygon')
-         AND ST_IsValid(o.geometry)
-         AND ($2::float8 IS NULL OR ST_Intersects(o.geometry,ST_MakeEnvelope($2,$3,$4,$5,4326)))
-       ORDER BY d.retrieved_at DESC, o.id LIMIT 200`,
-      [SOURCE_ID, ...(bbox ?? [null, null, null, null]), includePending],
-    );
-    return result.rows.map((r) => ({
-      id: r.id,
-      sourceName:
-        typeof r.attributes.sourceName === "string"
-          ? r.attributes.sourceName
-          : r.name,
-      sourceUrl: r.canonical_url,
-      retrievedAt: r.retrieved_at.toISOString(),
-      publishedAt: r.published_at?.toISOString() ?? null,
-      startAt: r.start_at?.toISOString() ?? null,
-      endAt: r.end_at?.toISOString() ?? null,
-      contractorName:
-        typeof r.attributes.contractorName === "string"
-          ? r.attributes.contractorName
-          : null,
-      cadastralNumber:
-        typeof r.attributes.cadastralNumber === "string"
-          ? r.attributes.cadastralNumber
-          : null,
-      treatments: Array.isArray(r.attributes.treatments)
-        ? (r.attributes.treatments as MapTreatment["treatments"])
-        : [],
-      geometry: r.geometry as MapTreatment["geometry"],
-      spatialPrecision: "exact_polygon",
-      reviewStatus: r.review_status,
-    }));
+    return listStoredMapTreatments(this.pool, SOURCE_ID, true);
   }
 }

@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import { z } from "zod";
 
 export const coordinatesSchema = z
@@ -251,3 +251,29 @@ export const providerCollectionStatusSchema = z
 export type ProviderCollectionStatus = z.infer<
   typeof providerCollectionStatusSchema
 >;
+
+export const regionalScanStatusSchema = z
+  .object({
+    regionCode: z.number().int().positive().nullable(),
+    nextPage: z.number().int().nonnegative(),
+    scan: z
+      .object({
+        state: z.enum(["running", "paused", "completed"]),
+        revision: z.string(),
+        regionCode: z.number().int().positive(),
+        scheduledOn: z.string().nullable(),
+        startedAt: z.string().datetime(),
+        completedAt: z.string().datetime().nullable(),
+        nextAllowedAt: z.string().datetime(),
+        pagesFetched: z.number().int().nonnegative(),
+        recordsReceived: z.number().int().nonnegative(),
+        recordsStored: z.number().int().nonnegative(),
+        totalElements: z.number().int().nonnegative().nullable(),
+        errorCode: z.string().nullable(),
+        consecutiveErrors: z.number().int().nonnegative(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+export type RegionalScanStatus = z.infer<typeof regionalScanStatusSchema>;

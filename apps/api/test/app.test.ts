@@ -300,3 +300,43 @@ describe("local administrator treatment evidence HTTP boundaries", () => {
     ).toHaveLength(1);
   });
 });
+
+it("permits only the local administrator to start or inspect regional collection", async () => {
+  let starts = 0;
+  const status = { regionCode: 55, nextPage: 0, scan: null };
+  const app = createApp({
+    ...services,
+    regionCollection: {
+      status: async () => status,
+      start: async () => {
+        starts += 1;
+        return status;
+      },
+      pause: async () => status,
+    },
+    providerConfiguration: {
+      get: async () => {
+        throw new Error("not used");
+      },
+      update: async () => {
+        throw new Error("not used");
+      },
+    },
+  });
+  const publicOrigin = await request(app)
+    .post("/api/v1/operator/provider/region-scan/start")
+    .set("Origin", "http://localhost:5173");
+  expect(publicOrigin.status).toBe(403);
+  expect(starts).toBe(0);
+  const admin = await request(app)
+    .post("/api/v1/operator/provider/region-scan/start")
+    .set("Origin", "http://localhost:5174");
+  expect(admin.status).toBe(200);
+  expect(starts).toBe(1);
+  expect(
+    await request(app)
+      .get("/api/v1/operator/provider/region-scan")
+      .set("Origin", "http://localhost:5174")
+      .then((response) => response.body),
+  ).toEqual(status);
+});

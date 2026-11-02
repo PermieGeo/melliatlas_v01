@@ -19,6 +19,7 @@ type MapCanvasProps = {
   selected: Coordinates | null;
   radiusKm: number;
   onSelect(point: Coordinates): void;
+  onViewportChange?(bbox: [number, number, number, number]): void;
   treatments?: MapTreatment[];
 };
 
@@ -38,12 +39,33 @@ function FocusControl({ focus }: Pick<MapCanvasProps, "focus">) {
   return null;
 }
 
+function ViewportObserver({
+  onViewportChange,
+}: Pick<MapCanvasProps, "onViewportChange">) {
+  const map = useMapEvents({ moveend: publish, zoomend: publish });
+  function publish() {
+    if (!onViewportChange) return;
+    const bounds = map.getBounds();
+    onViewportChange([
+      Math.max(-180, bounds.getWest()),
+      Math.max(-90, bounds.getSouth()),
+      Math.min(180, bounds.getEast()),
+      Math.min(90, bounds.getNorth()),
+    ]);
+  }
+  useEffect(() => {
+    publish();
+  }, [map, onViewportChange]);
+  return null;
+}
+
 export function MapCanvas({
   locale,
   focus,
   selected,
   radiusKm,
   onSelect,
+  onViewportChange,
   treatments = [],
 }: MapCanvasProps) {
   const t = (key: MessageKey) => translate(locale, key);
@@ -64,6 +86,7 @@ export function MapCanvas({
       />
       <FocusControl focus={focus} />
       <ClickSelection onSelect={onSelect} />
+      <ViewportObserver onViewportChange={onViewportChange} />
       {treatments.map((notice) => {
         const polygons =
           notice.geometry.type === "Polygon"

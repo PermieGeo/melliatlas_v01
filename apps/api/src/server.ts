@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.PROVIDER_CONFIGURATION
+// Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.PROVIDER_CONFIGURATION
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
@@ -6,6 +6,7 @@ import { createDatabasePool } from "./db/pool.js";
 import { SourceRepository } from "./db/sourceRepository.js";
 import { ProviderConfigurationRepository } from "./modules/sources/providerConfiguration.js";
 import { TreatmentIngestionService } from "./modules/sources/treatmentIngestion.js";
+import { RegionalCollectionService } from "./modules/sources/regionalCollection.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
 import { describeStartupFailure } from "./startupDiagnostics.js";
 
@@ -19,9 +20,15 @@ async function start(): Promise<void> {
     const weather = new OpenMeteoAdapter(fetch, config.OPEN_METEO_TIMEOUT_MS);
     const providerConfiguration = new ProviderConfigurationRepository(pool);
     const treatmentFeed = new TreatmentIngestionService(pool);
+    const regionCollection = new RegionalCollectionService(
+      pool,
+      treatmentFeed,
+      config.REGION_SCAN_DAILY_UTC_HOUR,
+    );
     const app = createApp({
       providerConfiguration,
       treatmentFeed,
+      regionCollection,
       inspectLocation: (point) => weather.inspect(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {
@@ -35,7 +42,9 @@ async function start(): Promise<void> {
         `MelliAtlas local admin API listening at http://127.0.0.1:${config.PORT}`,
       );
     });
+    regionCollection.run();
     const stop = () => {
+      regionCollection.stop();
       server.close(() => {
         void pool.end().then(() => process.exit(0));
       });

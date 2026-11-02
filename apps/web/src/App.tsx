@@ -1,7 +1,7 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { Layers3, MapPin, RefreshCw, Info } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { inspectLocation, loadMapTreatments } from "./api/client";
 import { MapCanvas } from "./components/MapCanvas";
 import { WeatherPanel, type WeatherState } from "./components/WeatherPanel";
@@ -25,11 +25,28 @@ export default function App() {
   const [layers, setLayers] = useState<LayerState>({ status: "loading" });
   const [weather, setWeather] = useState<WeatherState>({ status: "idle" });
   const [showTreatments, setShowTreatments] = useState(true);
+  const [viewport, setViewport] = useState<
+    [number, number, number, number] | null
+  >(null);
+  const onViewportChange = useCallback(
+    (bbox: [number, number, number, number]) => {
+      setViewport((previous) =>
+        previous &&
+        previous.every(
+          (value, index) => Math.abs(value - bbox[index]) < 0.000001,
+        )
+          ? previous
+          : bbox,
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
+    if (!viewport) return;
     const controller = new AbortController();
     setLayers({ status: "loading" });
-    loadMapTreatments(controller.signal)
+    loadMapTreatments(controller.signal, viewport)
       .then((value) => {
         if (!controller.signal.aborted) setLayers({ status: "loaded", value });
       })
@@ -37,7 +54,7 @@ export default function App() {
         if (!controller.signal.aborted) setLayers({ status: "error" });
       });
     return () => controller.abort();
-  }, [refresh]);
+  }, [refresh, viewport]);
 
   useEffect(() => {
     if (!point) {
@@ -162,12 +179,18 @@ export default function App() {
                 {t("noTreatments")}
               </p>
             )}
+            {layers.status === "loaded" && layers.value.length >= 200 && (
+              <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+                {t("mapLimitNotice")}
+              </p>
+            )}
             <MapCanvas
               locale={locale}
               focus={defaultFocus}
               selected={point}
               radiusKm={radius}
               onSelect={setPoint}
+              onViewportChange={onViewportChange}
               treatments={
                 showTreatments && layers.status === "loaded" ? layers.value : []
               }

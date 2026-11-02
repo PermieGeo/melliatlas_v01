@@ -9,6 +9,8 @@ test("administrator settings do not implicitly start a source fetch", async ({
     if (url.endsWith("/operator/provider/sync")) syncCalls++;
     let result: unknown = { notices: [] };
     if (url.endsWith("/api/v1/sources")) result = { sources: [] };
+    if (url.endsWith("/operator/provider/region-scan"))
+      result = { regionCode: 55, nextPage: 0, scan: null };
     if (url.endsWith("/operator/provider/status"))
       result = {
         sourceConfigured: true,

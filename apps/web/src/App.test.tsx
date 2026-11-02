@@ -6,23 +6,31 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import App from "./App";
 
 vi.mock("./components/MapCanvas", () => ({
   MapCanvas: ({
     onSelect,
+    onViewportChange,
     treatments,
   }: {
     onSelect(point: { lat: number; lon: number }): void;
+    onViewportChange(bbox: [number, number, number, number]): void;
     treatments: unknown[];
-  }) => (
-    <div>
-      <button onClick={() => onSelect({ lat: 54.78, lon: 32.05 })}>
-        Select fixture location
-      </button>
-      <span>Features: {treatments.length}</span>
-    </div>
-  ),
+  }) => {
+    useEffect(() => {
+      onViewportChange([31, 53, 33, 55]);
+    }, [onViewportChange]);
+    return (
+      <div>
+        <button onClick={() => onSelect({ lat: 54.78, lon: 32.05 })}>
+          Select fixture location
+        </button>
+        <span>Features: {treatments.length}</span>
+      </div>
+    );
+  },
 }));
 const forecast = {
   point: { lat: 54.78, lon: 32.05 },
@@ -49,7 +57,7 @@ afterEach(() => {
 
 it("reads the public attributed map endpoint without accessing administrator routes", async () => {
   const fetcher = vi.fn(async (url: string) => {
-    if (url === "/api/v1/notices")
+    if (url.startsWith("/api/v1/notices?bbox="))
       return new Response(JSON.stringify({ notices: [] }));
     return new Response(null, { status: 404 });
   });
@@ -58,7 +66,9 @@ it("reads the public attributed map endpoint without accessing administrator rou
   expect(await screen.findByText(/Полигонов обработок пока нет/)).toBeTruthy();
   expect(screen.getByText("Features: 0")).toBeTruthy();
   expect(screen.queryByText("Конфигурация")).toBeNull();
-  expect(fetcher).toHaveBeenCalledWith("/api/v1/notices", expect.any(Object));
+  expect(
+    fetcher.mock.calls.some(([url]) => url.startsWith("/api/v1/notices?bbox=")),
+  ).toBe(true);
   expect(fetcher.mock.calls.every(([url]) => !url.includes("/operator/"))).toBe(
     true,
   );
@@ -71,7 +81,9 @@ it("loads attributed forecast on selection and supports translation", async () =
       async (url: string) =>
         new Response(
           JSON.stringify(
-            url === "/api/v1/notices" ? { notices: [] } : forecast,
+            url.startsWith("/api/v1/notices?bbox=")
+              ? { notices: [] }
+              : forecast,
           ),
         ),
     ),
@@ -91,7 +103,7 @@ it("does not invent forecast data after failed fetch and allows retry", async ()
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
-      if (url === "/api/v1/notices")
+      if (url.startsWith("/api/v1/notices?bbox="))
         return new Response(JSON.stringify({ notices: [] }));
       attempts += 1;
       if (attempts === 1)
@@ -147,7 +159,9 @@ it("renders an unreviewed structured map feature without requiring admin access"
     async (url: string) =>
       new Response(
         JSON.stringify(
-          url === "/api/v1/notices" ? { notices: [pending] } : forecast,
+          url.startsWith("/api/v1/notices?bbox=")
+            ? { notices: [pending] }
+            : forecast,
         ),
       ),
   );

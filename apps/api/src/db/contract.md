@@ -16,3 +16,5 @@
 - **Migration 008:** An existing matching treatment endpoint is promoted to `configured` for manual operator fetching. This is not an approval/terms assertion. Earlier migrations and immutable audit history are left intact.
 
 - **Migration 009:** Corrects the exact untouched migration-004 treatment-feed bootstrap, whose historical `url` held only the portal homepage. It aligns that URL with the already configured full endpoint and makes only this known legacy source manually fetchable. It does not alter checked migration 008, user-customized provider rows, disabled registrations, credentials, or historical permission evidence.
+
+- **Migration 010:** Adds `last_seen_at` to `source_documents` for repeat-observation tracking. The original payload, hash, document identity and `retrieved_at` remain immutable. The source-ingestion module owns updating last-seen metadata, not a new table or independent cache.

@@ -22,3 +22,7 @@ This is a _sequence of prospective scopes_, not a set of pre-approved or complet
 ## Agreed minimal follow-up after S3a.4
 
 The next data stage is a conservative, restart-safe, whole-region collection for a configured source/region with full coverage accounting and off-peak scheduling. It must never fetch on beekeeper map requests. After that, private apiaries and a persisted in-app change indicator can be added using local database reads/polling, without Web Push or a separate message broker. Server-side administrator authentication is a prerequisite for remote/public admin deployment.
+
+## S3b regional collection increment
+
+The selected treatment source can now be scanned region-wide using persisted page progress and a single in-process worker. An explicit UTC hour enables daily off-peak scheduling; otherwise the administrator starts the scan. The public map queries stored polygons by visible bbox. The backend retains raw provider evidence and prefers the latest seen record per upstream ID, but absence of an upstream record is **not** yet interpreted as a confirmed retraction. Remaining priorities: verify provider-specific region coverage, independently test a complete permitted real scan, then add `BEE-01` private apiaries and persisted in-app change indicators.

@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.CATALOG, WEATHER.POINT_FORECAST, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import { randomUUID } from "node:crypto";
 import {
   apiErrorSchema,
@@ -15,6 +15,8 @@ import express, { type ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { ApiFailure } from "./lib/errors.js";
+import type { RegionCollectionActions } from "./modules/sources/regionOperatorRoutes.js";
+import { createRegionOperatorRouter } from "./modules/sources/regionOperatorRoutes.js";
 
 export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;
@@ -55,6 +57,7 @@ export type ApiServices = {
     published(bbox?: [number, number, number, number]): Promise<unknown[]>;
     preview(): Promise<unknown[]>;
   };
+  regionCollection?: RegionCollectionActions;
   providerConfiguration?: {
     get(): Promise<ProviderConfiguration>;
     update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration>;
@@ -257,6 +260,12 @@ export function createApp(services: ApiServices): express.Express {
         next(error);
       }
     },
+  );
+
+  app.use(
+    "/api/v1/operator/provider/region-scan",
+    requireOperator,
+    createRegionOperatorRouter(services.regionCollection),
   );
 
   app.get(
