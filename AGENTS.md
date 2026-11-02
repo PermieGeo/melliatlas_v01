@@ -30,6 +30,16 @@ Before changes, read the owning module's `contract.md`, nearest `AGENTS.md`, sel
 - Review growing test files by scenario or use case; split suites where it improves navigation without removing regression coverage. Apply the same cohesion rule to documentation: keep a canonical owner and link instead of repeating long content.
 - Before a repository-changing handoff, check the line counts of created or edited hand-written source files. Report threshold crossings, any justified exception and the relevant extraction decision. Pre-existing oversized files are technical debt to reduce when their owning feature is changed, not a reason for unrelated bulk refactoring.
 
+## User-facing text and localization
+
+- All application-authored text visible to beekeepers or operators MUST be localizable. This includes navigation, buttons, headings, field labels and placeholders, help text, map popups and legends, accessibility labels, loading/empty/error states, validation feedback, and email/push notification templates. Do not hardcode such strings in UI components, templates or server-generated user messages.
+- Use semantic translation keys in locale catalogs with named parameters. Do not build translated sentences by concatenating fragments, interpolating untranslated prose, or branching on a specific language. Use the localization mechanism for plurals and grammatical variants.
+- Add translations for each new or changed key in all currently supported locale catalogs, with a documented fallback for missing keys. Cover essential UI messages, interpolation and plural cases in tests; do not claim unsupported languages have been translated.
+- Format dates, times, numbers and measurement units with locale-aware facilities such as `Intl`. Do not hardcode `ru-RU` or assume the display language from the selected country, map region, data source or user location. A language preference is separate from geographic coverage.
+- Keep HTTP/API error codes and notification events language-neutral and structured; localize user-facing explanations at the presentation or delivery boundary using the recipient's language preference. Do not persist only pre-rendered, single-language notification text.
+- Keep source-provided quotations, names and evidence attributable and unchanged; these are data, not application-authored UI copy. Product names, stable identifiers, URLs and protocol values do not require translation. Retrieve country/region labels from the geographic data model rather than embedding country-specific UI strings.
+- Existing hardcoded UI copy is migration debt. When changing an owning feature, migrate the affected text without unrelated mass refactoring. Code comments, test descriptions and software documentation remain in English; translated runtime catalog values may use their respective languages.
+
 ## Implementation discipline
 
 - Make the smallest coherent change. Do not refactor unrelated areas or introduce unverified dependencies.
