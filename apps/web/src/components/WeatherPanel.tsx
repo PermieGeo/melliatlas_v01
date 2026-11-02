@@ -47,24 +47,24 @@ export function WeatherPanel({
   return (
     <section
       aria-label={t("weather")}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
     >
-      <h2 className="font-display text-lg font-bold">{t("weather")}</h2>
+      <h2 className="font-display text-base font-bold">{t("weather")}</h2>
       <p className="mt-2 text-xs text-slate-500">
         {point
           ? `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`
           : t("noPoint")}
       </p>
       {state.status === "idle" && (
-        <p className="mt-5 text-sm text-slate-600">{t("selectPoint")}</p>
+        <p className="mt-2 text-sm text-slate-600">{t("selectPoint")}</p>
       )}
       {state.status === "loading" && (
-        <p className="mt-5 text-sm" role="status">
+        <p className="mt-2 text-sm" role="status">
           {t("weatherLoading")}
         </p>
       )}
       {state.status === "error" && (
-        <div className="mt-5 space-y-3" role="alert">
+        <div className="mt-2 space-y-3" role="alert">
           <p className="text-sm text-amber-800">{t("weatherError")}</p>
           <button
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white"
@@ -76,20 +76,20 @@ export function WeatherPanel({
       )}
       {state.status === "loaded" && (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             {metrics.map(({ key, value, icon: Icon }) => (
-              <div key={key} className="rounded-xl bg-slate-50 p-3">
+              <div key={key} className="rounded-xl bg-slate-50 p-2">
                 <p className="flex items-center gap-1 text-xs text-slate-500">
                   <Icon size={14} />
                   {t(key)}
                 </p>
-                <p className="mt-1 font-display text-lg font-semibold">
+                <p className="mt-1 font-display text-sm font-semibold">
                   {value}
                 </p>
               </div>
             ))}
           </div>
-          <dl className="mt-4 space-y-2 text-xs text-slate-600">
+          <dl className="mt-2 space-y-2 text-xs text-slate-600">
             <div>
               <dt>{t("forecastTime")}</dt>
               <dd>{formatTime(locale, state.value.provenance.observedAt)}</dd>
@@ -103,14 +103,14 @@ export function WeatherPanel({
             href={state.value.provenance.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-1 text-sm text-indigo-700"
+            className="mt-2 inline-flex items-center gap-1 text-sm text-indigo-700"
           >
             {state.value.provenance.sourceName}
             <ExternalLink size={14} />
           </a>
         </>
       )}
-      <p className="mt-5 border-t border-slate-100 pt-3 text-xs text-slate-500">
+      <p className="mt-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
         {t("weatherSource")}
       </p>
     </section>
