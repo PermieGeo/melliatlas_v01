@@ -34,6 +34,7 @@ node -e '
   }
 '
 
+python3 -B -m unittest discover -s scripts -p "test_enable_apatch_fmt.py"
 python3 -B tools/specs/validate_state.py
 pnpm format:check
 pnpm typecheck
