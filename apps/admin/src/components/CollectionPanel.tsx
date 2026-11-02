@@ -3,7 +3,7 @@ import type { ProviderCollectionStatus } from "@melliatlas/contracts";
 import { useEffect, useState } from "react";
 import { loadProviderCollectionStatus, syncProviderPage } from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
-import { RegionalCollectionPanel } from "./RegionalCollectionPanel";
+import { DistrictCachePanel } from "./DistrictCachePanel";
 
 export function CollectionPanel({
   locale,
@@ -95,7 +95,7 @@ export function CollectionPanel({
           {text("lastRun")}: {text(status.latestRun.status)}
         </p>
       )}
-      <RegionalCollectionPanel locale={locale} onChanged={onChanged} />
+      <DistrictCachePanel locale={locale} />
       <button
         type="button"
         disabled={busy || !status?.sourceConfigured}

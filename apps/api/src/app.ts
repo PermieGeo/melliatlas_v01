@@ -58,6 +58,7 @@ export type ApiServices = {
     preview(): Promise<unknown[]>;
   };
   regionCollection?: RegionCollectionActions;
+  districtCache?: { list(): Promise<unknown[]> };
   providerConfiguration?: {
     get(): Promise<ProviderConfiguration>;
     update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration>;
@@ -259,6 +260,45 @@ export function createApp(services: ApiServices): express.Express {
       } catch (error) {
         next(error);
       }
+    },
+  );
+
+  // District refresh stays disabled until the provider district/filter request is verified.
+  app.get(
+    "/api/v1/operator/provider/district-cache",
+    requireOperator,
+    async (_req, res, next) => {
+      if (!services.districtCache)
+        return next(
+          new ApiFailure(
+            503,
+            "DISTRICT_CACHE_UNAVAILABLE",
+            "District cache migration is required",
+          ),
+        );
+      try {
+        res.setHeader("Cache-Control", "no-store");
+        res.json({
+          ttlHours: 24,
+          refreshEnabled: false,
+          entries: await services.districtCache.list(),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  app.post(
+    "/api/v1/operator/provider/district-cache/refresh",
+    requireOperator,
+    (_req, _res, next) => {
+      next(
+        new ApiFailure(
+          409,
+          "DISTRICT_CONTRACT_UNVERIFIED",
+          "Verify provider district filters before refreshing",
+        ),
+      );
     },
   );
 

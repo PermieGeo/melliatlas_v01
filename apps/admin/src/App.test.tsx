@@ -99,37 +99,13 @@ it("fetches one batch only when requested in the data collection section", async
   expect(synced).toBe(1);
 });
 
-it("starts a full region collection separately from manual one-page fetching", async () => {
-  let starts = 0;
+it("keeps unverified district refresh disabled and never invokes legacy region collection", async () => {
   const fetcher = vi.fn(async (url: string) => {
-    if (url === "/api/v1/operator/provider/region-scan/start") {
-      starts++;
+    if (url === "/api/v1/operator/provider/district-cache") {
       return new Response(
-        JSON.stringify({
-          regionCode: 55,
-          nextPage: 0,
-          scan: {
-            state: "running",
-            revision: "1",
-            regionCode: 55,
-            scheduledOn: "2026-11-02",
-            startedAt: "2026-11-02T21:00:00.000Z",
-            completedAt: null,
-            nextAllowedAt: "2026-11-02T21:00:00.000Z",
-            pagesFetched: 0,
-            recordsReceived: 0,
-            recordsStored: 0,
-            totalElements: null,
-            errorCode: null,
-            consecutiveErrors: 0,
-          },
-        }),
+        JSON.stringify({ ttlHours: 24, refreshEnabled: false, entries: [] }),
       );
     }
-    if (url === "/api/v1/operator/provider/region-scan")
-      return new Response(
-        JSON.stringify({ regionCode: 55, nextPage: 0, scan: null }),
-      );
     if (url === "/api/v1/operator/provider/status")
       return new Response(JSON.stringify(status));
     if (url === "/api/v1/operator/notices/map-preview")
@@ -140,14 +116,20 @@ it("starts a full region collection separately from manual one-page fetching", a
   });
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Запустить обход" }),
-  );
-  expect(await screen.findByText("Выполняется")).toBeTruthy();
-  expect(starts).toBe(1);
   expect(
-    fetcher.mock.calls.some(
-      ([url]) => url === "/api/v1/operator/provider/sync",
-    ),
+    await screen.findByText("Покрытие районов пока не подтверждено."),
+  ).toBeTruthy();
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Обновить район сейчас",
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+  expect(fetcher.mock.calls.some(([url]) => url.includes("region-scan"))).toBe(
+    false,
+  );
+  expect(
+    fetcher.mock.calls.some(([url]) => url.includes("district-cache/refresh")),
   ).toBe(false);
 });

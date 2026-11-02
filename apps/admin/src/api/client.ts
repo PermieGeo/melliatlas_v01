@@ -3,8 +3,8 @@ import {
   apiErrorSchema,
   mapTreatmentsResponseSchema,
   providerCollectionStatusSchema,
-  regionalScanStatusSchema,
-  type RegionalScanStatus,
+  districtCacheStatusSchema,
+  type DistrictCacheStatus,
   type ProviderCollectionStatus,
   type MapTreatment,
   providerConfigurationSchema,
@@ -134,26 +134,8 @@ export async function loadProviderCollectionStatus(): Promise<ProviderCollection
   );
 }
 
-export async function loadRegionalScanStatus(): Promise<RegionalScanStatus> {
-  return regionalScanStatusSchema.parse(
-    await operatorRequest("/api/v1/operator/provider/region-scan"),
-  );
-}
-
-export async function startRegionalScan(): Promise<RegionalScanStatus> {
-  return regionalScanStatusSchema.parse(
-    await operatorRequest(
-      "/api/v1/operator/provider/region-scan/start",
-      "POST",
-    ),
-  );
-}
-
-export async function pauseRegionalScan(): Promise<RegionalScanStatus> {
-  return regionalScanStatusSchema.parse(
-    await operatorRequest(
-      "/api/v1/operator/provider/region-scan/pause",
-      "POST",
-    ),
+export async function loadDistrictCacheStatus(): Promise<DistrictCacheStatus> {
+  return districtCacheStatusSchema.parse(
+    await operatorRequest("/api/v1/operator/provider/district-cache"),
   );
 }

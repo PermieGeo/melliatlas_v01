@@ -15,7 +15,7 @@ The admin interface has four independent sections:
 - **Configuration:** reads and saves the provider endpoint, request method, region filter and JSON parameters with an optimistic revision check. Saving settings **never** fetches records.
 - **Record review:** reads pending candidates; an operator can verify/reject individual candidates with a name and meaningful evidence note. Valid structured geometry can already appear as unverified; a review decision changes the public status to verified or removes rejected entries.
 
-The backend supports a bounded one-page manual fetch and a restart-safe, region-wide scan. The scan requires a running backend process. It can be launched manually; optional `REGION_SCAN_DAILY_UTC_HOUR` schedules one off-peak scan per UTC day. A source with 21,661 records at 40 records/page requires approximately 542 calls and more than nine hours at the minimum 65-second interval. Source rate limits take precedence; neither a 10-minute freshness guarantee nor user notifications are implemented. Region identifiers are provider-specific and their mappings must be verified against the actual API.
+The backend retains its bounded one-page diagnostic fetch. Legacy whole-region scheduled collection is disabled and its history remains in the database. The operator can inspect district cache status at `/api/v1/operator/provider/district-cache`. District freshness is 24 hours after a fully completed listing, but the live district refresh action is intentionally disabled until source-specific district IDs, payload keys and access terms are verified. A manual page is never treated as a complete district listing.
 
 ### Security boundary
 

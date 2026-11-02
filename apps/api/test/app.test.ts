@@ -340,3 +340,37 @@ it("permits only the local administrator to start or inspect regional collection
       .then((response) => response.body),
   ).toEqual(status);
 });
+
+it("district cache is operator-only and cannot refresh before the upstream contract is verified", async () => {
+  const app = createApp({
+    ...services,
+    districtCache: { list: async () => [] },
+    providerConfiguration: {
+      get: async () => {
+        throw new Error("not used");
+      },
+      update: async () => {
+        throw new Error("not used");
+      },
+    },
+  });
+  const status = await request(app).get(
+    "/api/v1/operator/provider/district-cache",
+  );
+  expect(status.status).toBe(200);
+  expect(status.body).toEqual({
+    ttlHours: 24,
+    refreshEnabled: false,
+    entries: [],
+  });
+  const noFetch = await request(app)
+    .post("/api/v1/operator/provider/district-cache/refresh")
+    .set("Origin", "http://localhost:5174")
+    .send({ districtId: 123 });
+  expect(noFetch.status).toBe(409);
+  expect(noFetch.body.error.code).toBe("DISTRICT_CONTRACT_UNVERIFIED");
+  const publicOrigin = await request(app)
+    .post("/api/v1/operator/provider/district-cache/refresh")
+    .set("Origin", "http://localhost:5173");
+  expect(publicOrigin.status).toBe(403);
+});

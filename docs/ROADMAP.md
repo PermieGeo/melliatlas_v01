@@ -26,3 +26,5 @@ The next data stage is a conservative, restart-safe, whole-region collection for
 ## S3b regional collection increment
 
 The selected treatment source can now be scanned region-wide using persisted page progress and a single in-process worker. An explicit UTC hour enables daily off-peak scheduling; otherwise the administrator starts the scan. The public map queries stored polygons by visible bbox. The backend retains raw provider evidence and prefers the latest seen record per upstream ID, but absence of an upstream record is **not** yet interpreted as a confirmed retraction. Remaining priorities: verify provider-specific region coverage, independently test a complete permitted real scan, then add `BEE-01` private apiaries and persisted in-app change indicators.
+
+- **Current S3c rollout:** Database migration 011 and district freshness/status are implemented; the legacy whole-region worker is not started. The district refresh action remains unavailable until the provider district and period request keys, IDs and use terms are verified with real evidence. Never treat one-page diagnostics as district freshness.
