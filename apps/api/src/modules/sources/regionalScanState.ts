@@ -22,6 +22,12 @@ export const regionalScanSchema = z
 export type RegionalScan = z.infer<typeof regionalScanSchema>;
 export type SourceCursor = { pageNumber: number; scan?: RegionalScan };
 
+/**
+ * Read a persisted cursor without trusting unvalidated database JSON.
+ *
+ * @param value - Stored cursor document of unknown structure.
+ * @returns A safe page number and, when valid, the regional scan metadata.
+ */
 export function readSourceCursor(value: unknown): SourceCursor {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return { pageNumber: 0 };
@@ -37,7 +43,17 @@ export function readSourceCursor(value: unknown): SourceCursor {
   return { pageNumber, ...(scan.success ? { scan: scan.data } : {}) };
 }
 
-/** Commit page progress together with the evidence transaction; incomplete scans remain incomplete. */
+/**
+ * Advance pagination and scan counters in the same transaction as imported evidence.
+ *
+ * @param cursor - The previously persisted cursor.
+ * @param nextPage - Next page number, or zero after the terminal page.
+ * @param received - Number of records received in this page.
+ * @param stored - Number of records successfully stored in this page.
+ * @param totalElements - Upstream estimate when available.
+ * @param now - Completion timestamp for a terminal page.
+ * @returns The new cursor; a page limit pauses rather than completes the scan.
+ */
 export function advanceSourceCursor(
   cursor: SourceCursor,
   nextPage: number,

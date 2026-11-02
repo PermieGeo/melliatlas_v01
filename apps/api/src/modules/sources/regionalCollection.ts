@@ -3,7 +3,11 @@ import type { Pool, PoolClient } from "pg";
 import { providerRequestSettingsSchema } from "@melliatlas/contracts";
 import { ApiFailure } from "../../lib/errors.js";
 import { TreatmentIngestionService } from "./treatmentIngestion.js";
-import { readSourceCursor, type RegionalScan } from "./regionalScanState.js";
+import {
+  readSourceCursor,
+  type RegionalScan,
+  type SourceCursor,
+} from "./regionalScanState.js";
 
 const SOURCE_ID = "treatment-feed";
 const MIN_REQUEST_GAP_MS = 65_000;
@@ -97,6 +101,13 @@ export class RegionalCollectionService {
     }
   }
 
+  /**
+   * Start or resume the persisted scan for the currently configured provider region.
+   *
+   * @param scheduledOn - UTC calendar date for scheduler deduplication, or null for a manual start.
+   * @returns The durable scan status after the transaction commits.
+   * @throws ApiFailure if the source is unconfigured, a scan is already active, or the page limit was reached.
+   */
   async start(
     scheduledOn: string | null = null,
   ): Promise<RegionCollectionStatus> {
@@ -207,47 +218,78 @@ export class RegionalCollectionService {
     }
   }
 
-  /** Claim one fetch slot atomically so parallel workers never fan out upstream requests. */
+  /**
+   * Reserve one provider fetch slot with a database-atomic transition.
+   *
+   * @param now - The scan worker's current time, also used for the rate-limit deadline.
+   * @returns The claimed cursor, or null if no scan is ready.
+   */
+  private async claimFetchSlot(now: Date): Promise<SourceCursor | null> {
+    const nextAllowedAt = new Date(
+      now.getTime() + MIN_REQUEST_GAP_MS,
+    ).toISOString();
+    const claim = await this.pool.query<{ source_cursor: unknown }>(
+      `UPDATE source_catalog SET source_cursor=jsonb_set(source_cursor,'{scan,nextAllowedAt}',to_jsonb($2::text))
+       WHERE id=$1 AND source_cursor->'scan'->>'state'='running'
+         AND (source_cursor->'scan'->>'nextAllowedAt')::timestamptz <= $3::timestamptz
+       RETURNING source_cursor`,
+      [SOURCE_ID, nextAllowedAt, now.toISOString()],
+    );
+    return claim.rows[0] ? readSourceCursor(claim.rows[0].source_cursor) : null;
+  }
+
+  /**
+   * Persist a bounded retry delay without altering scan pagination or overriding a paused scan.
+   *
+   * @param cursor - The cursor from the previously reserved fetch slot.
+   * @param now - Time when the slot was claimed.
+   * @param error - The failed ingestion's structured or unknown error.
+   */
+  private async recordFetchFailure(
+    cursor: SourceCursor,
+    now: Date,
+    error: unknown,
+  ): Promise<void> {
+    const code =
+      error instanceof ApiFailure ? error.code : "REGION_FETCH_FAILED";
+    const errors = (cursor.scan?.consecutiveErrors ?? 0) + 1;
+    const nextAttempt = new Date(
+      now.getTime() + MIN_REQUEST_GAP_MS * Math.min(errors + 1, 5),
+    );
+    await this.pool.query(
+      `UPDATE source_catalog SET source_cursor=jsonb_set(source_cursor,'{scan}',
+       (source_cursor->'scan') || jsonb_build_object('consecutiveErrors',$2::integer,
+         'errorCode',$3::text,'nextAllowedAt',$4::text,
+         'state',CASE WHEN $2 >= 3 THEN 'paused' ELSE 'running' END))
+       WHERE id=$1 AND source_cursor->'scan'->>'state'='running'
+         AND source_cursor->'scan'->>'startedAt'=$5`,
+      [
+        SOURCE_ID,
+        errors,
+        code,
+        nextAttempt.toISOString(),
+        cursor.scan?.startedAt,
+      ],
+    );
+  }
+
+  /**
+   * Process at most one rate-limited page; a public map refresh never calls this method.
+   *
+   * @throws The underlying database error when claiming or recording a page fails.
+   */
   async tick(): Promise<void> {
     if (this.processing || this.stopped) return;
     this.processing = true;
     try {
       await this.maybeStartScheduled();
       const now = this.now();
-      const next = new Date(now.getTime() + MIN_REQUEST_GAP_MS).toISOString();
-      const claim = await this.pool.query<{ source_cursor: unknown }>(
-        `UPDATE source_catalog SET source_cursor=jsonb_set(source_cursor,'{scan,nextAllowedAt}',to_jsonb($2::text))
-         WHERE id=$1 AND source_cursor->'scan'->>'state'='running'
-           AND (source_cursor->'scan'->>'nextAllowedAt')::timestamptz <= $3::timestamptz
-         RETURNING source_cursor`,
-        [SOURCE_ID, next, now.toISOString()],
-      );
-      if (!claim.rowCount) return;
+      const cursor = await this.claimFetchSlot(now);
+      if (!cursor) return;
       try {
         await this.ingestion.syncOnePage("scan");
-      } catch (error) {
-        const code =
-          error instanceof ApiFailure ? error.code : "REGION_FETCH_FAILED";
-        const cursor = readSourceCursor(claim.rows[0].source_cursor);
-        const errors = (cursor.scan?.consecutiveErrors ?? 0) + 1;
-        const nextAttempt = new Date(
-          now.getTime() + MIN_REQUEST_GAP_MS * Math.min(errors + 1, 5),
-        );
-        await this.pool.query(
-          `UPDATE source_catalog SET source_cursor=jsonb_set(source_cursor,'{scan}',
-           (source_cursor->'scan') || jsonb_build_object('consecutiveErrors',$2::integer,
-             'errorCode',$3::text,'nextAllowedAt',$4::text,
-             'state',CASE WHEN $2 >= 3 THEN 'paused' ELSE 'running' END))
-           WHERE id=$1 AND source_cursor->'scan'->>'state'='running'
-             AND source_cursor->'scan'->>'startedAt'=$5`,
-          [
-            SOURCE_ID,
-            errors,
-            code,
-            nextAttempt.toISOString(),
-            cursor.scan?.startedAt,
-          ],
-        );
+      } catch (error: unknown) {
+        await this.recordFetchFailure(cursor, now, error);
       }
     } finally {
       this.processing = false;
