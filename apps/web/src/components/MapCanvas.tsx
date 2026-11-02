@@ -1,6 +1,7 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, NOTICES.MAP_OVERLAY
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { useEffect } from "react";
+import { formatTime, translate, type Locale, type MessageKey } from "../i18n";
 import {
   Circle,
   CircleMarker,
@@ -13,6 +14,7 @@ import {
 } from "react-leaflet";
 
 type MapCanvasProps = {
+  locale: Locale;
   focus: Coordinates;
   selected: Coordinates | null;
   radiusKm: number;
@@ -37,12 +39,14 @@ function FocusControl({ focus }: Pick<MapCanvasProps, "focus">) {
 }
 
 export function MapCanvas({
+  locale,
   focus,
   selected,
   radiusKm,
   onSelect,
   treatments = [],
 }: MapCanvasProps) {
+  const t = (key: MessageKey) => translate(locale, key);
   return (
     <MapContainer
       center={[focus.lat, focus.lon]}
@@ -51,7 +55,7 @@ export function MapCanvas({
       maxZoom={18}
       className="melliatlas-map"
       scrollWheelZoom={true}
-      aria-label="Интерактивная карта Смоленской области"
+      aria-label={t("map")}
     >
       <TileLayer
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -80,33 +84,42 @@ export function MapCanvas({
           >
             <Popup>
               <div className="max-w-xs space-y-1 text-xs">
-                <strong>{notice.contractorName || "План обработки"}</strong>
-                <p>Кадастр: {notice.cadastralNumber || "не указан"}</p>
+                <strong>{notice.contractorName || t("treatments")}</strong>
                 <p>
-                  Период: {notice.startAt || "неизвестен"} —{" "}
-                  {notice.endAt || "неизвестен"}
+                  {t("cadastral")}: {notice.cadastralNumber || t("unknown")}
                 </p>
                 <p>
-                  Препарат:{" "}
+                  {t("period")}:{" "}
+                  {notice.startAt
+                    ? formatTime(locale, notice.startAt)
+                    : t("unknown")}{" "}
+                  —{" "}
+                  {notice.endAt
+                    ? formatTime(locale, notice.endAt)
+                    : t("unknown")}
+                </p>
+                <p>
+                  {t("substance")}:{" "}
                   {notice.treatments
                     .map((item) => item.name)
                     .filter(Boolean)
-                    .join(", ") || "не указан"}
+                    .join(", ") || t("unknown")}
                 </p>
                 <p>
-                  Источник: {notice.sourceName}; загружено {notice.retrievedAt}
+                  {t("source")}: {notice.sourceName}; {t("retrievedAt")}:{" "}
+                  {formatTime(locale, notice.retrievedAt)}
                 </p>
                 <a
                   href={notice.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Открыть источник
+                  {t("original")}
                 </a>
                 <p>
                   {notice.reviewStatus === "pending"
-                    ? "Не проверено: предварительная геометрия источника. Не является оценкой безопасности."
-                    : "Проверено оператором. Не является оценкой безопасности."}
+                    ? t("unverified")
+                    : t("verified")}
                 </p>
               </div>
             </Popup>

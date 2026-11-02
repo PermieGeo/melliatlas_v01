@@ -18,3 +18,7 @@ This is a _sequence of prospective scopes_, not a set of pre-approved or complet
 ## Current source-ingestion increment
 
 `SRC-01 / S3a` adds manual, permission-reviewed source ingestion and a map layer containing individually verified polygons. The reference endpoint remains a candidate whose automation/republication rights and live response contract must be checked independently. The next planned slices are source-contract validation and durable multi-page worker/retraction handling, followed by municipal adapters and full spatial evidence acceptance.
+
+## Agreed minimal follow-up after S3a.4
+
+The next data stage is a conservative, restart-safe, whole-region collection for a configured source/region with full coverage accounting and off-peak scheduling. It must never fetch on beekeeper map requests. After that, private apiaries and a persisted in-app change indicator can be added using local database reads/polling, without Web Push or a separate message broker. Server-side administrator authentication is a prerequisite for remote/public admin deployment.

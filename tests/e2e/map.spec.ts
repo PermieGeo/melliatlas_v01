@@ -1,74 +1,58 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST
 import { expect, test } from "@playwright/test";
 
-test("map selection displays attributed weather and works on mobile", async ({
-  page,
-}) => {
-  await page.route("**/api/v1/sources", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ sources: [] }),
-    });
-  });
-
-  await page.route("**/api/v1/locations/inspect?**", async (route) => {
-    const requestUrl = new URL(route.request().url());
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({
-        point: {
-          lat: Number(requestUrl.searchParams.get("lat")),
-          lon: Number(requestUrl.searchParams.get("lon")),
-        },
-        weather: {
-          temperatureC: 10,
-          relativeHumidityPct: 75,
-          windSpeedMs: 1.5,
-          windDirectionDeg: 90,
-          precipitationMm: 0.1,
-        },
-        provenance: {
-          sourceId: "test-fixture",
-          sourceName: "Synthetic test source",
-          sourceUrl: "https://example.invalid/synthetic-source",
-          observedAt: "2026-10-31T08:00:00.000Z",
-          retrievedAt: "2026-10-31T08:03:00.000Z",
-          nature: "forecast_model",
-        },
-      }),
-    });
-  });
-
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Карта и обзор территории" }),
-  ).toBeVisible();
-  await page
-    .locator(".leaflet-container")
-    .click({ position: { x: 120, y: 120 } });
-  await expect(page.getByText("10.0 °C")).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Synthetic test source/ }),
-  ).toBeVisible();
-  const horizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth + 1,
-  );
-  expect(horizontalOverflow).toBe(false);
+const forecast = (lat: number, lon: number) => ({
+  point: { lat, lon },
+  weather: {
+    temperatureC: 10,
+    relativeHumidityPct: 75,
+    windSpeedMs: 1.5,
+    windDirectionDeg: 90,
+    precipitationMm: 0.1,
+  },
+  provenance: {
+    sourceId: "fixture",
+    sourceName: "Test weather",
+    sourceUrl: "https://example.invalid/weather",
+    observedAt: "2026-10-31T08:00:00.000Z",
+    retrievedAt: "2026-10-31T08:03:00.000Z",
+    nature: "forecast_model",
+  },
 });
 
-test("failed weather request shows an error and user retry loads actual response", async ({
+test("beekeeper map only reads the public reviewed notice endpoint", async ({
   page,
 }) => {
-  await page.route("**/api/v1/sources", async (route) => {
+  const requested: string[] = [];
+  await page.route("**/api/v1/notices", async (route) => {
+    requested.push(route.request().url());
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ sources: [] }),
+      body: JSON.stringify({ notices: [] }),
     });
   });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Карта обработок" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Проверенных полигонов пока нет/)).toBeVisible();
+  expect(requested.length).toBeGreaterThan(0);
+  expect(requested.every((url) => !url.includes("operator"))).toBe(true);
+  await expect(page.getByText("Конфигурация")).toHaveCount(0);
+});
 
+test("map selection shows attributed forecast with a localized retry", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/notices", async (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ notices: [] }),
+    }),
+  );
   let attempts = 0;
   await page.route("**/api/v1/locations/inspect?**", async (route) => {
-    attempts += 1;
+    attempts++;
     if (attempts === 1) {
       await route.fulfill({
         status: 503,
@@ -76,52 +60,38 @@ test("failed weather request shows an error and user retry loads actual response
         body: JSON.stringify({
           error: {
             code: "SOURCE_UNAVAILABLE",
-            message: "Upstream failure",
-            requestId: "fixture-request",
+            message: "offline",
+            requestId: "fixture",
           },
         }),
       });
       return;
     }
-    const requestUrl = new URL(route.request().url());
+    const url = new URL(route.request().url());
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({
-        point: {
-          lat: Number(requestUrl.searchParams.get("lat")),
-          lon: Number(requestUrl.searchParams.get("lon")),
-        },
-        weather: {
-          temperatureC: 6.5,
-          relativeHumidityPct: 80,
-          windSpeedMs: 2,
-          windDirectionDeg: 180,
-          precipitationMm: 0,
-        },
-        provenance: {
-          sourceId: "fixture-recovery",
-          sourceName: "Recovery test source",
-          sourceUrl: "https://example.invalid/recovered",
-          observedAt: "2026-10-31T08:00:00.000Z",
-          retrievedAt: "2026-10-31T08:01:00.000Z",
-          nature: "forecast_model",
-        },
-      }),
+      body: JSON.stringify(
+        forecast(
+          Number(url.searchParams.get("lat")),
+          Number(url.searchParams.get("lon")),
+        ),
+      ),
     });
   });
-
   await page.goto("/");
   await page
     .locator(".leaflet-container")
     .click({ position: { x: 120, y: 120 } });
   await expect(page.getByRole("alert")).toContainText(
-    "Источник временно недоступен",
+    "Метеоданные временно недоступны",
   );
-  await expect(page.getByText("6.5 °C")).toHaveCount(0);
-  await page.getByRole("button", { name: "Повторить запрос" }).click();
-  await expect(page.getByText("6.5 °C")).toBeVisible();
+  await page.getByRole("button", { name: "Повторить" }).click();
+  await expect(page.getByText("10.0 °C")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /Recovery test source/ }),
-  ).toHaveAttribute("href", "https://example.invalid/recovered");
-  expect(attempts).toBe(2);
+    page.getByRole("link", { name: /Test weather/ }),
+  ).toHaveAttribute("href", "https://example.invalid/weather");
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > innerWidth + 1,
+  );
+  expect(overflow).toBe(false);
 });

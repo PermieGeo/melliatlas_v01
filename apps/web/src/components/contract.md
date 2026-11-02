@@ -1,8 +1,8 @@
-# Web Component Contract
+# Beekeeper Component Contract
 
-**Owner:** `apps/web/src/components/`. **Status:** local administrator map and provider editor.
+**Owner:** `apps/web/src/components/`.
 
-- **Responsibility:** `MapCanvas` renders sourced WGS84 polygons, region selection, radius and weather inspection without inventing geospatial features. `ProviderSettings` edits the configured provider and triggers one bounded page fetch upon successful save.
-- **State:** React state is transient; source settings, ingestion and review are persisted by the backend. There are no browser-managed administrator tokens.
-- **Invariants:** Pending polygons use a dashed amber boundary and an explicit unverified label; verified polygons use a solid boundary. Invalid/missing geometry is never drawn. Every feature retains original source attribution. Manual review needs a reviewer name and evidence note for publication, not for preview. External HTTP is performed only by the API.
-- **Deployment boundary:** This UI is currently local-only; an independently deployed public client must exclude source editing, ingestion triggers and pending map preview.
+- `MapCanvas` renders reviewed source-backed WGS84 polygons, a selectable point and a configurable radius. It never performs provider requests or renders operator previews.
+- `WeatherPanel` presents attributed forecast-model values, incomplete/loading/failure states and a retry action. Weather is not a pesticide safety assessment.
+- Components receive selected locale and use `apps/web/src/i18n.ts` for user-facing messages.
+- All backend reads originate in `apps/web/src/api/`, and beekeeper components must not import administrator modules or routes.

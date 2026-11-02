@@ -1,0 +1,92 @@
+// Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import App from "./App";
+
+vi.mock("./components/MapPreview", () => ({
+  MapPreview: () => <div>Map preview fixture</div>,
+}));
+const config = {
+  providerName: "Fixture provider",
+  endpoint: "https://example.org/plans",
+  revision: "1",
+  collectionEnabled: false,
+  request: {
+    method: "POST",
+    regionCode: 55,
+    regionParameter: "subject",
+    parameters: { pageNumber: 0, pageSize: 40 },
+  },
+};
+const status = {
+  sourceConfigured: true,
+  latestRun: null,
+  pendingReview: 0,
+  pendingWithGeometry: 0,
+  verifiedWithGeometry: 0,
+  missingGeometry: 0,
+};
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+it("keeps source configuration separate from explicit collection", async () => {
+  const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
+    if (url === "/api/v1/sources")
+      return new Response(JSON.stringify({ sources: [] }));
+    if (url === "/api/v1/operator/notices/map-preview")
+      return new Response(JSON.stringify({ notices: [] }));
+    if (url === "/api/v1/operator/provider/status")
+      return new Response(JSON.stringify(status));
+    if (url === "/api/v1/operator/provider" && options?.method === "PUT")
+      return new Response(JSON.stringify({ ...config, revision: "2" }));
+    if (url === "/api/v1/operator/provider")
+      return new Response(JSON.stringify(config));
+    return new Response(null, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Конфигурация" }));
+  const save = await screen.findByRole("button", {
+    name: "Сохранить конфигурацию",
+  });
+  fireEvent.click(save);
+  expect(
+    await screen.findByText(/Загрузка данных не запускалась/),
+  ).toBeTruthy();
+  expect(
+    fetcher.mock.calls.some(
+      ([url]) => url === "/api/v1/operator/provider/sync",
+    ),
+  ).toBe(false);
+});
+
+it("fetches one batch only when requested in the data collection section", async () => {
+  let synced = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      if (url === "/api/v1/operator/provider/sync") {
+        synced += 1;
+        return new Response(
+          JSON.stringify({ received: 3, stored: 2, nextPage: 1 }),
+        );
+      }
+      if (url === "/api/v1/operator/provider/status")
+        return new Response(JSON.stringify(status));
+      if (url === "/api/v1/operator/notices/map-preview")
+        return new Response(JSON.stringify({ notices: [] }));
+      if (url === "/api/v1/sources")
+        return new Response(JSON.stringify({ sources: [] }));
+      return new Response(null, { status: 404 });
+    }),
+  );
+  render(<App />);
+  const fetch = await screen.findByRole("button", {
+    name: "Получить следующую порцию",
+  });
+  fireEvent.click(fetch);
+  expect(await screen.findByText(/Получено записей: 3/)).toBeTruthy();
+  expect(synced).toBe(1);
+});

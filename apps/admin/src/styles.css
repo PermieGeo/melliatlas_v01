@@ -1,0 +1,49 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+html {
+  background: #f8fafc;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.melliatlas-map {
+  width: 100%;
+  height: clamp(390px, 54vw, 580px);
+  border-radius: 10px;
+  background: #eef2f6;
+  z-index: 0;
+}
+
+.leaflet-container {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .melliatlas-map {
+    height: 52vh;
+    min-height: 340px;
+    max-height: 530px;
+  }
+}

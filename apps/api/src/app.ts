@@ -122,7 +122,7 @@ export function createApp(services: ApiServices): express.Express {
         if (
           url.protocol !== "http:" ||
           !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
-          !["5173", "3001"].includes(url.port)
+          !["5174", "3001"].includes(url.port)
         ) {
           return next(
             new ApiFailure(

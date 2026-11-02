@@ -7,10 +7,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --filter @melliatlas/contracts build && pnpm --parallel --filter @melliatlas/api --filter @melliatlas/web dev",
-    "build": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api build && pnpm --filter @melliatlas/web build",
-    "typecheck": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api typecheck && pnpm --filter @melliatlas/web typecheck",
-    "test": "pnpm --filter @melliatlas/api test && pnpm --filter @melliatlas/web test",
+    "dev": "pnpm --filter @melliatlas/contracts build && pnpm --parallel --filter @melliatlas/api --filter @melliatlas/web --filter @melliatlas/admin dev",
+    "build": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api build && pnpm --filter @melliatlas/web build && pnpm --filter @melliatlas/admin build",
+    "typecheck": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api typecheck && pnpm --filter @melliatlas/web typecheck && pnpm --filter @melliatlas/admin typecheck",
+    "test": "pnpm --filter @melliatlas/api test && pnpm --filter @melliatlas/web test && pnpm --filter @melliatlas/admin test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api db:migrate",

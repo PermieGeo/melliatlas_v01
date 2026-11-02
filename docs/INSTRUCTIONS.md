@@ -47,7 +47,8 @@ After a failed `CHK`, resume instead of applying the same ZIP again.
 ## Ownership conventions
 
 - `apps/api`: API routes, orchestration, source adapters, persistence and credentials.
-- `apps/web`: responsive user experience, browser state, map layers and API client.
+- `apps/web`: read-only beekeeper map, weather and future user alerts.
+- `apps/admin`: separate local operator UI for sources, bounded ingestion and review. Never expose operator routes without server-side authentication.
 - `packages/contracts`: single source of truth for public Zod HTTP schemas.
 - `docs/ARCHITECTURE.md`: architecture decisions and module boundaries (no separate ADR index).
 - Each module `contract.md`: public API, owned data, dependencies and invariants.

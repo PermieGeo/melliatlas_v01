@@ -1,11 +1,9 @@
-// Feature IDs: MAP.POINT_SELECTION, SOURCES.CATALOG, WEATHER.POINT_FORECAST
 import {
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import App from "./App";
@@ -13,18 +11,19 @@ import App from "./App";
 vi.mock("./components/MapCanvas", () => ({
   MapCanvas: ({
     onSelect,
+    treatments,
   }: {
-    onSelect: (point: { lat: number; lon: number }) => void;
+    onSelect(point: { lat: number; lon: number }): void;
+    treatments: unknown[];
   }) => (
-    <button
-      aria-label="Select fixture location"
-      onClick={() => onSelect({ lat: 54.78, lon: 32.05 })}
-    >
-      Map fixture
-    </button>
+    <div>
+      <button onClick={() => onSelect({ lat: 54.78, lon: 32.05 })}>
+        Select fixture location
+      </button>
+      <span>Features: {treatments.length}</span>
+    </div>
   ),
 }));
-
 const forecast = {
   point: { lat: 54.78, lon: 32.05 },
   weather: {
@@ -35,240 +34,87 @@ const forecast = {
     precipitationMm: 0.1,
   },
   provenance: {
-    sourceId: "test-forecast",
-    sourceName: "Synthetic test source",
-    sourceUrl: "https://example.invalid/test",
+    sourceId: "test",
+    sourceName: "Test weather",
+    sourceUrl: "https://example.invalid/forecast",
     observedAt: "2026-10-31T08:00:00.000Z",
     retrievedAt: "2026-10-31T08:03:00.000Z",
     nature: "forecast_model",
   },
 };
-
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 
-it("renders a map-centered empty state without fictional observations", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async (url: string) =>
-        new Response(
-          JSON.stringify(
-            url === "/api/v1/operator/notices/map-preview"
-              ? { notices: [] }
-              : { sources: [] },
-          ),
-          { status: 200 },
-        ),
-    ),
-  );
-  render(<App />);
-  expect(screen.getByText("Выберите точку карты")).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Select fixture location" }),
-  ).toBeTruthy();
-  expect(await screen.findByText("Карта и обзор территории")).toBeTruthy();
-});
-
-it("shows a source failure and recovers after user retry without fallback values", async () => {
-  let attempts = 0;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      if (url === "/api/v1/sources") {
-        return new Response(JSON.stringify({ sources: [] }));
-      }
-      if (url === "/api/v1/operator/notices/map-preview") {
-        return new Response(JSON.stringify({ notices: [] }));
-      }
-      attempts += 1;
-      if (attempts === 1) {
-        return new Response(
-          JSON.stringify({
-            error: {
-              code: "SOURCE_UNAVAILABLE",
-              message: "Source unavailable",
-              requestId: "request-1",
-            },
-          }),
-          { status: 503 },
-        );
-      }
-      return new Response(JSON.stringify(forecast));
-    }),
-  );
-
-  render(<App />);
-  fireEvent.click(
-    screen.getByRole("button", { name: "Select fixture location" }),
-  );
-  expect(await screen.findByRole("alert")).toBeTruthy();
-  expect(screen.queryByText("10.0 °C")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Повторить запрос" }));
-  expect(await screen.findByText("10.0 °C")).toBeTruthy();
-  expect(
-    screen
-      .getByRole("link", { name: /Synthetic test source/ })
-      .getAttribute("href"),
-  ).toBe("https://example.invalid/test");
-  expect(attempts).toBe(2);
-});
-
-it("reports source catalog failure instead of a fake empty catalog", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            error: {
-              code: "SOURCE_UNAVAILABLE",
-              message: "Database offline",
-              requestId: "request-2",
-            },
-          }),
-          { status: 503 },
-        ),
-    ),
-  );
-
-  render(<App />);
-  fireEvent.click(screen.getByRole("button", { name: /Посмотреть источники/ }));
-  expect(await screen.findByRole("alert")).toBeTruthy();
-  expect(screen.queryByText("Подключённые источники отсутствуют.")).toBeNull();
-});
-
-it("shows the seeded treatment provider publicly without operator credentials", async () => {
-  const source = {
-    id: "treatment-feed",
-    name: "Fixture treatment feed",
-    kind: "treatment",
-    lifecycle: "under_review",
-    url: "https://provider.example.org/api/treatments",
-    termsReview: "pending",
-    lastSuccessfulIngestAt: null,
-  };
-  const configuration = {
-    providerName: source.name,
-    endpoint: source.url,
-    request: {
-      method: "POST",
-      regionParameter: "subject",
-      regionCode: 55,
-      parameters: { pageNumber: 0, pageSize: 40 },
-    },
-    revision: "1",
-    collectionEnabled: false,
-  };
-  const status = {
-    sourceConfigured: true,
-    latestRun: null,
-    pendingReview: 0,
-    pendingWithGeometry: 0,
-    verifiedWithGeometry: 0,
-    missingGeometry: 0,
-  };
+it("reads the verified public map endpoint without accessing administrator routes", async () => {
   const fetcher = vi.fn(async (url: string) => {
-    if (url === "/api/v1/sources") {
-      return new Response(JSON.stringify({ sources: [source] }));
-    }
-    if (url === "/api/v1/operator/notices/map-preview") {
+    if (url === "/api/v1/notices")
       return new Response(JSON.stringify({ notices: [] }));
-    }
-    if (url === "/api/v1/operator/provider") {
-      return new Response(JSON.stringify(configuration));
-    }
-    if (url === "/api/v1/operator/provider/status") {
-      return new Response(JSON.stringify(status));
-    }
     return new Response(null, { status: 404 });
   });
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
-  // The map warning belongs to the map tab and must be checked before navigation.
   expect(
-    await screen.findByText(/На карте пока нет загруженных полигонов/),
+    await screen.findByText(/Проверенных полигонов пока нет/),
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
-  expect(await screen.findByText("Fixture treatment feed")).toBeTruthy();
-  expect(screen.getByText(source.url)).toBeTruthy();
-  expect(screen.getByText("На проверке")).toBeTruthy();
-  expect(screen.getByText("Не выполнялась")).toBeTruthy();
-  // Both the source summary and editor describe manual fetching; scope the assertion.
-  expect(
-    within(
-      screen.getByRole("region", { name: "Сохранённый источник" }),
-    ).getByText(/Сохранение запускает загрузку одной страницы/),
-  ).toBeTruthy();
-  expect(await screen.findByDisplayValue(source.url)).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Сохранить и загрузить страницу" }),
-  ).toBeTruthy();
-  expect(screen.queryByLabelText("Токен оператора")).toBeNull();
-  expect(
-    screen.queryByText(/На карте пока нет загруженных полигонов/),
-  ).toBeNull();
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
-  expect(fetcher).toHaveBeenCalledWith("/api/v1/sources", expect.any(Object));
-  expect(fetcher).toHaveBeenCalledWith(
-    "/api/v1/operator/notices/map-preview",
-    expect.any(Object),
+  expect(screen.getByText("Features: 0")).toBeTruthy();
+  expect(screen.queryByText("Конфигурация")).toBeNull();
+  expect(fetcher).toHaveBeenCalledWith("/api/v1/notices", expect.any(Object));
+  expect(fetcher.mock.calls.every(([url]) => !url.includes("/operator/"))).toBe(
+    true,
   );
-  expect(fetcher).toHaveBeenCalledWith("/api/v1/operator/provider", {
-    cache: "no-store",
-  });
-  expect(fetcher).toHaveBeenCalledWith(
-    "/api/v1/operator/provider/status",
-    expect.any(Object),
-  );
-  // Opening settings does not trigger a provider collection run.
-  expect(
-    fetcher.mock.calls.some(
-      ([url]) => url === "/api/v1/operator/provider/sync",
-    ),
-  ).toBe(false);
 });
 
-it("shows a missing treatment provider instead of inventing settings", async () => {
+it("loads attributed forecast on selection and supports translation", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(
       async (url: string) =>
         new Response(
           JSON.stringify(
-            url === "/api/v1/operator/notices/map-preview"
-              ? { notices: [] }
-              : { sources: [] },
+            url === "/api/v1/notices" ? { notices: [] } : forecast,
           ),
         ),
     ),
   );
   render(<App />);
-  fireEvent.click(screen.getByRole("button", { name: "Настройки источника" }));
+  fireEvent.click(screen.getByText("Select fixture location"));
+  expect(await screen.findByText("10.0 °C")).toBeTruthy();
   expect(
-    await screen.findByText(/Источник обработок не найден в реестре/),
-  ).toBeTruthy();
+    screen.getByRole("link", { name: /Test weather/ }).getAttribute("href"),
+  ).toBe(forecast.provenance.sourceUrl);
+  fireEvent.change(screen.getByLabelText("Язык"), { target: { value: "en" } });
+  expect(screen.getByRole("heading", { name: "Treatment map" })).toBeTruthy();
 });
 
-it("explains the missing public map overlay without suggesting sample data", async () => {
+it("does not invent forecast data after failed fetch and allows retry", async () => {
+  let attempts = 0;
   vi.stubGlobal(
     "fetch",
-    vi.fn(
-      async (url: string) =>
-        new Response(
-          JSON.stringify(
-            url === "/api/v1/operator/notices/map-preview"
-              ? { notices: [] }
-              : { sources: [] },
-          ),
-        ),
-    ),
+    vi.fn(async (url: string) => {
+      if (url === "/api/v1/notices")
+        return new Response(JSON.stringify({ notices: [] }));
+      attempts += 1;
+      if (attempts === 1)
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "SOURCE_UNAVAILABLE",
+              message: "Offline",
+              requestId: "test",
+            },
+          }),
+          { status: 503 },
+        );
+      return new Response(JSON.stringify(forecast));
+    }),
   );
   render(<App />);
-  expect(
-    await screen.findByText(/На карте пока нет загруженных полигонов/),
-  ).toBeTruthy();
-  expect(screen.getByText(/Полигонов на карте: 0/)).toBeTruthy();
+  fireEvent.click(screen.getByText("Select fixture location"));
+  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(screen.queryByText("10.0 °C")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+  await waitFor(() => expect(screen.getByText("10.0 °C")).toBeTruthy());
+  expect(attempts).toBe(2);
 });
