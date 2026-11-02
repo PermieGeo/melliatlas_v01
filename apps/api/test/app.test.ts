@@ -203,7 +203,23 @@ describe("local administrator treatment evidence HTTP boundaries", () => {
     },
     pending: async () => [],
     review: async () => {},
-    published: async () => [],
+    published: async () => [
+      {
+        id: "structured",
+        reviewStatus: "pending",
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [32, 54],
+              [33, 54],
+              [33, 55],
+              [32, 54],
+            ],
+          ],
+        },
+      },
+    ],
     preview: async () => [
       {
         id: "preview",
@@ -223,7 +239,7 @@ describe("local administrator treatment evidence HTTP boundaries", () => {
     ],
   };
 
-  it("starts one explicit sync and returns pending preview only via administrator route", async () => {
+  it("keeps ingestion administrator-only and exposes source-attributed unreviewed map records publicly", async () => {
     const app = createApp({ ...services, treatmentFeed });
     const before = syncCount;
     const synced = await request(app).post("/api/v1/operator/provider/sync");
@@ -236,7 +252,11 @@ describe("local administrator treatment evidence HTTP boundaries", () => {
     expect(preview.headers["cache-control"]).toBe("no-store");
     expect(preview.body.notices[0].reviewStatus).toBe("pending");
     const publicMap = await request(app).get("/api/v1/notices");
-    expect(publicMap.body).toEqual({ notices: [] });
+    expect(publicMap.status).toBe(200);
+    expect(publicMap.body.notices).toMatchObject([
+      { id: "structured", reviewStatus: "pending" },
+    ]);
+    expect(publicMap.headers["cache-control"]).toBe("no-store");
   });
 
   it("rejects cross-origin browser writes to local admin routes", async () => {
@@ -277,6 +297,6 @@ describe("local administrator treatment evidence HTTP boundaries", () => {
     }
     expect(
       (await request(app).get("/api/v1/notices?bbox=30,53,35,56")).body.notices,
-    ).toEqual([]);
+    ).toHaveLength(1);
   });
 });

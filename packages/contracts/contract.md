@@ -11,6 +11,6 @@
 - **Provider configuration:** `saturnConfigurationSchema`, `saturnConfigurationEditSchema` and `saturnRequestSettingsSchema` validate method, flat bounded parameters, region code and optimistic revision. Endpoint destination safety is additionally checked on the backend; this schema does not grant fetching permission.
 - **Extension:** Update schema, backend, web consumer and independent tests together. Preserve existing `/api/v1` compatibility or introduce deliberate versioning.
 
-- `mapTreatmentSchema` and `mapTreatmentsResponseSchema` define WGS84 geometry, source-provenance and reviewed observation attributes for the public notice map. Unreviewed candidates never cross the public boundary.
+- `mapTreatmentSchema` and `mapTreatmentsResponseSchema` define WGS84 geometry, source provenance and explicit operator-review status for the public map. Structured pending treatment observations with validated polygons may appear as unreviewed; rejected, text-only and non-structured pending observations remain private. No map record implies a verified safety assessment.
 
 - `providerCollectionStatusSchema` is the authenticated, read-only import diagnostics response. It reports counts and last run status without raw source payloads or provider keys.

@@ -7,7 +7,7 @@ Extends [root AGENTS.md](../../AGENTS.md).
 - Browser data access lives behind `src/api/` and shared `@melliatlas/contracts` schemas; never import `apps/api` source or connect to PostgreSQL directly.
 - Keep map-first UX on mobile and desktop: touch-sized controls, no horizontal overflow, accessible keyboard paths, responsive details and cancellable requests.
 - Only `GET /api/v1/notices` returns map treatment records for beekeepers. Never call `/api/v1/operator/*` or bundle admin controls into this app.
-- Render verified server values only. Loading, empty, stale, restricted and error states differ; every external finding shows source and timestamp.
+- Render only server-provided source-attributed data. Pending structured treatment polygons may appear with a prominent unverified label; never represent them as independently reviewed or as a pesticide-risk verdict. Loading, empty, stale, restricted and error states differ; every external finding shows source and timestamp.
 - Never imply forecast weather proves pesticide risk, flowering state, official spraying or satellite observations.
 - Do not send precise private apiary coordinates to third parties, analytics, map URLs or error trackers.
 - Keep provider attribution on map layers. Verify external map tile/data usage restrictions before production launch.

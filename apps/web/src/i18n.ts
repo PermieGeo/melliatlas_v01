@@ -6,10 +6,10 @@ export const messages = {
     overview: "Обзор территории",
     layers: "Слои",
     treatments: "Планы обработок",
-    publishedOnly:
-      "Отображаются только проверенные записи с указанием источника.",
+    sourceReviewNotice:
+      "Показаны данные источников, включая записи без независимой проверки. Это не оценка опасности для пчёл.",
     noTreatments:
-      "Проверенных полигонов пока нет. Отсутствие сведений не означает отсутствие обработок.",
+      "Полигонов обработок пока нет. Отсутствие сведений не означает отсутствие обработок.",
     mapLoadError: "Не удалось загрузить слой обработок.",
     loading: "Загрузка карты…",
     refresh: "Обновить карту",
@@ -50,10 +50,10 @@ export const messages = {
     overview: "Area overview",
     layers: "Layers",
     treatments: "Planned treatments",
-    publishedOnly:
-      "Only individually verified records with source attribution are shown.",
+    sourceReviewNotice:
+      "Source-attributed records may be shown without independent verification. This is not a bee safety assessment.",
     noTreatments:
-      "No verified polygons are available yet. Missing records do not mean no treatments.",
+      "No treatment polygons are available yet. Missing records do not mean no treatments.",
     mapLoadError: "Unable to load treatment layer.",
     loading: "Loading map…",
     refresh: "Refresh map",

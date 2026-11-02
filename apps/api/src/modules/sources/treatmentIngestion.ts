@@ -533,6 +533,7 @@ export class TreatmentIngestionService {
     }
   }
 
+  /** Public map includes attributed structured candidates; review remains explicit. */
   async published(
     bbox?: [number, number, number, number],
   ): Promise<MapTreatment[]> {
@@ -565,8 +566,12 @@ export class TreatmentIngestionService {
        FROM source_observations o JOIN source_documents d ON d.id=o.source_document_id
        JOIN source_catalog s ON s.id=d.source_id
        WHERE d.source_id=$1 AND s.lifecycle='configured' AND d.canonical_url=s.url
-         AND o.observation_type='treatment_plan' AND (o.review_status='verified' OR ($6::boolean AND o.review_status='pending'))
-         AND o.geometry IS NOT NULL
+         AND o.observation_type='treatment_plan'
+         AND (o.review_status='verified' OR
+              (o.review_status='pending' AND ($6::boolean OR o.extraction_method='structured')))
+         AND o.geometry IS NOT NULL AND o.spatial_precision='exact_polygon'
+         AND ST_GeometryType(o.geometry) IN ('ST_Polygon', 'ST_MultiPolygon')
+         AND ST_IsValid(o.geometry)
          AND ($2::float8 IS NULL OR ST_Intersects(o.geometry,ST_MakeEnvelope($2,$3,$4,$5,4326)))
        ORDER BY d.retrieved_at DESC, o.id LIMIT 200`,
       [SOURCE_ID, ...(bbox ?? [null, null, null, null]), includePending],
