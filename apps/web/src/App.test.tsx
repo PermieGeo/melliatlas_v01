@@ -12,12 +12,16 @@ import App from "./App";
 vi.mock("./components/MapCanvas", () => ({
   MapCanvas: ({
     onSelect,
+    onSelectTreatment,
     onViewportChange,
     treatments,
   }: {
     onSelect(point: { lat: number; lon: number }): void;
+    onSelectTreatment(
+      treatment: import("@melliatlas/contracts").MapTreatment,
+    ): void;
     onViewportChange(bbox: [number, number, number, number]): void;
-    treatments: unknown[];
+    treatments: import("@melliatlas/contracts").MapTreatment[];
   }) => {
     useEffect(() => {
       onViewportChange([31, 53, 33, 55]);
@@ -27,6 +31,11 @@ vi.mock("./components/MapCanvas", () => ({
         <button onClick={() => onSelect({ lat: 54.78, lon: 32.05 })}>
           Select fixture location
         </button>
+        {treatments[0] && (
+          <button onClick={() => onSelectTreatment(treatments[0])}>
+            Select fixture treatment
+          </button>
+        )}
         <span>Features: {treatments.length}</span>
       </div>
     );
@@ -174,4 +183,61 @@ it("renders an unreviewed structured map feature without requiring admin access"
   expect(fetcher.mock.calls.every(([url]) => !url.includes("/operator/"))).toBe(
     true,
   );
+});
+
+it("shows selected source treatments beside compact weather with separate cadastral entries", async () => {
+  const treatment = {
+    id: "00000000-0000-4000-8000-000000000031",
+    sourceName: "Fixture Saturn",
+    sourceUrl: "https://example.invalid/plans",
+    retrievedAt: "2026-11-01T08:00:00.000Z",
+    publishedAt: null,
+    startAt: "2026-11-10T08:00:00.000Z",
+    endAt: "2026-11-12T08:00:00.000Z",
+    contractorName: "Example farmer",
+    cadastralNumber: "67:01:0000001:100; 67:01:0000001:101",
+    treatments: [{ name: "Example pesticide", crop: "Rye", beeHazardClass: 2 }],
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [32, 54.7],
+          [32.1, 54.7],
+          [32.1, 54.8],
+          [32, 54.7],
+        ],
+      ],
+    },
+    spatialPrecision: "exact_polygon",
+    reviewStatus: "pending",
+  };
+  const fetcher = vi.fn(
+    async (url: string) =>
+      new Response(
+        JSON.stringify(
+          url.startsWith("/api/v1/notices?bbox=")
+            ? { notices: [treatment] }
+            : forecast,
+        ),
+      ),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  await screen.findByText("Features: 1");
+  fireEvent.click(screen.getByText("Select fixture treatment"));
+  const panel = screen.getByRole("region", { name: "Информация об участке" });
+  expect(panel.textContent).toContain("Example farmer");
+  expect(panel.textContent).toContain("Example pesticide");
+  expect(panel.textContent).toContain("Класс опасности для пчёл");
+  expect(
+    panel.querySelectorAll('[data-testid="cadastral-list"] li'),
+  ).toHaveLength(2);
+  expect(panel.textContent).toContain("67:01:0000001:101");
+  expect(
+    fetcher.mock.calls.filter(([url]) => url.includes("locations/inspect")),
+  ).toHaveLength(0);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Закрыть сведения об участке" }),
+  );
+  expect(panel.textContent).toContain("Выберите поле на карте");
 });

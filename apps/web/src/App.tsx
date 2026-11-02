@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { inspectLocation, loadMapTreatments } from "./api/client";
 import { MapCanvas } from "./components/MapCanvas";
 import { WeatherPanel, type WeatherState } from "./components/WeatherPanel";
+import { TreatmentDetailsPanel } from "./components/TreatmentDetailsPanel";
 import { translate, type Locale, type MessageKey } from "./i18n";
 
 const defaultFocus: Coordinates = { lat: 54.782, lon: 32.045 };
@@ -25,6 +26,8 @@ export default function App() {
   const [layers, setLayers] = useState<LayerState>({ status: "loading" });
   const [weather, setWeather] = useState<WeatherState>({ status: "idle" });
   const [showTreatments, setShowTreatments] = useState(true);
+  const [selectedTreatment, setSelectedTreatment] =
+    useState<MapTreatment | null>(null);
   const [viewport, setViewport] = useState<
     [number, number, number, number] | null
   >(null);
@@ -48,7 +51,13 @@ export default function App() {
     setLayers({ status: "loading" });
     loadMapTreatments(controller.signal, viewport)
       .then((value) => {
-        if (!controller.signal.aborted) setLayers({ status: "loaded", value });
+        if (controller.signal.aborted) return;
+        setLayers({ status: "loaded", value });
+        setSelectedTreatment((previous) =>
+          previous
+            ? (value.find((item) => item.id === previous.id) ?? null)
+            : null,
+        );
       })
       .catch(() => {
         if (!controller.signal.aborted) setLayers({ status: "error" });
@@ -133,7 +142,10 @@ export default function App() {
               <input
                 type="checkbox"
                 checked={showTreatments}
-                onChange={(event) => setShowTreatments(event.target.checked)}
+                onChange={(event) => {
+                  setShowTreatments(event.target.checked);
+                  setSelectedTreatment(null);
+                }}
                 className="mt-1 accent-emerald-700"
               />
               {t("treatments")}
@@ -155,6 +167,9 @@ export default function App() {
                 onChange={(event) => setRadius(Number(event.target.value))}
                 className="mt-3 w-full accent-emerald-700"
               />
+              <p className="mt-2 text-xs text-slate-500">
+                {t("radiusVisualizationOnly")}
+              </p>
             </div>
           </aside>
           <section
@@ -191,18 +206,27 @@ export default function App() {
               radiusKm={radius}
               onSelect={setPoint}
               onViewportChange={onViewportChange}
+              onSelectTreatment={setSelectedTreatment}
+              selectedTreatmentId={selectedTreatment?.id ?? null}
               treatments={
                 showTreatments && layers.status === "loaded" ? layers.value : []
               }
             />
             <p className="px-2 pt-3 text-xs text-slate-500">{t("mapSource")}</p>
           </section>
-          <WeatherPanel
-            locale={locale}
-            point={point}
-            state={weather}
-            retry={() => setRetry((value) => value + 1)}
-          />
+          <aside className="min-w-0 space-y-3" aria-label={t("locationInfo")}>
+            <WeatherPanel
+              locale={locale}
+              point={point}
+              state={weather}
+              retry={() => setRetry((value) => value + 1)}
+            />
+            <TreatmentDetailsPanel
+              locale={locale}
+              notice={selectedTreatment}
+              onClose={() => setSelectedTreatment(null)}
+            />
+          </aside>
         </div>
       </main>
     </div>

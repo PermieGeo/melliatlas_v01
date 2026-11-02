@@ -109,8 +109,8 @@ test("public map displays unreviewed sourced polygons without an administrator A
     startAt: null,
     endAt: null,
     contractorName: null,
-    cadastralNumber: null,
-    treatments: [],
+    cadastralNumber: "67:01:0000001:100;67:01:0000001:101",
+    treatments: [{ name: "Test product", crop: "Rye", beeHazardClass: 2 }],
     geometry: {
       type: "Polygon",
       coordinates: [
@@ -143,8 +143,16 @@ test("public map displays unreviewed sourced polygons without an administrator A
   );
   await expect(polygon).toHaveCount(1);
   await polygon.click();
+  const details = page.getByRole("region", { name: "Информация об участке" });
   await expect(
-    page.getByText("Не проверено. Не является оценкой безопасности."),
+    details.getByText("Не проверено. Не является оценкой безопасности."),
+  ).toBeVisible();
+  await expect(details.getByText("Test product")).toBeVisible();
+  await expect(
+    details.locator('[data-testid="cadastral-list"] li'),
+  ).toHaveCount(2);
+  await expect(
+    page.getByRole("region", { name: "Погода в выбранной точке" }),
   ).toBeVisible();
   expect(requests.length).toBeGreaterThan(0);
   expect(requests.every((url) => !url.includes("operator"))).toBe(true);

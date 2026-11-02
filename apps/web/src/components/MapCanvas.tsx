@@ -1,7 +1,8 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, NOTICES.MAP_OVERLAY
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { useEffect } from "react";
-import { formatTime, translate, type Locale, type MessageKey } from "../i18n";
+import { translate, type Locale, type MessageKey } from "../i18n";
+import { TreatmentFacts } from "./TreatmentDetailsPanel";
 import {
   Circle,
   CircleMarker,
@@ -19,6 +20,8 @@ type MapCanvasProps = {
   selected: Coordinates | null;
   radiusKm: number;
   onSelect(point: Coordinates): void;
+  onSelectTreatment(notice: MapTreatment): void;
+  selectedTreatmentId?: string | null;
   onViewportChange?(bbox: [number, number, number, number]): void;
   treatments?: MapTreatment[];
 };
@@ -65,6 +68,8 @@ export function MapCanvas({
   selected,
   radiusKm,
   onSelect,
+  onSelectTreatment,
+  selectedTreatmentId,
   onViewportChange,
   treatments = [],
 }: MapCanvasProps) {
@@ -98,52 +103,18 @@ export function MapCanvas({
             positions={rings.map((ring) =>
               ring.map(([lon, lat]) => [lat, lon] as [number, number]),
             )}
+            eventHandlers={{ click: () => onSelectTreatment(notice) }}
             pathOptions={{
+              bubblingMouseEvents: false,
               color: notice.reviewStatus !== "verified" ? "#d97706" : "#c2410c",
-              weight: 2,
+              weight: selectedTreatmentId === notice.id ? 4 : 2,
               dashArray: notice.reviewStatus !== "verified" ? "5 5" : undefined,
               fillOpacity: notice.reviewStatus !== "verified" ? 0.12 : 0.22,
             }}
           >
             <Popup>
-              <div className="max-w-xs space-y-1 text-xs">
-                <strong>{notice.contractorName || t("treatments")}</strong>
-                <p>
-                  {t("cadastral")}: {notice.cadastralNumber || t("unknown")}
-                </p>
-                <p>
-                  {t("period")}:{" "}
-                  {notice.startAt
-                    ? formatTime(locale, notice.startAt)
-                    : t("unknown")}{" "}
-                  —{" "}
-                  {notice.endAt
-                    ? formatTime(locale, notice.endAt)
-                    : t("unknown")}
-                </p>
-                <p>
-                  {t("substance")}:{" "}
-                  {notice.treatments
-                    .map((item) => item.name)
-                    .filter(Boolean)
-                    .join(", ") || t("unknown")}
-                </p>
-                <p>
-                  {t("source")}: {notice.sourceName}; {t("retrievedAt")}:{" "}
-                  {formatTime(locale, notice.retrievedAt)}
-                </p>
-                <a
-                  href={notice.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t("original")}
-                </a>
-                <p>
-                  {notice.reviewStatus === "verified"
-                    ? t("verified")
-                    : t("unverified")}
-                </p>
+              <div className="max-w-xs text-xs">
+                <TreatmentFacts locale={locale} notice={notice} />
               </div>
             </Popup>
           </Polygon>
