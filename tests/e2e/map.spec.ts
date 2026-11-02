@@ -24,7 +24,7 @@ test("beekeeper map only reads the public source-attributed notice endpoint", as
   page,
 }) => {
   const requested: string[] = [];
-  await page.route("**/api/v1/notices", async (route) => {
+  await page.route("**/api/v1/notices**", async (route) => {
     requested.push(route.request().url());
     await route.fulfill({
       contentType: "application/json",
@@ -44,7 +44,7 @@ test("beekeeper map only reads the public source-attributed notice endpoint", as
 test("map selection shows attributed forecast with a localized retry", async ({
   page,
 }) => {
-  await page.route("**/api/v1/notices", async (route) =>
+  await page.route("**/api/v1/notices**", async (route) =>
     route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ notices: [] }),
@@ -126,7 +126,7 @@ test("public map displays unreviewed sourced polygons without an administrator A
     spatialPrecision: "exact_polygon",
     reviewStatus: "pending",
   };
-  await page.route("**/api/v1/notices", async (route) => {
+  await page.route("**/api/v1/notices**", async (route) => {
     requests.push(route.request().url());
     await route.fulfill({
       contentType: "application/json",

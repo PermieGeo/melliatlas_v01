@@ -39,6 +39,10 @@ it("keeps source configuration separate from explicit collection", async () => {
       return new Response(JSON.stringify({ notices: [] }));
     if (url === "/api/v1/operator/provider/status")
       return new Response(JSON.stringify(status));
+    if (url === "/api/v1/operator/provider/region-scan")
+      return new Response(
+        JSON.stringify({ regionCode: 55, nextPage: 0, scan: null }),
+      );
     if (url === "/api/v1/operator/provider" && options?.method === "PUT")
       return new Response(JSON.stringify({ ...config, revision: "2" }));
     if (url === "/api/v1/operator/provider")
@@ -75,6 +79,10 @@ it("fetches one batch only when requested in the data collection section", async
       }
       if (url === "/api/v1/operator/provider/status")
         return new Response(JSON.stringify(status));
+      if (url === "/api/v1/operator/provider/region-scan")
+        return new Response(
+          JSON.stringify({ regionCode: 55, nextPage: 0, scan: null }),
+        );
       if (url === "/api/v1/operator/notices/map-preview")
         return new Response(JSON.stringify({ notices: [] }));
       if (url === "/api/v1/sources")
@@ -89,4 +97,57 @@ it("fetches one batch only when requested in the data collection section", async
   fireEvent.click(fetch);
   expect(await screen.findByText(/Получено записей: 3/)).toBeTruthy();
   expect(synced).toBe(1);
+});
+
+it("starts a full region collection separately from manual one-page fetching", async () => {
+  let starts = 0;
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === "/api/v1/operator/provider/region-scan/start") {
+      starts++;
+      return new Response(
+        JSON.stringify({
+          regionCode: 55,
+          nextPage: 0,
+          scan: {
+            state: "running",
+            revision: "1",
+            regionCode: 55,
+            scheduledOn: "2026-11-02",
+            startedAt: "2026-11-02T21:00:00.000Z",
+            completedAt: null,
+            nextAllowedAt: "2026-11-02T21:00:00.000Z",
+            pagesFetched: 0,
+            recordsReceived: 0,
+            recordsStored: 0,
+            totalElements: null,
+            errorCode: null,
+            consecutiveErrors: 0,
+          },
+        }),
+      );
+    }
+    if (url === "/api/v1/operator/provider/region-scan")
+      return new Response(
+        JSON.stringify({ regionCode: 55, nextPage: 0, scan: null }),
+      );
+    if (url === "/api/v1/operator/provider/status")
+      return new Response(JSON.stringify(status));
+    if (url === "/api/v1/operator/notices/map-preview")
+      return new Response(JSON.stringify({ notices: [] }));
+    if (url === "/api/v1/sources")
+      return new Response(JSON.stringify({ sources: [] }));
+    return new Response(null, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Запустить обход" }),
+  );
+  expect(await screen.findByText("Выполняется")).toBeTruthy();
+  expect(starts).toBe(1);
+  expect(
+    fetcher.mock.calls.some(
+      ([url]) => url === "/api/v1/operator/provider/sync",
+    ),
+  ).toBe(false);
 });

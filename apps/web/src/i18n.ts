@@ -14,6 +14,8 @@ export const messages = {
     loading: "Загрузка карты…",
     refresh: "Обновить карту",
     polygonCount: "Полигонов",
+    mapLimitNotice:
+      "Показано не более 200 полигонов в видимой области. Приблизьте карту, чтобы уточнить выборку.",
     mapSource: "Основа карты: OpenStreetMap",
     inspectedPoint: "Выбранная точка",
     selectPoint:
@@ -58,6 +60,8 @@ export const messages = {
     loading: "Loading map…",
     refresh: "Refresh map",
     polygonCount: "Polygons",
+    mapLimitNotice:
+      "Up to 200 polygons are shown for the visible area. Zoom in to narrow the results.",
     mapSource: "Basemap: OpenStreetMap",
     inspectedPoint: "Selected location",
     selectPoint: "Select a point on the map to inspect its weather forecast.",

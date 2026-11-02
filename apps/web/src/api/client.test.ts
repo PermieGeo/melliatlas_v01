@@ -46,3 +46,17 @@ it("converts server error envelopes into language-independent codes", async () =
     code: "SOURCE_UNAVAILABLE",
   } satisfies Partial<ApiRequestError>);
 });
+
+it("requests only the visible viewport from local stored notices", async () => {
+  const fetcher = vi.fn(
+    async (_url: string, _options?: RequestInit) =>
+      new Response(JSON.stringify({ notices: [] })),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  expect(
+    await loadMapTreatments(new AbortController().signal, [31, 53, 33, 55]),
+  ).toEqual([]);
+  expect(fetcher.mock.calls[0]?.[0]).toBe(
+    "/api/v1/notices?bbox=31.000000,53.000000,33.000000,55.000000",
+  );
+});

@@ -6,12 +6,13 @@ This page is the reference for current runtime and persisted settings. See [Inst
 
 Copy `apps/api/.env.example` to `apps/api/.env` once, then edit the private file. Both the API and the migration command load environment variables through `dotenv` and validate API runtime configuration with Zod.
 
-| Variable                | Default / example                                                          | Behavior                                                                      |
-| ----------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `NODE_ENV`              | `development`                                                              | `development`, `test`, or `production`                                        |
-| `PORT`                  | `3001`                                                                     | Backend port, integer 1–65535                                                 |
-| `DATABASE_URL`          | `postgresql://melliatlas:local_development_only@127.0.0.1:5433/melliatlas` | Required PostgreSQL/PostGIS URL; port `5433` is the host-side Compose mapping |
-| `OPEN_METEO_TIMEOUT_MS` | `8000`                                                                     | Weather timeout in milliseconds, valid range 1000–30000                       |
+| Variable                     | Default / example                                                          | Behavior                                                                                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                   | `development`                                                              | `development`, `test`, or `production`                                                                                                                        |
+| `PORT`                       | `3001`                                                                     | Backend port, integer 1–65535                                                                                                                                 |
+| `DATABASE_URL`               | `postgresql://melliatlas:local_development_only@127.0.0.1:5433/melliatlas` | Required PostgreSQL/PostGIS URL; port `5433` is the host-side Compose mapping                                                                                 |
+| `REGION_SCAN_DAILY_UTC_HOUR` | unset (manual start only)                                                  | Optional UTC hour 0–23 to begin one region-wide scan per day; choose off-peak for the provider region. No guarantee that a long scan finishes the same night. |
+| `OPEN_METEO_TIMEOUT_MS`      | `8000`                                                                     | Weather timeout in milliseconds, valid range 1000–30000                                                                                                       |
 
 There is no application bearer token for local source settings. The administrator API binds to loopback (`127.0.0.1`) and checks browser origins; protect the host and do not reverse-proxy these routes to an untrusted network. The external provider may have its own authentication requirements, but the reference preset does not configure any key.
 
@@ -33,11 +34,12 @@ Source configuration is kept server-side in PostgreSQL. The operator UI calls `G
 - `006_optional_provider_api_key.sql` adds an optional credential field, excluded from future snapshots.
 - `007_treatment_observation_dedupe.sql` adds observation deduplication and review-history storage.
 - `008_manual_treatment_fetch.sql` marks aligned configured `treatment-feed` records ready for bounded fetching without documentary approval.
-- `009_legacy_treatment_endpoint_alignment.sql` repairs the exact untouched legacy homepage URL discrepancy. Earlier schema migrations remain immutable.
+- `009_legacy_treatment_endpoint_alignment.sql` repairs the exact untouched legacy homepage URL discrepancy.
+- `010_provider_document_last_seen.sql` adds one timestamp to existing immutable source evidence, recording when identical raw JSON was most recently observed without overwriting its original retrieval metadata. Earlier migrations remain immutable.
 
 Operators can edit the provider name, HTTPS endpoint, HTTP method, region key/optional container/code and bounded JSON parameters. Every edit clears obsolete approval metadata, updates the configured endpoint and resets pagination; this no longer blocks manual treatment fetches. Saving from the separate local administrator UI changes configuration only; a separate explicit collection action fetches the next bounded batch. The optional provider API key can be seeded from a server environment variable via `apiKeyEnv` in a local preset file; the UI intentionally cannot display or edit it. The reference portal does not use a key. Do not store real long-lived secrets in a committed preset: the current DB column stores the key as text and requires appropriate database access controls/encryption at rest for production. The key is not yet injected into HTTP requests; provider-specific authentication belongs to a verified adapter.
 
-The internal `RestrictedSourceFetcher` allows configured manual treatment requests and separately approved municipal registrations while enforcing HTTPS, DNS/IP, direct TLS, redirect, MIME, size, timeout and retry restrictions. It is used by the local administrator ingest endpoint; there is no scheduler.
+The internal `RestrictedSourceFetcher` allows configured manual treatment requests and separately approved municipal registrations while enforcing HTTPS, DNS/IP, direct TLS, redirect, MIME, size, timeout and retry restrictions. It is used by the local administrator ingest endpoint and bounded server-side regional collection. A scan can be started/paused by the local administrator; restart resumes a running scan. Nightly scans require an explicit `REGION_SCAN_DAILY_UTC_HOUR`, not a hardcoded country timezone. The scan obeys a 65-second minimum gap between claimed pages and pauses after three consecutive errors.
 
 ## Reproducible provider presets
 

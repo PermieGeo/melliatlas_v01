@@ -53,10 +53,25 @@ features:
       - SRC-R02
       - SRC-R03
       - SRC-R06
+      - SRC-R20
+      - SRC-R21
+      - SRC-R22
+      - SRC-R23
+      - SRC-R25
     code_paths:
+      - apps/api/src/modules/sources/regionalScanState.ts
+      - apps/api/src/modules/sources/regionalCollection.ts
+      - apps/api/src/modules/sources/regionOperatorRoutes.ts
+      - apps/admin/src/api/client.ts
+      - packages/contracts/src/index.ts
       - apps/api/src/modules/sources/contracts.ts
       - apps/api/src/modules/sources/treatmentIngestion.ts
+      - apps/admin/src/components/RegionalCollectionPanel.tsx
+      - apps/admin/src/components/CollectionPanel.tsx
     test_paths:
+      - apps/api/test/regionalScanState.test.ts
+      - apps/api/integration/regionalCollection.test.ts
+      - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
   - id: SOURCES.SAFE_FETCH
@@ -116,8 +131,10 @@ features:
     requirements:
       - SRC-R07
       - SRC-R08
+      - SRC-R24
     code_paths:
       - apps/api/src/modules/sources/treatmentIngestion.ts
+      - apps/api/src/modules/sources/treatmentMapProjection.ts
       - apps/api/src/app.ts
       - apps/web/src/App.tsx
       - apps/web/src/components/MapCanvas.tsx
@@ -126,6 +143,9 @@ features:
     test_paths:
       - apps/api/test/app.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
+      - apps/web/src/api/client.test.ts
+      - apps/api/integration/regionalCollection.test.ts
+      - tests/e2e/map.spec.ts
   - id: WEATHER.POINT_FORECAST
     stage_ids:
       - SRC-01

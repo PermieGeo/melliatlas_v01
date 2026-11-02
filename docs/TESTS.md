@@ -111,3 +111,9 @@ The dependency-free `node --test scripts/check-saturn-api.test.mjs` uses an inje
 ### Provider page parser compatibility (SRC-01/S3a.3)
 
 `apps/api/test/beekeeperPlanPage.test.ts` verifies that null/incorrectly typed optional plan metadata does not discard an otherwise valid polygon, while invalid page envelopes and unbounded pages remain rejected. A live external response is **not** supplied as a test fixture. Run `pnpm --dir apps/api test` to validate the parser change, then run `sh ./run-tests.sh` for all canonical checks. If manual collection still returns `INVALID_SOURCE_RESPONSE`, inspect the local API process for the redacted schema-path diagnostics and capture no raw provider records.
+
+### S3b regional collection and map viewport
+
+`apps/api/test/regionalScanState.test.ts` tests cursor progress and honest terminal state. `apps/api/integration/regionalCollection.test.ts` uses two synthetic provider pages and a disposable PostGIS schema, checking manual/scan exclusion, durable progress, restart, page completion and pause/resume. `apps/api/test/app.test.ts` covers local administrator-only region endpoints. The browser API client tests viewport `bbox` encoding; Playwright intercepts both unfiltered and bbox-qualified public URLs. The canonical `run-tests.sh` executes them; no test calls Saturn or proves a nightly source scan was actually completed.
+
+Migration `010_provider_document_last_seen.sql` adds `last_seen_at` to source documents and is applied by `pnpm db:migrate`; the ingestion integration tests apply migrations 001–010 in their isolated schema. Repeated bytes update only the last-seen timestamp, not the immutable original document payload or original retrieval date. Verify this behavior with real PostGIS; a TS syntax check alone cannot establish it.

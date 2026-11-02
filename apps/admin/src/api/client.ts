@@ -1,8 +1,10 @@
-// Feature IDs: SOURCES.CATALOG, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.CATALOG, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import {
   apiErrorSchema,
   mapTreatmentsResponseSchema,
   providerCollectionStatusSchema,
+  regionalScanStatusSchema,
+  type RegionalScanStatus,
   type ProviderCollectionStatus,
   type MapTreatment,
   providerConfigurationSchema,
@@ -129,5 +131,29 @@ export async function reviewTreatment(
 export async function loadProviderCollectionStatus(): Promise<ProviderCollectionStatus> {
   return providerCollectionStatusSchema.parse(
     await operatorRequest("/api/v1/operator/provider/status"),
+  );
+}
+
+export async function loadRegionalScanStatus(): Promise<RegionalScanStatus> {
+  return regionalScanStatusSchema.parse(
+    await operatorRequest("/api/v1/operator/provider/region-scan"),
+  );
+}
+
+export async function startRegionalScan(): Promise<RegionalScanStatus> {
+  return regionalScanStatusSchema.parse(
+    await operatorRequest(
+      "/api/v1/operator/provider/region-scan/start",
+      "POST",
+    ),
+  );
+}
+
+export async function pauseRegionalScan(): Promise<RegionalScanStatus> {
+  return regionalScanStatusSchema.parse(
+    await operatorRequest(
+      "/api/v1/operator/provider/region-scan/pause",
+      "POST",
+    ),
   );
 }

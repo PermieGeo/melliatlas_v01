@@ -6,6 +6,7 @@ const configSchema = z.object({
     .default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   DATABASE_URL: z.string().min(1),
+  REGION_SCAN_DAILY_UTC_HOUR: z.coerce.number().int().min(0).max(23).optional(),
   OPEN_METEO_TIMEOUT_MS: z.coerce
     .number()
     .int()
