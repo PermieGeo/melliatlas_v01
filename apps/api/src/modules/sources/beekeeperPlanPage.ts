@@ -86,6 +86,20 @@ export function parseBeekeeperPlanPage(input: unknown): {
   plans: BeekeeperPlan[];
 } {
   const page = pageSchema.parse(input);
+  // Viewport search returns parcel centers, not treatment evidence or field polygons.
+  if (
+    page.content.some(
+      (record) =>
+        record.beeAcreage == null &&
+        typeof record.planId === "number" &&
+        typeof record.centerX === "number" &&
+        typeof record.centerY === "number",
+    )
+  ) {
+    throw new Error(
+      "Saturn map-query summaries cannot be ingested as treatment plans",
+    );
+  }
   return {
     totalElements: page.totalElements ?? null,
     plans: page.content.map((record) => {

@@ -1,0 +1,16 @@
+{
+  "filter": {
+    "leftTop": {
+      "longitude": 31.42005910644531,
+      "latitude": 55.06535182714785
+    },
+    "rightDown": {
+      "longitude": 32.660140893554676,
+      "latitude": 54.496237198137145
+    },
+    "subject": "55",
+    "query": null
+  },
+  "pageNumber": 0,
+  "pageSize": 10
+}

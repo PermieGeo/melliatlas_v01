@@ -13,6 +13,19 @@ export function summarizePage(data) {
   if (!data || !Array.isArray(data.content)) {
     throw new Error("Unexpected JSON response: content must be an array");
   }
+  if (
+    data.content.some(
+      (item) =>
+        item?.beeAcreage == null &&
+        typeof item?.planId === "number" &&
+        typeof item?.centerX === "number" &&
+        typeof item?.centerY === "number",
+    )
+  ) {
+    throw new Error(
+      "Received Saturn map-query summaries instead of treatment details",
+    );
+  }
   const polygons = data.content.filter((item) => {
     const geo = item?.beeAcreage?.geo;
     return (

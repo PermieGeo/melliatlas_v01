@@ -1,4 +1,5 @@
 // Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.EXTRACTION
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseBeekeeperPlanPage } from "../src/modules/sources/beekeeperPlanPage.js";
 
@@ -132,6 +133,23 @@ describe("published treatment plan page parsing", () => {
       geometry: null,
       treatments: [],
     });
+  });
+
+  it("rejects Saturn map-query summaries instead of storing parcel centers as treatment evidence", () => {
+    const sample = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/saturn-map-query-response.json", import.meta.url),
+        "utf8",
+      ),
+    ) as unknown;
+    expect(() => parseBeekeeperPlanPage(sample)).toThrow(
+      "Saturn map-query summaries cannot be ingested as treatment plans",
+    );
+    expect(() =>
+      parseBeekeeperPlanPage({
+        content: [{ beeAcreage: null, allPatList: null }],
+      }),
+    ).not.toThrow();
   });
 
   it("rejects malformed page envelopes instead of silently dropping records", () => {
