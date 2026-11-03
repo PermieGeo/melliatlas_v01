@@ -6,11 +6,14 @@ import { Pool } from "pg";
 import { RegionalCollectionService } from "../src/modules/sources/regionalCollection.js";
 import { TreatmentIngestionService } from "../src/modules/sources/treatmentIngestion.js";
 import { SourceFetchFailure } from "../src/modules/sources/httpFetcher.js";
+import type { ProviderRequestGate } from "../src/modules/sources/providerRequestThrottle.js";
 
 let rootPool: Pool;
 let pool: Pool;
 let schema: string;
 const providerUrl = "https://records.example.org/treatments";
+// Legacy cursor tests control time independently of the shared DB pacing suite.
+const legacyCursorTestGate: ProviderRequestGate = { reserve: async () => true };
 
 function page(index: number) {
   return {
@@ -96,17 +99,21 @@ describe("regional collection persists progress across worker restarts", () => {
   it("scans the configured region in bounded pages and resumes from saved progress", async () => {
     let time = new Date("2026-11-02T21:00:00.000Z");
     const requests: number[] = [];
-    const ingestion = new TreatmentIngestionService(pool, {
-      fetch: async (_source, request) => {
-        const index = Number(JSON.parse(request.body ?? "{}").pageNumber);
-        requests.push(index);
-        return {
-          canonicalUrl: providerUrl,
-          contentType: "application/json",
-          bytes: Buffer.from(JSON.stringify(page(index))),
-        };
+    const ingestion = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async (_source, request) => {
+          const index = Number(JSON.parse(request.body ?? "{}").pageNumber);
+          requests.push(index);
+          return {
+            canonicalUrl: providerUrl,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(page(index))),
+          };
+        },
       },
-    });
+      legacyCursorTestGate,
+    );
     const firstWorker = new RegionalCollectionService(
       pool,
       ingestion,
@@ -166,12 +173,16 @@ describe("regional collection persists progress across worker restarts", () => {
     );
     let time = new Date("2026-11-03T21:00:00.000Z");
     let attempts = 0;
-    const ingest = new TreatmentIngestionService(pool, {
-      fetch: async () => {
-        attempts++;
-        throw new SourceFetchFailure("UPSTREAM_STATUS");
+    const ingest = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => {
+          attempts++;
+          throw new SourceFetchFailure("UPSTREAM_STATUS");
+        },
       },
-    });
+      legacyCursorTestGate,
+    );
     const worker = new RegionalCollectionService(
       pool,
       ingest,
@@ -207,16 +218,20 @@ describe("regional collection persists progress across worker restarts", () => {
     );
     let time = new Date("2026-11-04T20:59:00.000Z");
     let fetches = 0;
-    const ingest = new TreatmentIngestionService(pool, {
-      fetch: async () => {
-        fetches++;
-        return {
-          canonicalUrl: providerUrl,
-          contentType: "application/json",
-          bytes: Buffer.from(JSON.stringify(page(0))),
-        };
+    const ingest = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => {
+          fetches++;
+          return {
+            canonicalUrl: providerUrl,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(page(0))),
+          };
+        },
       },
-    });
+      legacyCursorTestGate,
+    );
     const worker = new RegionalCollectionService(pool, ingest, 21, () => time);
     await worker.tick();
     expect(fetches).toBe(0);

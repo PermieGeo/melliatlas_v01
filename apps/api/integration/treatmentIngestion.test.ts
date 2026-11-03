@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { TreatmentIngestionService } from "../src/modules/sources/treatmentIngestion.js";
+import type { ProviderRequestGate } from "../src/modules/sources/providerRequestThrottle.js";
 
 const sourceFixture = {
   name: "Fixture publisher",
@@ -17,6 +18,9 @@ const sourceFixture = {
     parameters: { pageNumber: 0, pageSize: 1 },
   },
 };
+// Evidence ingestion regressions use a permissive gate; the durable gate has its own integration suite.
+const evidenceTestGate: ProviderRequestGate = { reserve: async () => true };
+
 const portalFixture = {
   content: [
     {
@@ -77,6 +81,7 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       "008_manual_treatment_fetch.sql",
       "009_legacy_treatment_endpoint_alignment.sql",
       "010_provider_document_last_seen.sql",
+      "013_source_request_throttle.sql",
     ]) {
       await pool.query(
         await readFile(
@@ -161,16 +166,20 @@ describe("real PostGIS provider ingestion and publication gates", () => {
 
   it("publishes valid attributed structured candidates without operator verification and remains idempotent", async () => {
     const requests: string[] = [];
-    const service = new TreatmentIngestionService(pool, {
-      fetch: async (_source, request) => {
-        requests.push(request.body ?? "");
-        return {
-          canonicalUrl: sourceFixture.url,
-          contentType: "application/json",
-          bytes: Buffer.from(JSON.stringify(portalFixture)),
-        };
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async (_source, request) => {
+          requests.push(request.body ?? "");
+          return {
+            canonicalUrl: sourceFixture.url,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(portalFixture)),
+          };
+        },
       },
-    });
+      evidenceTestGate,
+    );
     const first = await service.syncOnePage();
     expect(first).toMatchObject({ received: 1, stored: 1, nextPage: 0 });
     expect(JSON.parse(requests[0])).toMatchObject({
@@ -252,5 +261,51 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     await expect(service.syncOnePage()).rejects.toMatchObject({
       code: "SOURCE_NOT_CONFIGURED",
     });
+  });
+
+  it("uses the persistent source gate before issuing another provider request", async () => {
+    await pool.query(
+      "UPDATE source_catalog SET lifecycle='configured' WHERE id='treatment-feed'",
+    );
+    let calls = 0;
+    const service = new TreatmentIngestionService(pool, {
+      fetch: async () => {
+        calls++;
+        return {
+          canonicalUrl: sourceFixture.url,
+          contentType: "application/json",
+          bytes: Buffer.from(JSON.stringify(portalFixture)),
+        };
+      },
+    });
+    await service.syncOnePage();
+    await expect(service.syncOnePage()).rejects.toMatchObject({
+      statusCode: 429,
+      code: "SOURCE_THROTTLED",
+    });
+    expect(calls).toBe(1);
+  });
+
+  it("does not release a request slot when upstream fetching fails", async () => {
+    await pool.query(
+      `UPDATE source_request_throttle
+       SET next_allowed_at=clock_timestamp()-interval '1 second'
+       WHERE source_id='treatment-feed'`,
+    );
+    let calls = 0;
+    const service = new TreatmentIngestionService(pool, {
+      fetch: async () => {
+        calls++;
+        throw new Error("Synthetic network failure");
+      },
+    });
+    await expect(service.syncOnePage()).rejects.toThrow(
+      "Synthetic network failure",
+    );
+    await expect(service.syncOnePage()).rejects.toMatchObject({
+      statusCode: 429,
+      code: "SOURCE_THROTTLED",
+    });
+    expect(calls).toBe(1);
   });
 });
