@@ -85,8 +85,8 @@ export default function App() {
   }, [point, retry]);
 
   return (
-    <div className="min-h-screen bg-[#f4f7f5] text-slate-900">
-      <header className="border-b border-emerald-950/10 bg-white">
+    <div className="min-h-screen bg-[var(--ma-page-bg)] text-[var(--ma-ink)]">
+      <header className="border-b border-[var(--ma-border)] bg-[var(--ma-surface)]">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-8">
           <div>
             <p className="font-display text-xl font-extrabold tracking-tight">
@@ -101,13 +101,13 @@ export default function App() {
             </span>
             <nav
               aria-label={t("navigation")}
-              className="flex items-center gap-1 rounded-lg bg-slate-100 p-1"
+              className="flex items-center gap-1 rounded-lg bg-[var(--ma-soft)] p-1"
             >
               <button
                 type="button"
                 aria-current={view === "map" ? "page" : undefined}
                 onClick={() => setView("map")}
-                className={`rounded-md px-3 py-2 text-sm ${view === "map" ? "bg-emerald-800 text-white" : "text-slate-700"}`}
+                className={`rounded-md px-3 py-2 text-sm ${view === "map" ? "bg-[var(--ma-accent)] text-white" : "text-slate-700"}`}
               >
                 {t("mapNav")}
               </button>
@@ -115,7 +115,7 @@ export default function App() {
                 type="button"
                 aria-current={view === "help" ? "page" : undefined}
                 onClick={() => setView("help")}
-                className={`inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm ${view === "help" ? "bg-emerald-800 text-white" : "text-slate-700"}`}
+                className={`inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm ${view === "help" ? "bg-[var(--ma-accent)] text-white" : "text-slate-700"}`}
               >
                 <CircleHelp size={16} />
                 {t("help")}
@@ -151,7 +151,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setRefresh((value) => value + 1)}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--ma-accent-hover)]"
               >
                 <RefreshCw size={16} />
                 {t("refresh")}

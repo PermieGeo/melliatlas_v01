@@ -91,6 +91,7 @@ it("fetches one batch only when requested in the data collection section", async
     }),
   );
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Загрузка данных" }));
   const fetch = await screen.findByRole("button", {
     name: "Получить следующую страницу",
   });
@@ -127,6 +128,7 @@ it("keeps unverified district refresh disabled and never invokes legacy region c
   });
   vi.stubGlobal("fetch", fetcher);
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Загрузка данных" }));
   expect(
     await screen.findByText("Покрытие районов пока не подтверждено."),
   ).toBeTruthy();
@@ -248,4 +250,53 @@ it("loads RU/EN operator help from separate files without source collection", as
   fireEvent.click(screen.getByRole("button", { name: "Open data collection" }));
   expect(screen.getByRole("heading", { name: "Data collection" })).toBeTruthy();
   expect(fetcher.mock.calls.some(([url]) => url.includes("/sync"))).toBe(false);
+});
+
+it("shows the preview map and bounded summary independently of data collection", async () => {
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === "/api/v1/operator/notices/map-preview")
+      return new Response(JSON.stringify({ notices: [] }));
+    if (url === "/api/v1/sources")
+      return new Response(JSON.stringify({ sources: [] }));
+    if (url === "/api/v1/operator/provider/status")
+      return new Response(JSON.stringify(status));
+    if (url === "/api/v1/operator/provider/district-cache")
+      return new Response(
+        JSON.stringify({ ttlHours: 24, refreshEnabled: false, entries: [] }),
+      );
+    return new Response(null, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  expect(screen.getByRole("heading", { name: "Карта и анализ" })).toBeTruthy();
+  expect(screen.getByText("Map preview fixture")).toBeTruthy();
+  expect(await screen.findByText("Записей на карте")).toBeTruthy();
+  expect(
+    screen.getByRole("region", { name: "Краткая статистика" }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Получить следующую страницу" }),
+  ).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Загрузка данных" }));
+  expect(screen.queryByText("Map preview fixture")).toBeNull();
+  expect(
+    screen.queryByRole("region", { name: "Краткая статистика" }),
+  ).toBeNull();
+  expect(
+    await screen.findByRole("button", { name: "Получить следующую страницу" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Карта и анализ" }));
+  expect(screen.getByText("Map preview fixture")).toBeTruthy();
+  expect(
+    fetcher.mock.calls.some(
+      ([url]) => url === "/api/v1/operator/provider/sync",
+    ),
+  ).toBe(false);
+  fireEvent.change(screen.getByRole("combobox", { name: "Язык" }), {
+    target: { value: "en" },
+  });
+  expect(
+    screen.getByRole("heading", { name: "Map and analysis" }),
+  ).toBeTruthy();
 });

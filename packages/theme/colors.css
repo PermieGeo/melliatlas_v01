@@ -1,0 +1,11 @@
+/* Shared visual tokens for the beekeeper and administrator interfaces. */
+:root {
+  --ma-page-bg: #eff5f0;
+  --ma-surface: #ffffff;
+  --ma-border: #d5e4d8;
+  --ma-ink: #19372a;
+  --ma-muted: #577061;
+  --ma-accent: #1c6044;
+  --ma-accent-hover: #154d36;
+  --ma-soft: #e8f1e9;
+}

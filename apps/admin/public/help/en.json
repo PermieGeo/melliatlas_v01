@@ -18,7 +18,7 @@
       "id": "navigation",
       "title": "1. Find your way around",
       "paragraphs": [
-        "Data collection shows ingestion status and a preview map; Sources lists the registry; Configuration edits the provider connection; Record review shows candidates awaiting a decision. Help contains this guide.",
+        "Map and analysis contains the independent preview map, selected field details and a bounded summary of loaded records. Data collection separately exposes diagnostics and manual import. Sources lists providers; Configuration edits connections; Record review handles operator decisions; Help contains this guide.",
         "Question-mark controls beside technical fields display explanations. Click again, click outside, or press Escape to dismiss them."
       ]
     },
@@ -33,7 +33,7 @@
         "Open Data collection and check the provider configuration state.",
         "Use Fetch next page only when an intentional diagnostic import is needed.",
         "Inspect received and saved candidate counts, the next page number and last run status.",
-        "Review the preview map and underlying evidence before operator decisions."
+        "Open the separate Map and analysis section to inspect stored fields and their underlying evidence before operator decisions."
       ],
       "notes": [
         "Use the isolated DEMO database for UI walkthroughs; it makes no live Saturn calls."
@@ -44,7 +44,8 @@
       "title": "3. Preview map and details sidebar",
       "paragraphs": [
         "Technically valid source polygons appear with review-specific styles. Unreviewed records use dashed outlines; operator-reviewed records use solid outlines. Rejected records should not be published.",
-        "Selecting a polygon shows the organization, separate parcel markers, dates, products, crop, review status, source URL and retrieval timestamp in a persistent sidebar. No Leaflet popup is opened."
+        "Selecting a polygon shows the organization, separate parcel markers, dates, products, crop, review status, source URL and retrieval timestamp in a persistent sidebar. No Leaflet popup is opened.",
+        "The panel below the map counts only records loaded into the preview and their review statuses. It is not a count of actual spray events, complete territorial coverage or historical analytics. Trends and forecasts are not implemented yet."
       ],
       "steps": [
         "Select a polygon to show its corresponding details on the right.",
@@ -121,7 +122,7 @@
     ],
     "steps": [
       "Run pnpm demo:prepare and pnpm demo:dev at the repository root.",
-      "Open Admin at http://127.0.0.1:5174 and select a DEMO polygon.",
+      "Open Admin at http://127.0.0.1:5174, choose Map and analysis and select a fictional polygon.",
       "Inspect the review status, products and parcel marker in the sidebar.",
       "Open Record review to explore the workflow without treating sample evidence as real.",
       "For an isolated automated check, stop dev servers and run pnpm e2e:demo."

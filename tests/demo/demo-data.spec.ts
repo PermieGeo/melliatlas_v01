@@ -86,6 +86,12 @@ test("administrator sees persisted synthetic pending and reviewed records", asyn
     .toBe(200);
   await page.goto("http://127.0.0.1:5174");
   await expect(page.getByText(/ДЕМОДАННЫЕ: все записи/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Карта и анализ" }),
+  ).toBeVisible();
+  const analysis = page.getByRole("region", { name: "Краткая статистика" });
+  await expect(analysis.getByText("Записей на карте")).toBeVisible();
+  await expect(analysis.getByText("10", { exact: true })).toBeVisible();
   const polygons = page.locator(
     ".leaflet-overlay-pane path.leaflet-interactive",
   );

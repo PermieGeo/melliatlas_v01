@@ -5,18 +5,21 @@ import {
   Settings2,
   ShieldCheck,
   CircleHelp,
+  Map,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadPreviewMapTreatments, loadSourceCatalog } from "./api/client";
 import { CollectionPanel } from "./components/CollectionPanel";
 import { MapPreview } from "./components/MapPreview";
+import { MapAnalysisPanel } from "./components/MapAnalysisPanel";
 import { HelpPage } from "./components/HelpPage";
 import { ProviderConfigurationForm } from "./components/ProviderConfigurationForm";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { t, type Key, type Locale } from "./i18n";
 
-type Tab = "import" | "sources" | "configuration" | "review" | "help";
+type Tab = "map" | "import" | "sources" | "configuration" | "review" | "help";
 const tabs: { id: Tab; key: Key; icon: typeof Database }[] = [
+  { id: "map", key: "mapAnalysis", icon: Map },
   { id: "import", key: "import", icon: LayoutDashboard },
   { id: "sources", key: "sources", icon: Database },
   { id: "configuration", key: "configuration", icon: Settings2 },
@@ -30,19 +33,29 @@ export default function App() {
     document.title = `MelliAtlas — ${t(locale, "title")}`;
   }, [locale]);
   const text = (key: Key) => t(locale, key);
-  const [tab, setTab] = useState<Tab>("import");
+  const [tab, setTab] = useState<Tab>("map");
   const [refreshKey, setRefreshKey] = useState(0);
   const [preview, setPreview] = useState<MapTreatment[]>([]);
+  const [previewStatus, setPreviewStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
   const [catalog, setCatalog] = useState<SourceCatalogEntry[] | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
+    setPreviewStatus("loading");
     loadPreviewMapTreatments(controller.signal)
       .then((data) => {
-        if (!controller.signal.aborted) setPreview(data);
+        if (!controller.signal.aborted) {
+          setPreview(data);
+          setPreviewStatus("ready");
+        }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setError(true);
+        if (!controller.signal.aborted) {
+          setError(true);
+          setPreviewStatus("error");
+        }
       });
     loadSourceCatalog(controller.signal)
       .then((data) => {
@@ -55,14 +68,14 @@ export default function App() {
   }, [refreshKey]);
   const changed = () => setRefreshKey((key) => key + 1);
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-[var(--ma-page-bg)] text-[var(--ma-ink)]">
+      <header className="border-b border-[var(--ma-border)] bg-[var(--ma-surface)]">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-5 py-4">
           <div>
-            <h1 className="text-xl font-extrabold">
-              MelliAtlas <span className="text-emerald-700">Admin</span>
+            <h1 className="font-display text-xl font-extrabold tracking-tight">
+              Melli<span className="text-[var(--ma-accent)]">Atlas</span>
             </h1>
-            <p className="text-xs text-slate-500">{text("subtitle")}</p>
+            <p className="text-xs text-[var(--ma-muted)]">{text("subtitle")}</p>
           </div>
           <label className="flex items-center gap-2 text-xs">
             {text("language")}
@@ -70,7 +83,7 @@ export default function App() {
               aria-label={text("language")}
               value={locale}
               onChange={(event) => setLocale(event.target.value as Locale)}
-              className="rounded-lg border p-2"
+              className="rounded-lg border border-[var(--ma-border)] bg-white p-2"
             >
               <option value="ru">Русский</option>
               <option value="en">English</option>
@@ -88,7 +101,8 @@ export default function App() {
               type="button"
               key={id}
               onClick={() => setTab(id)}
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-medium ${id === tab ? "bg-emerald-800 text-white" : "bg-white text-slate-700"}`}
+              aria-current={id === tab ? "page" : undefined}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-medium ${id === tab ? "bg-[var(--ma-accent)] text-white" : "border border-[var(--ma-border)] bg-white text-[var(--ma-ink)] hover:bg-[var(--ma-soft)]"}`}
             >
               <Icon size={17} />
               {text(key)}
@@ -105,14 +119,30 @@ export default function App() {
             </p>
           )}
           <div>
-            <h2 className="text-2xl font-bold">{text(tab)}</h2>
+            <h2 className="text-2xl font-bold">
+              {text(tab === "map" ? "mapAnalysis" : tab)}
+            </h2>
             <p className="mt-1 text-xs text-amber-800">{text("localOnly")}</p>
           </div>
-          {tab === "import" && (
+          {tab === "map" && (
             <>
-              <CollectionPanel locale={locale} onChanged={changed} />
               <MapPreview locale={locale} notices={preview} />
+              {previewStatus === "ready" ? (
+                <MapAnalysisPanel locale={locale} notices={preview} />
+              ) : (
+                <section
+                  aria-label={text("analysisSummary")}
+                  className="rounded-2xl border border-[var(--ma-border)] bg-white p-4"
+                >
+                  <p role="status">
+                    {text(previewStatus === "error" ? "error" : "loading")}
+                  </p>
+                </section>
+              )}
             </>
+          )}
+          {tab === "import" && (
+            <CollectionPanel locale={locale} onChanged={changed} />
           )}
           {tab === "configuration" && (
             <ProviderConfigurationForm locale={locale} />
@@ -138,7 +168,7 @@ export default function App() {
                   className="rounded-xl border bg-white p-4"
                 >
                   <h3 className="font-bold">{source.name}</h3>
-                  <p className="mt-2 break-all text-xs text-slate-500">
+                  <p className="mt-2 break-all text-xs text-[var(--ma-muted)]">
                     {source.url}
                   </p>
                   <p className="mt-2 text-xs text-slate-600">

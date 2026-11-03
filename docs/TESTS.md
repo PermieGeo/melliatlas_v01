@@ -184,3 +184,15 @@ verify RU-to-EN loading from distinct `/help/*.json` paths; Playwright tests
 exercise the **actual Vite-hosted JSON** on desktop and mobile without stubbing
 help routes. Check both successful and failed loads; no help text is sourced
 from backend ingestion.
+
+## Administrator map and analysis navigation
+
+`apps/admin/src/App.test.tsx` verifies that map/analysis is independent of explicit
+collection and that tab switching never invokes the provider sync endpoint.
+`apps/admin/src/components/MapAnalysisPanel.test.tsx` checks bounded preview
+counts, absent review status, empty-state honesty and RU/EN messages.
+`tests/e2e/admin.spec.ts` covers separation on desktop/mobile;
+`tests/demo/demo-data.spec.ts` checks the real API-backed preview summary.
+No historical claims or risk predictions are made by these counts.
+The shared color tokens are in `packages/theme/colors.css` and are loaded by both
+frontend stylesheets.

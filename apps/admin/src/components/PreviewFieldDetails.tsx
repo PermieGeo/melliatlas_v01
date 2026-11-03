@@ -34,7 +34,7 @@ export function PreviewFieldDetails({
   return (
     <aside
       aria-label={t(locale, "fieldDetails")}
-      className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4"
+      className="min-w-0 rounded-xl border border-[var(--ma-border)] bg-[var(--ma-soft)] p-4"
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <h3 className="text-base font-bold">{t(locale, "fieldDetails")}</h3>

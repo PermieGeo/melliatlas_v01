@@ -17,10 +17,12 @@ export function MapPreview({
   return (
     <section
       aria-label={t(locale, "map")}
-      className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3"
+      className="space-y-3 rounded-2xl border border-[var(--ma-border)] bg-white p-3"
     >
       <h2 className="px-2 pt-2 text-lg font-bold">{t(locale, "map")}</h2>
-      <p className="px-2 text-xs text-slate-600">{t(locale, "previewHint")}</p>
+      <p className="px-2 text-xs text-[var(--ma-muted)]">
+        {t(locale, "previewHint")}
+      </p>
       <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           <MapContainer
