@@ -8,9 +8,9 @@ Treatment polygons come **only from** `GET /api/v1/notices`, the PostGIS-backed 
 
 ## Local administrator (`http://127.0.0.1:5174`)
 
-The admin interface has four independent sections:
+The admin interface has four independent sections. Small question-mark controls beside technical fields open contextual, localized RU/EN explanations by click or keyboard. Clicking a help control does not save settings or contact Saturn:
 
-- **Data collection:** displays persisted status; operators may explicitly request the **next bounded batch** via `POST /api/v1/operator/provider/sync`, or start/pause a full scan of the region specified in provider settings. The server fetches one batch at a time with at least 65 seconds between claimed starts, preserving progress across restarts. Import progress is not proof of a consistent upstream snapshot. The map preview shows unverified real polygons as dashed boundaries.
+- **Data collection:** displays persisted status; operators may explicitly request the **next bounded source page** via `POST /api/v1/operator/provider/sync`. This manual per-page action is labelled **Development-only** in the UI; it will be replaced by selecting a district and refreshing a shared cache with a 24-hour TTL after the upstream district/date filters are verified. The legacy region-wide scan is disabled. Upstream requests use a source-wide database throttle with at least 65 seconds between reserved starts. Page progress is not district coverage. The map preview shows unverified real polygons as dashed boundaries.
 - **Sources:** reads the source catalog, including metadata and terms-review status.
 - **Configuration:** reads and saves the provider endpoint, request method, region filter and JSON parameters with an optimistic revision check. Saving settings **never** fetches records.
 - **Record review:** reads pending candidates; an operator can verify/reject individual candidates with a name and meaningful evidence note. Valid structured geometry can already appear as unverified; a review decision changes the public status to verified or removes rejected entries.

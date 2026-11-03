@@ -131,3 +131,7 @@ S3c foundation: `apps/api/test/districtCacheState.test.ts` covers completion/TTL
 ### SRC-01 review hardening regressions
 
 `apps/api/test/treatmentMapProjection.test.ts` verifies persisted JSONB treatment sanitization and non-disclosure of unexpected attributes. `apps/api/test/providerSeed.test.ts` covers equivalent JSONB/optional seed settings and schema-scoped advisory locking. `apps/api/integration/treatmentIngestion.test.ts` verifies that a new exclusive ingestion session closes orphaned `started` runs as `INGEST_INTERRUPTED`. The PostGIS regression in `apps/api/integration/treatmentMapProjection.test.ts` locks latest-version precedence when a polygon moves outside a viewport or is rejected. All synthetic source payloads remain offline. Real PostGIS tests and full `./run-tests.sh` must be executed in the developer environment before acceptance.
+
+### Administrator contextual help and temporary controls
+
+`apps/admin/src/App.test.tsx` verifies the development-only page-import notice, click-to-toggle contextual help, RU/EN translations and the absence of implicit provider requests. `tests/e2e/admin.spec.ts` verifies that help opens/closes in the actual browser, explains page-versus-district coverage and leaves unverified district refresh disabled. Run `pnpm --dir apps/admin test`, `pnpm --dir apps/admin typecheck` and `pnpm e2e` (with local dependencies and browser installed).

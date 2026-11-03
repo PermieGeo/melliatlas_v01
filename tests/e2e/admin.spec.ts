@@ -48,3 +48,41 @@ test("administrator settings do not implicitly start a source fetch", async ({
   ).toBeVisible();
   expect(syncCalls).toBe(0);
 });
+
+test("shows development-only import guidance and inline help", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/**", async (route) => {
+    const url = route.request().url();
+    let result: unknown = { notices: [] };
+    if (url.endsWith("/operator/provider/status"))
+      result = {
+        sourceConfigured: true,
+        latestRun: null,
+        pendingReview: 0,
+        pendingWithGeometry: 0,
+        verifiedWithGeometry: 0,
+        missingGeometry: 0,
+      };
+    if (url.endsWith("/operator/provider/district-cache"))
+      result = { ttlHours: 24, refreshEnabled: false, entries: [] };
+    if (url.endsWith("/api/v1/sources")) result = { sources: [] };
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(result),
+    });
+  });
+  await page.goto("http://127.0.0.1:5174");
+  await expect(page.getByText("На период разработки")).toBeVisible();
+  await expect(page.getByText(/Её заменит выбор района/)).toBeVisible();
+  const help = page.getByRole("button", {
+    name: "Справка: Получить следующую страницу",
+  });
+  await help.click();
+  await expect(page.getByText(/Страница не является районом/)).toBeVisible();
+  await help.press("Enter");
+  await expect(page.getByText(/Страница не является районом/)).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Обновить район сейчас", exact: true }),
+  ).toBeDisabled();
+});

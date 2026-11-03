@@ -5,6 +5,7 @@ import {
   type PendingTreatment,
 } from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
+import { FieldHelp } from "./FieldHelp";
 
 export function ReviewPanel({
   locale,
@@ -75,16 +76,23 @@ export function ReviewPanel({
             className="mt-1 w-full rounded-lg border p-2"
           />
         </label>
-        <label className="text-sm font-medium">
-          {text("evidence")}
+        <div className="text-sm font-medium">
+          <div className="flex items-center gap-1">
+            <label htmlFor="review-evidence">{text("evidence")}</label>
+            <FieldHelp
+              locale={locale}
+              subject="evidence"
+              message="helpEvidence"
+            />
+          </div>
           <textarea
-            aria-label={text("evidence")}
+            id="review-evidence"
             value={evidence}
             onChange={(event) => setEvidence(event.target.value)}
             rows={2}
             className="mt-1 w-full rounded-lg border p-2"
           />
-        </label>
+        </div>
       </div>
       {loading && <p role="status">{text("loading")}</p>}
       {items.length === 0 && !error && !loading && (

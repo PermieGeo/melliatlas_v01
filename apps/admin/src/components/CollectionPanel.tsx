@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { loadProviderCollectionStatus, syncProviderPage } from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
 import { DistrictCachePanel } from "./DistrictCachePanel";
+import { FieldHelp } from "./FieldHelp";
 
 export function CollectionPanel({
   locale,
@@ -63,6 +64,10 @@ export function CollectionPanel({
           {text("reload")}
         </button>
       </div>
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+        <p className="font-semibold">{text("developmentOnly")}</p>
+        <p className="mt-1">{text("manualImportReplacement")}</p>
+      </div>
       <p className="text-sm text-slate-600">{text("loadHint")}</p>
       {status ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -96,19 +101,47 @@ export function CollectionPanel({
         </p>
       )}
       <DistrictCachePanel locale={locale} />
-      <button
-        type="button"
-        disabled={busy || !status?.sourceConfigured}
-        onClick={() => void sync()}
-        className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-      >
-        {text("loadMore")}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy || !status?.sourceConfigured}
+          onClick={() => void sync()}
+          className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {text("loadMore")}
+        </button>
+        <FieldHelp locale={locale} subject="loadMore" message="helpLoadMore" />
+      </div>
       {result && (
-        <p role="status" className="text-sm text-slate-700">
-          {text("loadedCount")}: {result.received}; {text("newCount")}:{" "}
-          {result.stored}; {text("nextBatch")}: {result.nextPage}
-        </p>
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700"
+        >
+          <span className="inline-flex items-center gap-1">
+            {text("loadedCount")}: {result.received}
+            <FieldHelp
+              locale={locale}
+              subject="loadedCount"
+              message="helpLoadedCount"
+            />
+          </span>
+          <span className="inline-flex items-center gap-1">
+            {text("newCount")}: {result.stored}
+            <FieldHelp
+              locale={locale}
+              subject="newCount"
+              message="helpNewCount"
+            />
+          </span>
+          <span className="inline-flex items-center gap-1">
+            {text("nextBatch")}: {result.nextPage}
+            <FieldHelp
+              locale={locale}
+              subject="nextBatch"
+              message="helpNextBatch"
+            />
+          </span>
+        </div>
       )}
       {error && (
         <p role="alert" className="text-sm text-amber-800">
