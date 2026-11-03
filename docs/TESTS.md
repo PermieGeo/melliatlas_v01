@@ -35,6 +35,7 @@ The E2E configuration starts `pnpm dev` automatically (or may reuse an existing 
 - Provider request building/operator API: `apps/api/test/providerConfiguration.test.ts`, `apps/api/test/app.test.ts`.
 - Provider migration/optimistic revision: `apps/api/integration/providerConfigurationMigration.test.ts` (real PostgreSQL, requires DATABASE_URL).
 - Provider operator UI: `apps/admin/src/App.test.tsx`; save/configuration must not implicitly collect data.
+- Contextual help dismissal: `apps/admin/src/components/FieldHelp.test.tsx` covers trigger toggling, outside clicks, Escape/focus restoration and switching between explanations; `tests/e2e/admin.spec.ts` checks browser dismissal on desktop and mobile.
 - Browser components: `apps/web/src/App.test.tsx`.
 - Browser response decoding and errors: `apps/web/src/api/client.test.ts`.
 - Desktop/mobile map interaction: `tests/e2e/map.spec.ts`; local administrator isolation: `tests/e2e/admin.spec.ts`.
