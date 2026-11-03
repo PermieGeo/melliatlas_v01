@@ -1,5 +1,46 @@
 export const messages = {
   ru: {
+    helpFor: "Справка: {field}",
+    developmentOnly: "На период разработки",
+    manualImportReplacement:
+      "Ручная загрузка отдельных страниц оставлена для диагностики. Её заменит выбор района и обновление общего районного кэша с TTL 24 часа. До подтверждения фильтров Сатурн районная загрузка отключена.",
+    plannedFeature: "В разработке",
+    helpLoadMore:
+      "Один запрос получает только одну страницу списка Сатурн и сохраняет доступные записи. Страница не является районом и не подтверждает полное покрытие территории.",
+    helpNextBatch:
+      "Номер следующей страницы в запросе к источнику. Это технический курсор, а не номер района или количество оставшихся обработок.",
+    helpLoadedCount:
+      "Количество записей, полученных в последнем ответе источника. Не обязательно равно числу уникальных полей с геометрией.",
+    helpNewCount:
+      "Количество кандидатов, сохранённых при последнем запросе. Показатель не подтверждает, что все обработки района загружены.",
+    helpDistrictCache:
+      "Общий кэш планов обработок по административным районам. Записи считаются актуальными 24 часа только после успешной полной загрузки всех страниц района.",
+    helpRefreshDistrict:
+      "Планируемая кнопка принудительного обновления выбранного района. Она будет обходить TTL, но не ограничение частоты запросов Сатурн. Пока заблокирована из-за неподтверждённого API-фильтра района.",
+    helpDistrictId:
+      "Внутренний идентификатор района у поставщика данных. Он не обязательно совпадает с официальными административными и кадастровыми кодами.",
+    helpDistrictCoverage:
+      "Состояние полноты загрузки района. Частичная или неудачная попытка не обновляет время последней успешно завершённой загрузки.",
+    helpRegionProgress:
+      "Количество страниц источника, сохранённых для текущей попытки. Это ещё не гарантия полного покрытия района.",
+    helpDistrictLastCompleted:
+      "Время последней успешной загрузки всех необходимых страниц района. Отсутствие даты означает, что полная загрузка не подтверждена.",
+    helpRevision:
+      "Версия сохранённой конфигурации. Используется, чтобы два оператора не перезаписали изменения друг друга незаметно.",
+    helpEndpoint:
+      "HTTPS-адрес API источника, с которого backend получает данные. Изменяйте только после проверки реального контракта и прав доступа.",
+    helpMethod:
+      "HTTP-метод запроса к источнику: GET или POST. Должен соответствовать фактическому API-контракту.",
+    helpRegionParameter:
+      "Имя ключа, через который API принимает код региона (например, subject). Это не значение кода региона.",
+    helpRegionContainer:
+      "Необязательное имя вложенного объекта, содержащего фильтр региона. Для некоторых API фильтр передаётся внутри отдельного объекта.",
+    helpRegionCode:
+      "Внутренний код региона в API поставщика; он может отличаться от официального кода субъекта РФ. Проверьте его по данным источника.",
+    helpParameters:
+      "Дополнительные параметры HTTP-запроса в виде корректного JSON-объекта. Не добавляйте сюда токены, пароли или неподтверждённые фильтры.",
+    helpEvidence:
+      "Кратко укажите, какие сведения первоисточника вы проверили и почему решение обосновано. Требуется минимум 20 символов.",
     title: "Управление данными",
     subtitle: "Локальная административная панель",
     sources: "Источники",
@@ -22,9 +63,9 @@ export const messages = {
     saved: "Конфигурация сохранена. Загрузка данных не запускалась.",
     editHint: "Изменение настроек не запускает обращение к внешнему сервису.",
     reload: "Обновить статус",
-    loadMore: "Получить следующую порцию",
+    loadMore: "Получить следующую страницу",
     loadHint:
-      "Диагностическая загрузка получает одну порцию и не подтверждает полноту данных по району.",
+      "Диагностическая загрузка получает одну страницу и не подтверждает полноту данных по району.",
     districtCache: "Районный кэш",
     districtTtl: "Срок актуальности: 24 часа после полного обновления района.",
     districtContractPending:
@@ -53,7 +94,7 @@ export const messages = {
       "Прогресс относится только к настроенному фильтру источника; полное покрытие не гарантируется при изменениях списка во время обхода.",
     loadedCount: "Получено записей",
     newCount: "Добавлено кандидатов",
-    nextBatch: "Следующая порция",
+    nextBatch: "Следующая страница",
     pending: "Ожидают проверки",
     verified: "Проверены",
     missingGeometry: "Без геометрии",
@@ -91,6 +132,47 @@ export const messages = {
     revision: "Ревизия",
   },
   en: {
+    helpFor: "Help: {field}",
+    developmentOnly: "Development-only",
+    manualImportReplacement:
+      "Manual single-page collection remains for diagnostics. It will be replaced by district selection and shared district-cache refresh with a 24-hour TTL. District collection stays disabled until Saturn filters are verified.",
+    plannedFeature: "In development",
+    helpLoadMore:
+      "One request retrieves just one page of the Saturn listing and stores available records. A page is not a district and does not prove complete geographic coverage.",
+    helpNextBatch:
+      "The next upstream listing page number. This is a technical cursor, not a district identifier or the number of remaining treatments.",
+    helpLoadedCount:
+      "Number of records returned by the source in the last request. This may differ from the number of unique fields with geometry.",
+    helpNewCount:
+      "Number of candidates stored by the latest request. It does not confirm that all treatments in a district have been loaded.",
+    helpDistrictCache:
+      "A shared cache of treatment plans by administrative district. Coverage stays fresh for 24 hours only after every required district page completes successfully.",
+    helpRefreshDistrict:
+      "A planned forced refresh for a selected district. It will bypass TTL but not Saturn request pacing. Disabled until the actual upstream district filter is verified.",
+    helpDistrictId:
+      "The provider's internal district identifier. It may differ from official administrative and cadastral identifiers.",
+    helpDistrictCoverage:
+      "District collection completeness. Partial or failed attempts do not advance the last successful completion timestamp.",
+    helpRegionProgress:
+      "Number of upstream pages committed during the current attempt. It is not proof of complete district coverage.",
+    helpDistrictLastCompleted:
+      "When every required page of a district was last retrieved successfully. No date means that complete retrieval has not been established.",
+    helpRevision:
+      "Version of the saved configuration, used to avoid silently overwriting concurrent operator changes.",
+    helpEndpoint:
+      "HTTPS API address the backend uses to fetch source records. Change it only after verifying the real contract and access terms.",
+    helpMethod:
+      "HTTP method used to access the provider: GET or POST. It must match the observed API contract.",
+    helpRegionParameter:
+      "Name of the API parameter carrying the region code (for example, subject), not the code value itself.",
+    helpRegionContainer:
+      "Optional name of a nested request object containing the region filter. Some APIs require filters inside a container object.",
+    helpRegionCode:
+      "Provider-specific region identifier, which can differ from an official administrative code. Verify it against source data.",
+    helpParameters:
+      "Additional HTTP request parameters as a valid JSON object. Do not enter credentials or unverified filters here.",
+    helpEvidence:
+      "Briefly explain which original-source facts were checked and why the decision is justified. At least 20 characters are required.",
     title: "Data administration",
     subtitle: "Local operator workspace",
     sources: "Sources",
@@ -113,9 +195,9 @@ export const messages = {
     saved: "Configuration saved. No data fetch was started.",
     editHint: "Editing settings does not trigger external requests.",
     reload: "Refresh status",
-    loadMore: "Fetch next batch",
+    loadMore: "Fetch next page",
     loadHint:
-      "Diagnostic collection fetches one batch and does not establish complete district coverage.",
+      "Diagnostic collection fetches one page and does not establish complete district coverage.",
     districtCache: "District cache",
     districtTtl: "Freshness TTL: 24 hours after a complete district refresh.",
     districtContractPending:
@@ -144,7 +226,7 @@ export const messages = {
       "Progress covers the configured provider filter only; concurrent changes to provider listings may affect coverage.",
     loadedCount: "Received records",
     newCount: "Stored candidates",
-    nextBatch: "Next batch",
+    nextBatch: "Next page",
     pending: "Pending review",
     verified: "Verified",
     missingGeometry: "Missing geometry",

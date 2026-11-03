@@ -9,6 +9,7 @@ import {
   saveProviderConfiguration,
 } from "../api/client";
 import { t, type Locale, type Key } from "../i18n";
+import { FieldHelp } from "./FieldHelp";
 
 export function ProviderConfigurationForm({ locale }: { locale: Locale }) {
   const text = (key: Key) => t(locale, key);
@@ -85,19 +86,31 @@ export function ProviderConfigurationForm({ locale }: { locale: Locale }) {
     }
   }
   const fields = [
-    { key: "sourceName" as const, value: name, setter: setName },
-    { key: "endpoint" as const, value: endpoint, setter: setEndpoint },
+    { key: "sourceName" as const, value: name, setter: setName, help: null },
+    {
+      key: "endpoint" as const,
+      value: endpoint,
+      setter: setEndpoint,
+      help: "helpEndpoint" as const,
+    },
     {
       key: "regionParameter" as const,
       value: regionParameter,
       setter: setRegionParameter,
+      help: "helpRegionParameter" as const,
     },
     {
       key: "regionContainer" as const,
       value: regionContainer,
       setter: setRegionContainer,
+      help: "helpRegionContainer" as const,
     },
-    { key: "regionCode" as const, value: regionCode, setter: setRegionCode },
+    {
+      key: "regionCode" as const,
+      value: regionCode,
+      setter: setRegionCode,
+      help: "helpRegionCode" as const,
+    },
   ];
   return (
     <section
@@ -109,27 +122,49 @@ export function ProviderConfigurationForm({ locale }: { locale: Locale }) {
       {!configuration && !notice && <p role="status">{text("loading")}</p>}
       {configuration && (
         <>
-          <p className="text-xs text-slate-500">
+          <div className="flex items-center gap-1 text-xs text-slate-500">
             {text("revision")}: {configuration.revision}
-          </p>
+            <FieldHelp
+              locale={locale}
+              subject="revision"
+              message="helpRevision"
+            />
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {fields.map(({ key, value, setter }) => (
-              <label key={key} className="block text-sm font-medium">
-                {text(key)}
+            {fields.map(({ key, value, setter, help }, index) => (
+              <div key={key} className="text-sm font-medium">
+                <div className="flex items-center gap-1">
+                  <label htmlFor={`provider-${key}`}>{text(key)}</label>
+                  {help && (
+                    <FieldHelp
+                      locale={locale}
+                      subject={key}
+                      message={help}
+                      align={index % 2 === 0 ? "start" : "end"}
+                    />
+                  )}
+                </div>
                 <input
-                  aria-label={text(key)}
+                  id={`provider-${key}`}
                   type={key === "regionCode" ? "number" : "text"}
                   value={value}
                   onChange={(event) => setter(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2"
                 />
-              </label>
+              </div>
             ))}
           </div>
-          <label className="block text-sm font-medium">
-            {text("method")}
+          <div className="text-sm font-medium">
+            <div className="flex items-center gap-1">
+              <label htmlFor="provider-method">{text("method")}</label>
+              <FieldHelp
+                locale={locale}
+                subject="method"
+                message="helpMethod"
+              />
+            </div>
             <select
-              aria-label={text("method")}
+              id="provider-method"
               value={method}
               onChange={(event) =>
                 setMethod(event.target.value as "POST" | "GET")
@@ -139,17 +174,24 @@ export function ProviderConfigurationForm({ locale }: { locale: Locale }) {
               <option>POST</option>
               <option>GET</option>
             </select>
-          </label>
-          <label className="block text-sm font-medium">
-            {text("parameters")}
+          </div>
+          <div className="text-sm font-medium">
+            <div className="flex items-center gap-1">
+              <label htmlFor="provider-parameters">{text("parameters")}</label>
+              <FieldHelp
+                locale={locale}
+                subject="parameters"
+                message="helpParameters"
+              />
+            </div>
             <textarea
-              aria-label={text("parameters")}
+              id="provider-parameters"
               value={parameters}
               rows={5}
               onChange={(event) => setParameters(event.target.value)}
               className="mt-1 w-full rounded-lg border p-2 font-mono text-sm"
             />
-          </label>
+          </div>
           <button
             disabled={busy}
             type="button"

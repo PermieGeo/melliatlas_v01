@@ -92,11 +92,22 @@ it("fetches one batch only when requested in the data collection section", async
   );
   render(<App />);
   const fetch = await screen.findByRole("button", {
-    name: "Получить следующую порцию",
+    name: "Получить следующую страницу",
   });
   fireEvent.click(fetch);
   expect(await screen.findByText(/Получено записей: 3/)).toBeTruthy();
   expect(synced).toBe(1);
+  expect(screen.getByText("На период разработки")).toBeTruthy();
+  expect(screen.getByText(/Её заменит выбор района/)).toBeTruthy();
+  const help = screen.getByRole("button", {
+    name: "Справка: Следующая страница",
+  });
+  expect((help.closest("details") as HTMLDetailsElement).open).toBe(false);
+  fireEvent.click(help);
+  expect((help.closest("details") as HTMLDetailsElement).open).toBe(true);
+  expect(screen.getByText(/технический курсор/)).toBeTruthy();
+  fireEvent.click(help);
+  expect((help.closest("details") as HTMLDetailsElement).open).toBe(false);
 });
 
 it("keeps unverified district refresh disabled and never invokes legacy region collection", async () => {
@@ -131,5 +142,45 @@ it("keeps unverified district refresh disabled and never invokes legacy region c
   );
   expect(
     fetcher.mock.calls.some(([url]) => url.includes("district-cache/refresh")),
+  ).toBe(false);
+});
+
+it("localizes contextual field help without changing provider settings", async () => {
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === "/api/v1/operator/provider")
+      return new Response(JSON.stringify(config));
+    if (url === "/api/v1/operator/provider/status")
+      return new Response(JSON.stringify(status));
+    if (url === "/api/v1/operator/provider/district-cache")
+      return new Response(
+        JSON.stringify({ ttlHours: 24, refreshEnabled: false, entries: [] }),
+      );
+    if (url === "/api/v1/operator/notices/map-preview")
+      return new Response(JSON.stringify({ notices: [] }));
+    if (url === "/api/v1/sources")
+      return new Response(JSON.stringify({ sources: [] }));
+    return new Response(null, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Конфигурация" }));
+  await screen.findByLabelText("Код региона поставщика");
+  const ruHelp = screen.getByRole("button", {
+    name: "Справка: Код региона поставщика",
+  });
+  fireEvent.click(ruHelp);
+  expect((ruHelp.closest("details") as HTMLDetailsElement).open).toBe(true);
+  expect(screen.getByText(/Внутренний код региона/)).toBeTruthy();
+  fireEvent.change(screen.getByRole("combobox", { name: "Язык" }), {
+    target: { value: "en" },
+  });
+  expect(screen.getByText(/Provider-specific region identifier/)).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Help: Provider region code" }),
+  ).toBeTruthy();
+  expect(
+    fetcher.mock.calls.some(
+      ([url]) => url === "/api/v1/operator/provider/sync",
+    ),
   ).toBe(false);
 });
