@@ -14,6 +14,11 @@ import {
   type MapTreatment,
 } from "./treatmentMapProjection.js";
 import { validateProviderEndpoint } from "./providerConfiguration.js";
+import {
+  ProviderRequestThrottle,
+  SOURCE_REQUEST_GAP_MS,
+  type ProviderRequestGate,
+} from "./providerRequestThrottle.js";
 import { buildProviderRequest } from "./providerConfiguration.js";
 import { sourceDefinitionSchema, type SourceDefinition } from "./contracts.js";
 import {
@@ -75,6 +80,9 @@ export class TreatmentIngestionService {
       RestrictedSourceFetcher,
       "fetch"
     > = new RestrictedSourceFetcher(),
+    private readonly requestGate: ProviderRequestGate = new ProviderRequestThrottle(
+      pool,
+    ),
   ) {}
 
   /** Build a narrow, operator-controlled fetch registration from the persisted endpoint. */
@@ -112,9 +120,9 @@ export class TreatmentIngestionService {
       fetchPolicy: {
         timeoutMs: 8000,
         maxResponseBytes: 2_000_000,
-        minIntervalMs: 60_000,
+        minIntervalMs: SOURCE_REQUEST_GAP_MS,
         maxRedirects: 0,
-        maxRetries: 1,
+        maxRetries: 0,
         allowedContentTypes: ["application/json"],
       },
     });
@@ -192,6 +200,14 @@ export class TreatmentIngestionService {
         ...connection.request,
         parameters: { ...connection.request.parameters, pageNumber },
       });
+      // Reserve before transport; rejected requests must not generate provider traffic.
+      if (!(await this.requestGate.reserve(SOURCE_ID))) {
+        throw new ApiFailure(
+          429,
+          "SOURCE_THROTTLED",
+          "Source request interval has not elapsed",
+        );
+      }
       const started = await client.query<{ id: string }>(
         "INSERT INTO ingestion_runs(source_id, status) VALUES($1, 'started') RETURNING id",
         [SOURCE_ID],

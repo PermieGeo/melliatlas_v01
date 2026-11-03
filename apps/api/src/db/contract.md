@@ -22,3 +22,6 @@
 - **Migration 011:** `source_district_cache` stores source/revision/district/filter-scoped pagination and completion timestamps. Zero-result complete listings may be fresh; partial runs are not. The source-ingestion module owns state writes. The migration does not schedule or authorize network operations.
 
 - **Migration 012:** Optional lease ownership on `source_district_cache` enables crash/restart recovery and rejects stale worker page updates. Existing migration-011 rows remain valid and unowned running rows can be reclaimed; no source documents or existing completion timestamps are removed.
+
+- **Migration 012:** Adds lease token/expiry columns to the district cache; concurrent workers cannot commit under a superseded ownership token.
+- **Migration 013:** Creates `source_request_throttle`, keyed by source ID, storing only the next permitted provider fetch start (no upstream payload or secrets). The source-ingestion module owns its atomic reservation. Preserve the row after failures; deleting it may allow premature upstream requests.
