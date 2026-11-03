@@ -20,3 +20,5 @@
 - **Migration 010:** Adds `last_seen_at` to `source_documents` for repeat-observation tracking. The original payload, hash, document identity and `retrieved_at` remain immutable. The source-ingestion module owns updating last-seen metadata, not a new table or independent cache.
 
 - **Migration 011:** `source_district_cache` stores source/revision/district/filter-scoped pagination and completion timestamps. Zero-result complete listings may be fresh; partial runs are not. The source-ingestion module owns state writes. The migration does not schedule or authorize network operations.
+
+- **Migration 012:** Optional lease ownership on `source_district_cache` enables crash/restart recovery and rejects stale worker page updates. Existing migration-011 rows remain valid and unowned running rows can be reclaimed; no source documents or existing completion timestamps are removed.

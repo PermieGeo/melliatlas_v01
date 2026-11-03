@@ -57,6 +57,23 @@ describe("district coverage and freshness", () => {
       ),
     ).toBe("stale");
   });
+  it("retains prior completion as stale while a replacement listing is incomplete or fails", () => {
+    const completed = advanceDistrictCache(entry, 0, 0, 0, start);
+    const refreshing = { ...completed, state: "running" as const };
+    const partial = advanceDistrictCache(
+      refreshing,
+      1,
+      20,
+      18,
+      new Date(start.getTime() + 60_000),
+    );
+    expect(partial.completedAt).toBe(completed.completedAt);
+    expect(partial.expiresAt).toBe(completed.expiresAt);
+    expect(districtCoverage(partial, start)).toBe("stale");
+    expect(districtCoverage({ ...partial, state: "failed" }, start)).toBe(
+      "stale",
+    );
+  });
   it("allows complete zero-result listings to be fresh", () => {
     const completed = advanceDistrictCache(entry, 0, 0, 0, start);
     expect(districtCoverage(completed, start)).toBe("fresh");
