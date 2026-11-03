@@ -159,7 +159,7 @@ test("public map displays unreviewed sourced polygons without an administrator A
   expect(requests.every((url) => !url.includes("operator"))).toBe(true);
 });
 
-test("beekeeper help explains map usage without requesting operator data", async ({
+test("beekeeper help loads the external guide and switches languages", async ({
   page,
 }) => {
   const requested: string[] = [];
@@ -175,10 +175,18 @@ test("beekeeper help explains map usage without requesting operator data", async
   await expect(
     page.getByRole("heading", { name: "Как пользоваться MelliAtlas" }),
   ).toBeVisible();
-  await expect(page.getByText(/полностью вымышленные данные/)).toBeVisible();
-  await page.getByRole("button", { name: "Вернуться к карте" }).click();
   await expect(
-    page.getByRole("heading", { name: "Карта обработок" }),
+    page.getByRole("heading", { name: /Начните с карты/ }),
+  ).toBeVisible();
+  await expect(page.getByText(/12 вымышленных записей/)).toBeVisible();
+  await page.getByRole("combobox", { name: "Язык" }).selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Using MelliAtlas" }),
+  ).toBeVisible();
+  await expect(page.getByText(/12 synthetic records/)).toBeVisible();
+  await page.getByRole("button", { name: "Return to map" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Treatment map" }),
   ).toBeVisible();
   expect(requested.length).toBeGreaterThan(0);
   expect(requested.every((url) => !url.includes("/operator/"))).toBe(true);

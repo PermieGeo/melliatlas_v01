@@ -2,7 +2,7 @@
 
 ## Beekeeper map (`http://127.0.0.1:5173`)
 
-Start PostgreSQL, run the migrations and `pnpm dev` as described in [Installation](INSTALLATION.md). Open the beekeeper frontend and use the map directly: select a point for attributed Open-Meteo forecast information, choose a view radius, toggle the treatment layer and refresh the visible map extent. Select a treatment polygon to open a persistent details panel to the right of the map; polygons do not open popups or move the map. Open **Help** in the header for step-by-step instructions and a labelled fictional demo example. The radius currently draws a visual circle; it does not run a spatial risk assessment.
+Start PostgreSQL, run the migrations and `pnpm dev` as described in [Installation](INSTALLATION.md). Open the beekeeper frontend and use the map directly: select a point for attributed Open-Meteo forecast information, choose a view radius, toggle the treatment layer and refresh the visible map extent. Select a treatment polygon to open a persistent details panel to the right of the map; polygons do not open popups or move the map. Open **Help** in the header for a detailed workflow, troubleshooting notes, source-quality caveats and a labelled fictional demo walkthrough. Help content is fetched from separate localized files rather than embedded in the UI. The radius currently draws a visual circle; it does not run a spatial risk assessment.
 
 Treatment polygons come **only from** `GET /api/v1/notices`, the PostGIS-backed source-attributed layer. Technically valid structured plans may be shown with `pending` review status and an explicit unverified warning; operator-verified plans have a separate label. Rejected, unlocated and unstructured pending claims are hidden. If the map is empty, it does **not** prove treatments are absent. Map initialization, refresh and panning read only PostGIS through `GET /api/v1/notices?bbox=west,south,east,north`. Each request returns at most 200 records, so a broad viewport may contain more plans than are currently displayed. It never requests data from the external provider. The interface has RU/EN localization for its current primary messages; original provider names and source evidence are not translated.
 
@@ -10,7 +10,7 @@ Treatment polygons come **only from** `GET /api/v1/notices`, the PostGIS-backed 
 
 The admin interface has five independent sections. Small question-mark controls beside technical fields open contextual, localized RU/EN explanations by click or keyboard. Clicking a help control does not save settings or contact Saturn:
 
-- **Help:** explains selecting fields in the preview map, source verification, temporary diagnostics, and future district-cache controls; all examples based on the isolated demo are explicitly fictional.
+- **Help:** loads a detailed local operator guide about reviewing fields, provider configuration, diagnostic paging, troubleshooting and planned district caching. Example identifiers are fictional.
 - **Data collection:** displays persisted status; operators may explicitly request the **next bounded source page** via `POST /api/v1/operator/provider/sync`. This manual per-page action is labelled **Development-only** in the UI; it will be replaced by selecting a district and refreshing a shared cache with a 24-hour TTL after the upstream district/date filters are verified. The legacy region-wide scan is disabled. Upstream requests use a source-wide database throttle with at least 65 seconds between reserved starts. Page progress is not district coverage. The map preview shows unverified structured polygons as dashed boundaries; selecting a polygon presents source-attributed details in a persistent sidebar, not a popup.
 - **Sources:** reads the source catalog, including metadata and terms-review status.
 - **Configuration:** reads and saves the provider endpoint, request method, region filter and JSON parameters with an optimistic revision check. Saving settings **never** fetches records.
@@ -92,3 +92,31 @@ never share user-edited demo observations. A remote host or production mode is
 refused, and the seed independently validates the actual database name. **Do not run the ordinary provider seed or manual import
 against the demo connection.** To return to existing real/local records, stop
 the demo server and run `pnpm dev` as usual. The normal database is untouched.
+
+## Editing built-in user help
+
+The user-facing guide is **not hardcoded in React or `i18n.ts`**. Each Vite app serves its
+own versioned, UTF-8 static JSON documents:
+
+- `apps/web/public/help/ru.json` and `apps/web/public/help/en.json` — beekeeper guide.
+- `apps/admin/public/help/ru.json` and `apps/admin/public/help/en.json` — operator guide.
+
+`HelpPage` fetches `help/<locale>.json` only after the Help view opens. The browser
+uses the app's own `BASE_URL`; requests never contact Saturn or operator routes.
+Files are copied to each Vite build's static assets, so changes require a new
+frontend build/deployment in production, but no React source or API changes.
+The UI uses `helpDocumentSchema` from `packages/contracts/src/helpContent.ts`
+to validate `version`, `locale`, section IDs, paragraphs, steps and warnings.
+All content is treated as plain text, never raw HTML or executable Markdown.
+
+To edit a guide, update the appropriate JSON file and its translation. Preserve
+matching section identifiers across RU and EN. The example must remain clearly
+labelled as fictional; never insert private apiary coordinates or unverified
+live safety claims. Keep short shell labels, loading and retry/error messages in
+`apps/web/src/i18n.ts` and `apps/admin/src/i18n.ts`. If a guide cannot be fetched,
+is malformed or has a mismatching locale, the Help view shows a localized error
+and Retry action. It does not silently substitute another language.
+
+Run `node --test scripts/help-content.test.mjs` for a dependency-free structure
+and locale-parity check, followed by the canonical `./run-tests.sh` and browser
+E2E suites. The dev servers serve JSON from their app's `public/` directory.

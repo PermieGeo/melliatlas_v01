@@ -242,31 +242,62 @@ it("shows selected source treatments beside compact weather with separate cadast
   expect(panel.textContent).toContain("Выберите поле на карте");
 });
 
-it("opens localized usage help and returns to the map", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async (url: string) =>
-        new Response(
-          JSON.stringify(
-            url.startsWith("/api/v1/notices?bbox=")
-              ? { notices: [] }
-              : forecast,
-          ),
-        ),
-    ),
-  );
+it("loads both help languages from external files without requesting operator data", async () => {
+  const fetcher = vi.fn(async (url: string) => {
+    if (url.startsWith("/help/")) {
+      const locale = url.includes("/en.json") ? "en" : "ru";
+      return new Response(
+        JSON.stringify({
+          version: 1,
+          locale,
+          title:
+            locale === "ru"
+              ? "Как пользоваться MelliAtlas"
+              : "Using MelliAtlas",
+          intro: "Fixture introduction",
+          sections: [
+            {
+              id: "map",
+              title: "Map guide",
+              paragraphs: ["How map fields work"],
+            },
+          ],
+          example: {
+            id: "demo",
+            title: "Demo example",
+            paragraphs: ["This example is fictional"],
+          },
+          warningsTitle: "Warnings",
+          warnings: ["Not a safety verdict"],
+        }),
+      );
+    }
+    return new Response(
+      JSON.stringify(
+        url.startsWith("/api/v1/notices?bbox=") ? { notices: [] } : forecast,
+      ),
+    );
+  });
+  vi.stubGlobal("fetch", fetcher);
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Помощь" }));
   expect(
-    screen.getByRole("heading", { name: "Как пользоваться MelliAtlas" }),
+    await screen.findByRole("heading", { name: "Как пользоваться MelliAtlas" }),
   ).toBeTruthy();
-  expect(screen.getByText(/полностью вымышленные данные/)).toBeTruthy();
+  expect(screen.getByText("This example is fictional")).toBeTruthy();
   expect(screen.queryByText("Features: 0")).toBeNull();
   fireEvent.change(screen.getByLabelText("Язык"), { target: { value: "en" } });
   expect(
-    screen.getByRole("heading", { name: "Using MelliAtlas" }),
+    await screen.findByRole("heading", { name: "Using MelliAtlas" }),
   ).toBeTruthy();
+  expect(
+    fetcher.mock.calls
+      .filter(([url]) => url.startsWith("/help/"))
+      .map(([url]) => url),
+  ).toEqual(["/help/ru.json", "/help/en.json"]);
   fireEvent.click(screen.getByRole("button", { name: "Return to map" }));
   expect(await screen.findByText("Features: 0")).toBeTruthy();
+  expect(fetcher.mock.calls.some(([url]) => url.includes("/operator/"))).toBe(
+    false,
+  );
 });

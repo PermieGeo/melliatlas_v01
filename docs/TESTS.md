@@ -170,3 +170,17 @@ and refusal to mix actual evidence within a disposable PostGIS schema.
 - `tests/e2e/admin.spec.ts` checks that operator guidance distinguishes the temporary one-page collector from the unavailable district refresh.
 
 Run `pnpm --filter @melliatlas/web test`, `pnpm --filter @melliatlas/admin test`, and `pnpm e2e:demo` after starting the local database and installing browsers. `pnpm e2e:demo` uses a disposable synthetic database and must never send live Saturn requests. The canonical read-only `./run-tests.sh` remains the repository acceptance check.
+
+## Externalized help guide coverage
+
+`node --test scripts/help-content.test.mjs` validates both app-specific RU/EN
+static guides, parallel section identifiers, fictional examples and nonempty
+content. It is included in the canonical `run-tests.sh` checks. The shared
+`helpDocumentSchema` validates content at the UI boundary before rendering.
+
+Component tests exercise failed/malformed guide downloads, locale mismatch,
+localized retry and the absence of provider fetches. Web and Admin App tests
+verify RU-to-EN loading from distinct `/help/*.json` paths; Playwright tests
+exercise the **actual Vite-hosted JSON** on desktop and mobile without stubbing
+help routes. Check both successful and failed loads; no help text is sourced
+from backend ingestion.

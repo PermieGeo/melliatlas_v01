@@ -95,7 +95,7 @@ test("shows development-only import guidance and inline help", async ({
   ).toBeDisabled();
 });
 
-test("administrator help describes the interim collection workflow", async ({
+test("administrator help loads detailed external guidance", async ({
   page,
 }) => {
   await page.route("**/api/v1/**", async (route) => {
@@ -111,14 +111,24 @@ test("administrator help describes the interim collection workflow", async ({
   await page.getByRole("button", { name: "Помощь" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Как работать в административной панели",
+      name: "Руководство по административной панели",
     }),
   ).toBeVisible();
   await expect(
-    page.getByText(/Страница не соответствует административному району/),
+    page.getByRole("heading", {
+      name: /Диагностическая постраничная загрузка/,
+    }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Открыть загрузку данных" }).click();
+  await expect(page.getByText(/SOURCE_THROTTLED/).first()).toBeVisible();
+  await page.getByRole("combobox", { name: "Язык" }).selectOption("en");
   await expect(
-    page.getByRole("heading", { name: "Загрузка данных" }),
+    page.getByRole("heading", { name: "Administrator guide" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /District cache — planned/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Open data collection" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Data collection" }),
   ).toBeVisible();
 });

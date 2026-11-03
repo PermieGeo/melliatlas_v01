@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "locale": "en",
+  "title": "Administrator guide",
+  "intro": "The administrator app is a local workspace for provider configuration, diagnostic ingestion and evidence review. It is not a public service with production-grade operator authentication.",
+  "sections": [
+    {
+      "id": "navigation",
+      "title": "1. Find your way around",
+      "paragraphs": [
+        "Data collection shows ingestion status and a preview map; Sources lists the registry; Configuration edits the provider connection; Record review shows candidates awaiting a decision. Help contains this guide.",
+        "Question-mark controls beside technical fields display explanations. Click again, click outside, or press Escape to dismiss them."
+      ]
+    },
+    {
+      "id": "data-collection",
+      "title": "2. Development-only page retrieval",
+      "paragraphs": [
+        "Fetch next page is a diagnostic action retained during development. It fetches one bounded provider page and saves valid candidates. Next page is a technical cursor, not a district identifier.",
+        "The source-wide throttle reserves request starts at least 65 seconds apart. A quick repeat may produce SOURCE_THROTTLED. One page is not evidence of complete district coverage."
+      ],
+      "steps": [
+        "Open Data collection and check the provider configuration state.",
+        "Use Fetch next page only when an intentional diagnostic import is needed.",
+        "Inspect received and saved candidate counts, the next page number and last run status.",
+        "Review the preview map and underlying evidence before operator decisions."
+      ],
+      "notes": [
+        "Use the isolated DEMO database for UI walkthroughs; it makes no live Saturn calls."
+      ]
+    },
+    {
+      "id": "preview",
+      "title": "3. Preview map and details sidebar",
+      "paragraphs": [
+        "Technically valid source polygons appear with review-specific styles. Unreviewed records use dashed outlines; operator-reviewed records use solid outlines. Rejected records should not be published.",
+        "Selecting a polygon shows the organization, separate parcel markers, dates, products, crop, review status, source URL and retrieval timestamp in a persistent sidebar. No Leaflet popup is opened."
+      ],
+      "steps": [
+        "Select a polygon to show its corresponding details on the right.",
+        "Compare the source claims against the original record where accessible.",
+        "Close the sidebar or select another polygon to compare records."
+      ]
+    },
+    {
+      "id": "review",
+      "title": "4. Operator evidence review",
+      "paragraphs": [
+        "Record review lists candidates awaiting a decision. Verify against primary evidence, not just map geometry. A reviewer name and an evidence note of at least 20 characters are required.",
+        "Verify and publish requires a valid geometry and a valid review form. Rejection also requires a written explanation. A saved decision changes the record status or visibility in the public map."
+      ],
+      "steps": [
+        "Open the original source link, if available, and compare the key facts.",
+        "Enter your reviewer name and an evidence-specific note.",
+        "Verify or reject only after sufficient source review.",
+        "Confirm the updated status in the list and map after refresh."
+      ],
+      "notes": [
+        "Operator review does not establish whether a pesticide application is safe for bees."
+      ]
+    },
+    {
+      "id": "configuration",
+      "title": "5. Provider configuration",
+      "paragraphs": [
+        "Configuration can edit the HTTPS endpoint, HTTP method, region code, filter container and JSON request parameters. Saving only stores settings; it does NOT fetch provider data.",
+        "Provider-specific region identifiers may differ from official region codes. Do not invent unverified district or date parameters for Saturn."
+      ],
+      "steps": [
+        "Inspect current settings and revision.",
+        "Change only fields supported by a verified request contract and access policy.",
+        "Save and confirm that no collection was started.",
+        "On revision conflict, reload and reconcile the operator changes."
+      ]
+    },
+    {
+      "id": "sources",
+      "title": "6. Source registry and provenance",
+      "paragraphs": [
+        "Sources lists registered names, URLs and terms review status. Stored records retain provider attribution and original URLs.",
+        "Technical parsing and unreviewed publication terms do not grant permission to redistribute source information publicly."
+      ]
+    },
+    {
+      "id": "district-cache",
+      "title": "7. District cache — planned",
+      "paragraphs": [
+        "The intended workflow selects a verified district and period, then refreshes a shared cache. The 24-hour TTL is counted only after all required pages finish successfully. Partial work and failures do not extend freshness.",
+        "Refresh district now remains disabled because the real Saturn district/date filter contract is unverified. Do not substitute a viewport rectangle or restart a full-region scan as a workaround."
+      ],
+      "notes": [
+        "District refresh is planned functionality, not a currently available live-data update."
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "8. Troubleshooting",
+      "paragraphs": [
+        "No fields: check DB availability, ingestion status and valid geometry. Missing polygons never demonstrate there were no treatments.",
+        "SOURCE_THROTTLED: respect provider pacing; avoid rapid retries. For ingestion errors, inspect sanitized API diagnostics rather than exporting private provider records.",
+        "If help overlays the UI, click outside it or press Escape. If DEMO records are missing, confirm pnpm demo:dev is using a prepared demo database."
+      ]
+    }
+  ],
+  "example": {
+    "id": "demo-example",
+    "title": "Walkthrough using fictional data",
+    "paragraphs": [
+      "The isolated DEMO dataset contains 12 synthetic observations: four simulated verified, seven pending, one rejected, and one without geometry. Ten polygons are eligible for the public map.",
+      "DEMO agricultural cooperative 02 and DEMO-PARCEL-02 are fictional labels. Source links end in .invalid and never refer to real Saturn plans."
+    ],
+    "steps": [
+      "Run pnpm demo:prepare and pnpm demo:dev at the repository root.",
+      "Open Admin at http://127.0.0.1:5174 and select a DEMO polygon.",
+      "Inspect the review status, products and parcel marker in the sidebar.",
+      "Open Record review to explore the workflow without treating sample evidence as real.",
+      "For an isolated automated check, stop dev servers and run pnpm e2e:demo."
+    ],
+    "notes": [
+      "DEMO is for interface testing only. It is not real cadastral evidence, spraying data or Saturn information."
+    ]
+  },
+  "warningsTitle": "Safety and system boundaries",
+  "warnings": [
+    "The local administrator has no production-grade server authentication yet.",
+    "Do not expose Admin or /api/v1/operator/* through a public reverse proxy.",
+    "Never treat DEMO records as Saturn information or verify them as real evidence.",
+    "Operator review is about evidence provenance, not a bee-safety assessment."
+  ]
+}
