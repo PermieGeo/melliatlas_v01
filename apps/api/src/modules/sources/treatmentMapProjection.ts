@@ -18,6 +18,34 @@ export type MapTreatment = {
   reviewStatus?: "pending" | "verified";
 };
 
+/** Drop malformed persisted treatment attributes instead of trusting a JSONB type assertion. */
+function sanitizeStoredTreatments(value: unknown): BeekeeperPlan["treatments"] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate: unknown) => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate))
+      return [];
+    const item = candidate as Record<string, unknown>;
+    if (
+      !(item.name === null || typeof item.name === "string") ||
+      !(item.crop === null || typeof item.crop === "string") ||
+      !(
+        item.beeHazardClass === null ||
+        item.beeHazardClass === 1 ||
+        item.beeHazardClass === 2 ||
+        item.beeHazardClass === 3
+      )
+    )
+      return [];
+    return [
+      {
+        name: item.name as string | null,
+        crop: item.crop as string | null,
+        beeHazardClass: item.beeHazardClass as 1 | 2 | 3 | null,
+      },
+    ];
+  });
+}
+
 export async function listStoredMapTreatments(
   pool: Pick<Pool, "query">,
   sourceId: string,
@@ -78,9 +106,7 @@ export async function listStoredMapTreatments(
       typeof r.attributes.cadastralNumber === "string"
         ? r.attributes.cadastralNumber
         : null,
-    treatments: Array.isArray(r.attributes.treatments)
-      ? (r.attributes.treatments as MapTreatment["treatments"])
-      : [],
+    treatments: sanitizeStoredTreatments(r.attributes.treatments),
     geometry: r.geometry as MapTreatment["geometry"],
     spatialPrecision: "exact_polygon",
     reviewStatus: r.review_status,

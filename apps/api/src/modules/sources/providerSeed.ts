@@ -58,12 +58,15 @@ export async function seedProvider(
     throw new Error("Provider credential length is invalid");
   }
 
-  const connection = { endpoint: validated.url, request: validated.request };
+  // Compare the same JSON-compatible shape that PostgreSQL stores as JSONB.
+  const connection = JSON.parse(
+    JSON.stringify({ endpoint: validated.url, request: validated.request }),
+  ) as { endpoint: string; request: ProviderSeed["request"] };
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     await client.query(
-      "SELECT pg_advisory_xact_lock(hashtext('melliatlas_provider_seed'))",
+      "SELECT pg_advisory_xact_lock(hashtext(current_schema()), hashtext('melliatlas_provider_seed'))",
     );
     const rows = await client.query<ExistingRow>(
       `SELECT name, kind, url, api_key, api_request_config, lifecycle, access_decision

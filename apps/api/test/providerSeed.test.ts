@@ -64,6 +64,13 @@ describe("Provider seed preset", () => {
     { ...preset, type: "weather" },
     { ...preset, apiKey: "must-not-appear-in-source" },
     { ...preset, apiKeyEnv: "bad-var-name" },
+    {
+      ...preset,
+      request: {
+        ...preset.request,
+        parameters: { ...preset.request.parameters, sortDirection: undefined },
+      },
+    },
   ])("rejects malformed or unsafe preset data", (value) => {
     expect(() => parseProviderSeed(value)).toThrow();
   });
@@ -99,6 +106,34 @@ describe("Provider seed preset", () => {
     expect(
       statements.filter((s) => s.sql.includes("UPDATE source_catalog")),
     ).toHaveLength(0);
+  });
+
+  it("uses a schema-scoped lock and treats JSONB-compatible optional values as equal", async () => {
+    const seed = parseProviderSeed({
+      ...preset,
+      request: {
+        ...preset.request,
+        regionContainer: undefined,
+      },
+    });
+    const savedConnection = JSON.parse(
+      JSON.stringify({ endpoint: seed.url, request: seed.request }),
+    );
+    const { pool, statements } = fakePool({
+      ...base,
+      name: seed.name,
+      url: seed.url,
+      api_request_config: savedConnection,
+    });
+    expect(await seedProvider(pool, seed)).toBe("unchanged");
+    expect(
+      statements.some((entry) =>
+        entry.sql.includes("pg_advisory_xact_lock(hashtext(current_schema())"),
+      ),
+    ).toBe(true);
+    expect(
+      statements.some((entry) => entry.sql.includes("UPDATE source_catalog")),
+    ).toBe(false);
   });
 
   it("preserves an operator customization unless replacement is explicit", async () => {
