@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { summarizePage, checkSaturn } from "./check-saturn-api.mjs";
 
 describe("reference provider one-page probe", () => {
@@ -24,6 +25,44 @@ describe("reference provider one-page probe", () => {
       () => summarizePage({ data: [] }),
       /content must be an array/,
     );
+  });
+
+  it("preserves the captured viewport-query contract without mistaking it for polygon evidence", () => {
+    const fixtureRoot = new URL("../apps/api/test/fixtures/", import.meta.url);
+    const request = JSON.parse(
+      readFileSync(
+        new URL("saturn-map-query-request.json", fixtureRoot),
+        "utf8",
+      ),
+    );
+    const response = JSON.parse(
+      readFileSync(
+        new URL("saturn-map-query-response.json", fixtureRoot),
+        "utf8",
+      ),
+    );
+    assert.deepEqual(Object.keys(request.filter).sort(), [
+      "leftTop",
+      "query",
+      "rightDown",
+      "subject",
+    ]);
+    assert.equal(request.filter.subject, "55");
+    assert.equal(request.filter.query, null);
+    assert.ok(
+      request.filter.leftTop.longitude < request.filter.rightDown.longitude &&
+        request.filter.leftTop.latitude > request.filter.rightDown.latitude,
+    );
+    assert.equal(response.totalElements, 7319);
+    assert.equal(response.totalPages, 732);
+    assert.equal(response.content.length, request.pageSize);
+    assert.equal(response.numberOfElements, response.content.length);
+    assert.ok(response.content.every((item) => item.beeAcreage === undefined));
+    assert.ok(
+      new Set(response.content.map((item) => item.planId)).size <
+        response.content.length,
+    );
+    assert.throws(() => summarizePage(response), /map-query summaries/);
   });
 
   it("sends only a single POST page with the preset filter and no credentials", async () => {

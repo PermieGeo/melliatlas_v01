@@ -1,0 +1,118 @@
+{
+  "content": [
+    {
+      "id": 2909,
+      "planId": 1556493,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 32.244224,
+      "centerY": 54.500194
+    },
+    {
+      "id": 2918,
+      "planId": 1556765,
+      "name": "[redacted]",
+      "dangerBee": 0,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 32.244224,
+      "centerY": 54.500194
+    },
+    {
+      "id": 32911,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.697727,
+      "centerY": 54.858123
+    },
+    {
+      "id": 32912,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.677855,
+      "centerY": 54.857282
+    },
+    {
+      "id": 32913,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.706331,
+      "centerY": 54.848535
+    },
+    {
+      "id": 32914,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.694361,
+      "centerY": 54.849601
+    },
+    {
+      "id": 32915,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.718616,
+      "centerY": 54.817285
+    },
+    {
+      "id": 32916,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.69614,
+      "centerY": 54.821634
+    },
+    {
+      "id": 32917,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.717122,
+      "centerY": 54.820766
+    },
+    {
+      "id": 32918,
+      "planId": 1560859,
+      "name": "[redacted]",
+      "dangerBee": 3,
+      "cropName": null,
+      "cadNum": "[redacted]",
+      "centerX": 31.66406,
+      "centerY": 54.847148
+    }
+  ],
+  "pageable": {
+    "pageNumber": 0,
+    "pageSize": 10,
+    "offset": 0,
+    "paged": true
+  },
+  "totalPages": 732,
+  "totalElements": 7319,
+  "last": false,
+  "first": true,
+  "numberOfElements": 10,
+  "number": 0,
+  "size": 10,
+  "empty": false
+}

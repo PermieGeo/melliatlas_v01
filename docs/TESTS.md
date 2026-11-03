@@ -65,6 +65,10 @@ The PostGIS integration tests require `DATABASE_URL` in their process environmen
 
 Playwright requires a Chromium installation (`pnpm exec playwright install chromium`) and the database; run `pnpm e2e` with the normal dev server stopped to avoid stale sessions. Browser tests with intercepted responses do not establish that real provider retrieval or storage works.
 
+### SRC-01/S3c.1 viewport-query evidence checks
+
+The sanitized `apps/api/test/fixtures/saturn-map-query-*.json` pair records a user-captured single-page viewport search. `scripts/check-saturn-api.test.mjs` validates its exact filter keys, pagination metadata, repeated plan IDs and absence of detailed geometry, and rejects passing the response to the `/planapplybees` diagnostic. `apps/api/test/beekeeperPlanPage.test.ts` rejects the same response from production ingestion while preserving legitimate nullable detailed records. These tests are entirely offline and do **not** certify district IDs, period filters, source-access permission, or completeness. `GET /district-cache` remains read-only and refresh remains disabled pending the separate district evidence gate.
+
 ### SRC-01/S3a provider ingestion checks
 
 `apps/api/test/treatmentIngestion.test.ts` checks geometry evidence and negative cases. `apps/api/integration/treatmentIngestion.test.ts` requires a disposable PostGIS database in `DATABASE_URL` and runs migrations 001–008 inside an isolated schema with a stubbed HTTPS fetcher. It verifies configured-source manual fetching, immutable documents, unverified structured polygon visibility, verified/rejected status transitions, exclusion of pending model extraction, deduplication and bbox filtering. Run `pnpm --dir apps/api test:db` after `pnpm db:migrate`. The tests must never access a live provider or use production credentials. Full checks must include formatting, TypeScript, unit tests, build, and Playwright; passing focused tests alone does not prove production readiness or access rights.
