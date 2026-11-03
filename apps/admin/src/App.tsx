@@ -4,21 +4,24 @@ import {
   LayoutDashboard,
   Settings2,
   ShieldCheck,
+  CircleHelp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadPreviewMapTreatments, loadSourceCatalog } from "./api/client";
 import { CollectionPanel } from "./components/CollectionPanel";
 import { MapPreview } from "./components/MapPreview";
+import { HelpPage } from "./components/HelpPage";
 import { ProviderConfigurationForm } from "./components/ProviderConfigurationForm";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { t, type Key, type Locale } from "./i18n";
 
-type Tab = "import" | "sources" | "configuration" | "review";
+type Tab = "import" | "sources" | "configuration" | "review" | "help";
 const tabs: { id: Tab; key: Key; icon: typeof Database }[] = [
   { id: "import", key: "import", icon: LayoutDashboard },
   { id: "sources", key: "sources", icon: Database },
   { id: "configuration", key: "configuration", icon: Settings2 },
   { id: "review", key: "review", icon: ShieldCheck },
+  { id: "help", key: "help", icon: CircleHelp },
 ];
 export default function App() {
   const [locale, setLocale] = useState<Locale>("ru");
@@ -120,6 +123,9 @@ export default function App() {
               refreshKey={refreshKey}
               onChanged={changed}
             />
+          )}
+          {tab === "help" && (
+            <HelpPage locale={locale} onShowImport={() => setTab("import")} />
           )}
           {tab === "sources" && (
             <section

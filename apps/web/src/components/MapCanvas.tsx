@@ -2,12 +2,10 @@
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { useEffect } from "react";
 import { translate, type Locale, type MessageKey } from "../i18n";
-import { TreatmentFacts } from "./TreatmentDetailsPanel";
 import {
   Circle,
   CircleMarker,
   Polygon,
-  Popup,
   MapContainer,
   TileLayer,
   useMap,
@@ -111,13 +109,7 @@ export function MapCanvas({
               dashArray: notice.reviewStatus !== "verified" ? "5 5" : undefined,
               fillOpacity: notice.reviewStatus !== "verified" ? 0.12 : 0.22,
             }}
-          >
-            <Popup>
-              <div className="max-w-xs text-xs">
-                <TreatmentFacts locale={locale} notice={notice} />
-              </div>
-            </Popup>
-          </Polygon>
+          />
         ));
       })}
       {selected && (

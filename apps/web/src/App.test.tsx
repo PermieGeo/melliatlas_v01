@@ -241,3 +241,32 @@ it("shows selected source treatments beside compact weather with separate cadast
   );
   expect(panel.textContent).toContain("Выберите поле на карте");
 });
+
+it("opens localized usage help and returns to the map", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async (url: string) =>
+        new Response(
+          JSON.stringify(
+            url.startsWith("/api/v1/notices?bbox=")
+              ? { notices: [] }
+              : forecast,
+          ),
+        ),
+    ),
+  );
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Помощь" }));
+  expect(
+    screen.getByRole("heading", { name: "Как пользоваться MelliAtlas" }),
+  ).toBeTruthy();
+  expect(screen.getByText(/полностью вымышленные данные/)).toBeTruthy();
+  expect(screen.queryByText("Features: 0")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Язык"), { target: { value: "en" } });
+  expect(
+    screen.getByRole("heading", { name: "Using MelliAtlas" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Return to map" }));
+  expect(await screen.findByText("Features: 0")).toBeTruthy();
+});

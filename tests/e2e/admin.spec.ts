@@ -94,3 +94,31 @@ test("shows development-only import guidance and inline help", async ({
     page.getByRole("button", { name: "Обновить район сейчас", exact: true }),
   ).toBeDisabled();
 });
+
+test("administrator help describes the interim collection workflow", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/**", async (route) => {
+    const url = route.request().url();
+    let body: unknown = { notices: [] };
+    if (url.endsWith("/api/v1/sources")) body = { sources: [] };
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+  await page.goto("http://127.0.0.1:5174");
+  await page.getByRole("button", { name: "Помощь" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Как работать в административной панели",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Страница не соответствует административному району/),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Открыть загрузку данных" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Загрузка данных" }),
+  ).toBeVisible();
+});

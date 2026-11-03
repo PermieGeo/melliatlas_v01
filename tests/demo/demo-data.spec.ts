@@ -52,6 +52,7 @@ test("synthetic treatments are served by the real map API and shown on the map",
   );
   await expect(polygons.first()).toBeVisible();
   await polygons.first().click();
+  await expect(page.locator(".leaflet-popup")).toHaveCount(0);
   const details = page.getByRole("region", { name: "Информация об участке" });
   await expect(
     details.getByText(/DEMO agricultural cooperative/),
@@ -85,6 +86,19 @@ test("administrator sees persisted synthetic pending and reviewed records", asyn
     .toBe(200);
   await page.goto("http://127.0.0.1:5174");
   await expect(page.getByText(/ДЕМОДАННЫЕ: все записи/)).toBeVisible();
+  const polygons = page.locator(
+    ".leaflet-overlay-pane path.leaflet-interactive",
+  );
+  await expect(polygons.first()).toBeVisible();
+  await polygons.first().click();
+  const fieldDetails = page.getByRole("complementary", {
+    name: "Информация об участке",
+  });
+  await expect(
+    fieldDetails.getByText(/DEMO agricultural cooperative/),
+  ).toBeVisible();
+  await expect(fieldDetails.getByText(/DEMO-PARCEL-/)).toBeVisible();
+  await expect(page.locator(".leaflet-popup")).toHaveCount(0);
   await page.getByRole("button", { name: "Проверка записей" }).click();
   await expect(
     page.getByRole("heading", { name: "Проверка записей" }),
