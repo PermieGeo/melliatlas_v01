@@ -93,6 +93,14 @@ export default function App() {
           ))}
         </nav>
         <main className="min-w-0 space-y-4">
+          {preview.some((item) => item.sourceName.startsWith("DEMO —")) && (
+            <p
+              role="note"
+              className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-950"
+            >
+              {text("syntheticDataNotice")}
+            </p>
+          )}
           <div>
             <h2 className="text-2xl font-bold">{text(tab)}</h2>
             <p className="mt-1 text-xs text-amber-800">{text("localOnly")}</p>

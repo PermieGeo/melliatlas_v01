@@ -189,6 +189,17 @@ export default function App() {
                   : t(layers.status === "error" ? "mapLoadError" : "loading")}
               </span>
             </div>
+            {layers.status === "loaded" &&
+              layers.value.some((item) =>
+                item.sourceName.startsWith("DEMO —"),
+              ) && (
+                <p
+                  role="note"
+                  className="mb-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-sm font-semibold text-amber-950"
+                >
+                  {t("syntheticDataNotice")}
+                </p>
+              )}
             {layers.status === "loaded" && layers.value.length === 0 && (
               <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
                 {t("noTreatments")}

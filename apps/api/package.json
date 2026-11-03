@@ -11,7 +11,8 @@
     "test": "vitest run test/",
     "test:db": "vitest run integration/",
     "db:migrate": "tsx src/db/migrate.ts",
-    "provider:seed": "tsx src/db/seedProvider.ts"
+    "provider:seed": "tsx src/db/seedProvider.ts",
+    "demo:seed": "tsx src/db/seedDemo.ts"
   },
   "dependencies": {
     "@melliatlas/contracts": "workspace:*",

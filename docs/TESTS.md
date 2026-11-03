@@ -136,3 +136,27 @@ S3c foundation: `apps/api/test/districtCacheState.test.ts` covers completion/TTL
 ### Administrator contextual help and temporary controls
 
 `apps/admin/src/App.test.tsx` verifies the development-only page-import notice, click-to-toggle contextual help, RU/EN translations and the absence of implicit provider requests. `tests/e2e/admin.spec.ts` verifies that help opens/closes in the actual browser, explains page-versus-district coverage and leaves unverified district refresh disabled. Run `pnpm --dir apps/admin test`, `pnpm --dir apps/admin typecheck` and `pnpm e2e` (with local dependencies and browser installed).
+
+### Local synthetic visual-data scenario
+
+`pnpm demo:prepare` creates and seeds a **separate local database** named
+`melliatlas_demo` (never the ordinary `melliatlas` database). It requires a
+loopback PostgreSQL URL and the Docker database to be running. The initial
+fixture contains 12 fictional field-plan candidates: 4 simulated reviewed,
+6 spatial pending, 1 rejected and 1 text-only pending. Exactly 10 geometries
+are initially publishable on the public map. The records, coordinates,
+contractors, preparations, classes and review outcomes are **synthetic**;
+no external provider is contacted and none of this is proof of treatments,
+permissions, scientific risks, or real cadastral boundaries. The demo URL uses
+the reserved `.invalid` domain, and both frontends show an explicit warning.
+
+`pnpm demo:dev` runs the usual three local applications with this dedicated
+DB. `pnpm e2e:demo` uses another isolated local database named
+`melliatlas_demo_e2e`, seeds it if necessary, and starts an independent Playwright
+configuration (`playwright.demo.config.ts`, `tests/demo/demo-data.spec.ts`),
+checking real PostGIS -> API -> browser behavior on desktop and mobile. Stop
+any running `pnpm dev` before invoking the demo suite; its server does not reuse
+existing ports. Normal `pnpm e2e` remains browser-fixture-based and does not
+require seeded data. Repeating the seed does not duplicate records or reset
+operator decisions. `apps/api/integration/demoSeed.test.ts` verifies persistence
+and refusal to mix actual evidence within a disposable PostGIS schema.

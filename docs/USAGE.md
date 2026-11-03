@@ -57,3 +57,37 @@ The probe prints status and aggregate geometry counts without reproducing person
 | `POST /api/v1/operator/notices/:id/review`         | Evidence-backed review decision                                                                          |
 
 All external provider requests originate on the backend and apply HTTPS destination, DNS/IP, timeout, payload and rate-limit restrictions. Source geometry must pass technical validation before public display; optional operator review remains separately auditable. Neither a pending plan nor an operator-reviewed plan establishes a scientific pesticide safety verdict. Public reuse permissions must be checked before internet deployment.
+
+## Explore the interface with synthetic demo evidence
+
+The demonstration is isolated from real data. Start the local Docker database,
+then from the repository root run:
+
+```bash
+pnpm demo:prepare
+pnpm demo:dev
+```
+
+Visit `http://127.0.0.1:5173` (beekeeper map) and
+`http://127.0.0.1:5174` (administrator). The map initially contains fictional
+fields around the default Smolensk map center. Select a field to inspect its
+fictional dates, products and parcel labels. In Admin, review pending examples,
+inspect the source catalog and compare verified/pending styles. **All seeded
+records are synthetic**, including records with a simulated `verified` status.
+The amber notice identifies the demo dataset. Source URLs use `.invalid` and
+will not resolve. The demo does not fetch Saturn or assert that pesticide
+applications took place.
+
+For full-stack browser verification, stop the dev servers and run:
+
+```bash
+pnpm e2e:demo
+```
+
+The demo commands derive the connection from a local `DATABASE_URL` (or
+`apps/api/.env`), but use `melliatlas_demo` for visual exploration and the
+separate `melliatlas_demo_e2e` for repeatable browser tests. These databases
+never share user-edited demo observations. A remote host or production mode is
+refused, and the seed independently validates the actual database name. **Do not run the ordinary provider seed or manual import
+against the demo connection.** To return to existing real/local records, stop
+the demo server and run `pnpm dev` as usual. The normal database is untouched.

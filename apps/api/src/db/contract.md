@@ -25,3 +25,5 @@
 
 - **Migration 012:** Adds lease token/expiry columns to the district cache; concurrent workers cannot commit under a superseded ownership token.
 - **Migration 013:** Creates `source_request_throttle`, keyed by source ID, storing only the next permitted provider fetch start (no upstream payload or secrets). The source-ingestion module owns its atomic reservation. Preserve the row after failures; deleting it may allow premature upstream requests.
+
+- **Local demonstration database:** `createDemoDatabase.ts`, `seedDemo.ts` and `demoSafety.ts` are developer-only entry points for the separate loopback-only `melliatlas_demo` and `melliatlas_demo_e2e` databases. Schema migrations apply unchanged. The fixture writer lives in the source-ingestion module, and seed assertions/cleanup are covered by isolated PostGIS tests. Do not mix synthetic fixture evidence into the normal database or production.
