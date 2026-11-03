@@ -1,5 +1,41 @@
 export const messages = {
   ru: {
+    help: "Помощь",
+    helpAdminTitle: "Как работать в административной панели",
+    helpAdminIntro:
+      "Панель предназначена для локальной настройки источников, проверки сохранённых сведений и диагностической загрузки. Она не является публичной системой управления.",
+    helpAdminMapTitle: "Предварительная карта",
+    helpAdminMapBody:
+      "Откройте «Загрузка данных», нажмите на контур участка на карте. Справа откроются кадастровые номера, период, препараты, статус и ссылка на первоисточник. Пунктир показывает непроверенную запись; данные могут быть неполными.",
+    helpAdminReviewTitle: "Проверка записей",
+    helpAdminReviewBody:
+      "В разделе «Проверка записей» изучите первоисточник и сведения. Укажите имя проверяющего и пояснение не менее 20 символов. Подтверждение или отклонение сохраняет решение; не подтверждайте вымышленные данные как реальные.",
+    helpAdminConfigTitle: "Настройка и ручная загрузка",
+    helpAdminConfigBody:
+      "«Конфигурация» сохраняет настройки, но не запускает запрос. «Получить следующую страницу» — временная диагностическая функция: один запрос к источнику с ограничением частоты. Страница не соответствует административному району.",
+    helpAdminDistrictTitle: "Районный кэш (планируется)",
+    helpAdminDistrictBody:
+      "Планируется выбирать район и принудительно обновлять общие данные с TTL 24 часа после полного успешного прохода страниц. Пока точные HTTP-фильтры района и периода «Сатурн» не подтверждены, эта кнопка заблокирована.",
+    helpAdminExampleTitle: "Пример: локальный набор DEMO",
+    helpAdminExampleBody:
+      "После «pnpm demo:prepare» и «pnpm demo:dev» посмотрите вымышленные поля «DEMO agricultural cooperative», выберите контур и проверьте «DEMO-PARCEL» в боковой панели. Данные синтетические и не должны подтверждаться как реальные сведения «Сатурн».",
+    helpAdminSecurity:
+      "Admin работает только локально: здесь пока нет серверной аутентификации. Не публикуйте административные маршруты в интернете.",
+    backToImport: "Открыть загрузку данных",
+    fieldDetails: "Информация об участке",
+    closeFieldDetails: "Закрыть сведения об участке",
+    chooseField: "Выберите участок на карте для просмотра подробностей.",
+    cadastralNumbers: "Кадастровые номера",
+    products: "Препараты",
+    noProducts: "Препараты не указаны",
+    crop: "Культура",
+    hazardClass: "Класс опасности для пчёл (по источнику)",
+    unverified: "Не проверено оператором",
+    verifiedField: "Проверено оператором",
+    source: "Источник",
+    retrievedAt: "Получено",
+    fieldSafetyCaveat:
+      "Статус записи не является оценкой безопасности обработок.",
     helpFor: "Справка: {field}",
     developmentOnly: "На период разработки",
     manualImportReplacement:
@@ -120,7 +156,7 @@ export const messages = {
     reviewHint:
       "Публикуйте только записи, сверенные с первоисточником. Непроверенные поля не отображаются на публичной карте.",
     previewHint:
-      "Пунктир — непроверенные записи; сплошная линия — опубликованные. Это не оценка опасности для пчёл.",
+      "Нажмите на контур участка, чтобы увидеть подробности справа. Пунктир — непроверенные записи; сплошная линия — опубликованные. Это не оценка опасности для пчёл.",
     language: "Язык",
     localOnly:
       "Только локальный доступ. Не публиковать без серверной аутентификации.",
@@ -134,6 +170,41 @@ export const messages = {
     revision: "Ревизия",
   },
   en: {
+    help: "Help",
+    helpAdminTitle: "Using the administrator interface",
+    helpAdminIntro:
+      "This local workspace configures providers, reviews stored source claims and supports diagnostic collection. It is not a public administration service.",
+    helpAdminMapTitle: "Preview map",
+    helpAdminMapBody:
+      "Open Data collection and select a field outline. The sidebar shows cadastral references, dates, products, review status and the original source link. Dashed boundaries mark unreviewed evidence, which may be incomplete.",
+    helpAdminReviewTitle: "Record review",
+    helpAdminReviewBody:
+      "Open Record review and check the original source. Provide a reviewer name and an evidence note of at least 20 characters. Verification or rejection persists the decision; do not approve fictional claims as real.",
+    helpAdminConfigTitle: "Configuration and manual collection",
+    helpAdminConfigBody:
+      "Configuration saves settings without fetching. 'Fetch next page' is a development-only diagnostic action: one rate-limited upstream request. An upstream page is not a district.",
+    helpAdminDistrictTitle: "District cache (planned)",
+    helpAdminDistrictBody:
+      "The planned workflow selects a district and forces a shared refresh with a 24-hour TTL after complete page retrieval. The action stays disabled until the actual Saturn district/date HTTP filters are verified.",
+    helpAdminExampleTitle: "Example: local DEMO dataset",
+    helpAdminExampleBody:
+      "After 'pnpm demo:prepare' and 'pnpm demo:dev', inspect a fictional 'DEMO agricultural cooperative' polygon and its 'DEMO-PARCEL' reference in the sidebar. Synthetic records are not Saturn evidence and must not be verified as real.",
+    helpAdminSecurity:
+      "Admin is local-only and has no server-side authentication yet. Do not expose operator endpoints to the public internet.",
+    backToImport: "Open data collection",
+    fieldDetails: "Field details",
+    closeFieldDetails: "Close field details",
+    chooseField: "Select a field on the map to inspect its details.",
+    cadastralNumbers: "Cadastral numbers",
+    products: "Products",
+    noProducts: "No products supplied",
+    crop: "Crop",
+    hazardClass: "Bee hazard class (source reported)",
+    unverified: "Not operator reviewed",
+    verifiedField: "Operator reviewed",
+    source: "Source",
+    retrievedAt: "Retrieved",
+    fieldSafetyCaveat: "Review status is not a pesticide-safety assessment.",
     helpFor: "Help: {field}",
     developmentOnly: "Development-only",
     manualImportReplacement:
@@ -254,7 +325,7 @@ export const messages = {
     reviewHint:
       "Publish only records checked against source evidence. Unverified fields remain hidden from the public map.",
     previewHint:
-      "Dashed = pending; solid = published. Not a pesticide safety assessment.",
+      "Select a field outline to see details on the right. Dashed = pending; solid = published. Not a pesticide safety assessment.",
     language: "Language",
     localOnly:
       "Local access only. Do not expose without server-side authentication.",

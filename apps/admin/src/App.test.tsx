@@ -184,3 +184,35 @@ it("localizes contextual field help without changing provider settings", async (
     ),
   ).toBe(false);
 });
+
+it("offers RU/EN operator help without triggering source collection", async () => {
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === "/api/v1/operator/notices/map-preview")
+      return new Response(JSON.stringify({ notices: [] }));
+    if (url === "/api/v1/sources")
+      return new Response(JSON.stringify({ sources: [] }));
+    if (url === "/api/v1/operator/provider/status")
+      return new Response(JSON.stringify(status));
+    if (url === "/api/v1/operator/provider/district-cache")
+      return new Response(
+        JSON.stringify({ ttlHours: 24, refreshEnabled: false, entries: [] }),
+      );
+    return new Response(null, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Помощь" }));
+  expect(
+    screen.getByRole("heading", {
+      name: "Как работать в административной панели",
+    }),
+  ).toBeTruthy();
+  expect(screen.getByText(/вымышленные поля/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Язык"), { target: { value: "en" } });
+  expect(
+    screen.getByRole("heading", { name: "Using the administrator interface" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Open data collection" }));
+  expect(screen.getByRole("heading", { name: "Data collection" })).toBeTruthy();
+  expect(fetcher.mock.calls.some(([url]) => url.includes("/sync"))).toBe(false);
+});

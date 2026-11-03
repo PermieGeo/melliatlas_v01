@@ -160,3 +160,13 @@ existing ports. Normal `pnpm e2e` remains browser-fixture-based and does not
 require seeded data. Repeating the seed does not duplicate records or reset
 operator decisions. `apps/api/integration/demoSeed.test.ts` verifies persistence
 and refusal to mix actual evidence within a disposable PostGIS schema.
+
+### Polygon selection, contextual usage help and responsive sidebars
+
+- `apps/web/src/App.test.tsx` checks that Help opens in RU/EN, replaces the map view and returns without invoking operator routes; existing selection tests verify the persistent field details card.
+- `apps/admin/src/components/MapPreview.test.tsx` exercises selection, cadastral splitting, source attribution, dismissal, localization and disappearing records without mocking source claims.
+- `apps/admin/src/App.test.tsx` verifies the Help navigation and confirms that reading instructions does not trigger an upstream sync.
+- `tests/e2e/map.spec.ts` checks that selecting a sourced polygon does not create a Leaflet popup; `tests/demo/demo-data.spec.ts` extends the real PostGIS/API/Web/Admin journey with the persistent selection sidebar and no popup in either app.
+- `tests/e2e/admin.spec.ts` checks that operator guidance distinguishes the temporary one-page collector from the unavailable district refresh.
+
+Run `pnpm --filter @melliatlas/web test`, `pnpm --filter @melliatlas/admin test`, and `pnpm e2e:demo` after starting the local database and installing browsers. `pnpm e2e:demo` uses a disposable synthetic database and must never send live Saturn requests. The canonical read-only `./run-tests.sh` remains the repository acceptance check.

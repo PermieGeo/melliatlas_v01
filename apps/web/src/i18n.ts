@@ -1,5 +1,29 @@
 export const messages = {
   ru: {
+    navigation: "Навигация",
+    mapNav: "Карта",
+    help: "Помощь",
+    helpTitle: "Как пользоваться MelliAtlas",
+    helpIntro:
+      "Смотрите сведения о планах обработок на карте. Все факты получены из сохранённых записей с указанием источника; приложение не устанавливает фактическую безопасность территории.",
+    helpSelectField: "Выбор участка",
+    helpSelectFieldBody:
+      "Включите слой «Планы обработок» и нажмите на контур поля. Сведения появятся справа в постоянной панели. Пунктир означает, что запись ещё не прошла независимую проверку. При нажатии на пустое место выбирается точка для прогноза погоды.",
+    helpInspectSource: "Проверка сведений",
+    helpInspectSourceBody:
+      "Прочитайте кадастровые номера, период, препараты и статус проверки. Перейдите по ссылке «Открыть первоисточник» для сверки; отсутствие значений означает, что они не сообщены источником.",
+    helpWeather: "Прогноз и радиус",
+    helpWeatherBody:
+      "Нажмите на точку карты, чтобы получить прогноз Open-Meteo. Ползунок радиуса показывает только окружность вокруг выбранной точки: он пока не фильтрует планы и не вычисляет опасность.",
+    helpRefreshMap: "Обновление карты",
+    helpRefreshMapBody:
+      "Перемещение карты загружает записи из PostGIS в пределах видимой области. Кнопка обновления повторяет чтение из локальной базы и не запускает загрузку из «Сатурн». Одновременно показывается не более 200 полигонов.",
+    helpDemoTitle: "Пример: демонстрационные участки",
+    helpDemoBody:
+      "Если запущена отдельная демобаза, выберите поле «DEMO agricultural cooperative» и найдите кадастровое обозначение «DEMO-PARCEL». Это полностью вымышленные данные, не реальные обработки и не сведения ФГИС «Сатурн».",
+    helpLimitations:
+      "Важно: отсутствие поля на карте не доказывает отсутствие обработки. Статус «Проверено» означает проверку сведений оператором, а не заключение о безопасности для пчёл.",
+    backToMap: "Вернуться к карте",
     appTitle: "MelliAtlas",
     appSubtitle: "Карта для пчеловодов",
     map: "Карта обработок",
@@ -60,6 +84,30 @@ export const messages = {
     pilot: "Пилотная территория",
   },
   en: {
+    navigation: "Navigation",
+    mapNav: "Map",
+    help: "Help",
+    helpTitle: "Using MelliAtlas",
+    helpIntro:
+      "Inspect stored treatment plans on a map. Each record includes source attribution; the application does not determine whether a location is safe.",
+    helpSelectField: "Select a field",
+    helpSelectFieldBody:
+      "Enable the planned treatments layer and select a field outline. Details stay in the right sidebar. Dashed boundaries indicate records not independently reviewed. Selecting open map space chooses a point for weather inspection.",
+    helpInspectSource: "Inspect source evidence",
+    helpInspectSourceBody:
+      "Read cadastral references, dates, products and review status. Follow 'View original source' to cross-check. Missing values mean the source did not supply them.",
+    helpWeather: "Forecast and radius",
+    helpWeatherBody:
+      "Select a map point for an Open-Meteo forecast. The radius slider draws a circle around the point; it does not yet filter treatments or calculate risk.",
+    helpRefreshMap: "Refresh the map",
+    helpRefreshMapBody:
+      "Panning reads stored PostGIS records for the viewport. Refresh repeats the local database query; it does not fetch Saturn. A view shows at most 200 polygons.",
+    helpDemoTitle: "Example: synthetic fields",
+    helpDemoBody:
+      "With the isolated demo database running, select a 'DEMO agricultural cooperative' field and locate a 'DEMO-PARCEL' reference. These records are entirely fictional, not actual treatments or Saturn evidence.",
+    helpLimitations:
+      "Important: an empty map does not prove no treatments occurred. 'Verified' indicates operator evidence review, not bee-safety verification.",
+    backToMap: "Return to map",
     appTitle: "MelliAtlas",
     appSubtitle: "Map for beekeepers",
     map: "Treatment map",

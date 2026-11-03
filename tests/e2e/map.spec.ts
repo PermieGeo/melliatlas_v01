@@ -143,6 +143,7 @@ test("public map displays unreviewed sourced polygons without an administrator A
   );
   await expect(polygon).toHaveCount(1);
   await polygon.click();
+  await expect(page.locator(".leaflet-popup")).toHaveCount(0);
   const details = page.getByRole("region", { name: "Информация об участке" });
   await expect(
     details.getByText("Не проверено. Не является оценкой безопасности."),
@@ -156,4 +157,29 @@ test("public map displays unreviewed sourced polygons without an administrator A
   ).toBeVisible();
   expect(requests.length).toBeGreaterThan(0);
   expect(requests.every((url) => !url.includes("operator"))).toBe(true);
+});
+
+test("beekeeper help explains map usage without requesting operator data", async ({
+  page,
+}) => {
+  const requested: string[] = [];
+  await page.route("**/api/v1/notices**", async (route) => {
+    requested.push(route.request().url());
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ notices: [] }),
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Помощь" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Как пользоваться MelliAtlas" }),
+  ).toBeVisible();
+  await expect(page.getByText(/полностью вымышленные данные/)).toBeVisible();
+  await page.getByRole("button", { name: "Вернуться к карте" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Карта обработок" }),
+  ).toBeVisible();
+  expect(requested.length).toBeGreaterThan(0);
+  expect(requested.every((url) => !url.includes("/operator/"))).toBe(true);
 });
