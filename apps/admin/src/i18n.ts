@@ -1,6 +1,17 @@
 export const messages = {
   ru: {
     help: "Помощь",
+    mapAnalysis: "Карта и анализ",
+    analysisSummary: "Краткая статистика",
+    analysisScope:
+      "Только записи, полученные для текущей предварительной карты. Это не полный охват территории и не статистика выполненных обработок.",
+    analysisVisible: "Записей на карте",
+    analysisVerified: "Проверены оператором",
+    analysisUnreviewed: "Без подтверждённой проверки",
+    analysisEmpty:
+      "В предварительном слое пока нет записей. Отсутствие данных не означает отсутствия обработок.",
+    analysisFuture:
+      "Исторические сравнения, тренды и прогнозы появятся после проверки полноты источников. Этот блок не оценивает риск для пчёл.",
     helpLoading: "Загружаем руководство администратора…",
     helpLoadError:
       "Не удалось загрузить руководство. Проверьте подключение и повторите попытку.",
@@ -155,6 +166,17 @@ export const messages = {
   },
   en: {
     help: "Help",
+    mapAnalysis: "Map and analysis",
+    analysisSummary: "Quick summary",
+    analysisScope:
+      "Only records returned for the current preview map. This is not complete territorial coverage or a count of actual spray events.",
+    analysisVisible: "Mapped records",
+    analysisVerified: "Operator reviewed",
+    analysisUnreviewed: "Not independently reviewed",
+    analysisEmpty:
+      "No records are in the preview layer. Missing data does not mean no treatments exist.",
+    analysisFuture:
+      "Historical comparisons, trends and forecasts will follow verified source coverage. This panel does not assess bee safety.",
     helpLoading: "Loading the administrator guide…",
     helpLoadError:
       "The guide could not be loaded. Check your connection and try again.",

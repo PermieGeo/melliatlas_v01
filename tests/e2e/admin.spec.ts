@@ -40,6 +40,13 @@ test("administrator settings do not implicitly start a source fetch", async ({
   });
   await page.goto("http://127.0.0.1:5174");
   await expect(
+    page.getByRole("heading", { name: "Карта и анализ" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Краткая статистика" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Загрузка данных" }).click();
+  await expect(
     page.getByRole("heading", { name: "Загрузка данных" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Конфигурация" }).click();
@@ -73,6 +80,7 @@ test("shows development-only import guidance and inline help", async ({
     });
   });
   await page.goto("http://127.0.0.1:5174");
+  await page.getByRole("button", { name: "Загрузка данных" }).click();
   await expect(page.getByText("На период разработки")).toBeVisible();
   await expect(page.getByText(/Её заменит выбор района/)).toBeVisible();
   const help = page.getByRole("button", {
@@ -130,5 +138,36 @@ test("administrator help loads detailed external guidance", async ({
   await page.getByRole("button", { name: "Open data collection" }).click();
   await expect(
     page.getByRole("heading", { name: "Data collection" }),
+  ).toBeVisible();
+});
+
+test("operator map and preview summary are separate from diagnostic import", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/**", async (route) => {
+    const url = route.request().url();
+    const body: unknown = url.endsWith("/api/v1/sources")
+      ? { sources: [] }
+      : { notices: [] };
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+  await page.goto("http://127.0.0.1:5174");
+  await expect(
+    page.getByRole("heading", { name: "Карта и анализ" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Краткая статистика" }),
+  ).toBeVisible();
+  await expect(page.getByText(/только записи, полученные/i)).toBeVisible();
+  await page.getByRole("button", { name: "Загрузка данных" }).click();
+  await expect(
+    page.getByRole("region", { name: "Краткая статистика" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Карта и анализ" }).click();
+  await expect(
+    page.getByRole("region", { name: "Краткая статистика" }),
   ).toBeVisible();
 });
