@@ -5,6 +5,16 @@
   "intro": "The administrator app is a local workspace for provider configuration, diagnostic ingestion and evidence review. It is not a public service with production-grade operator authentication.",
   "sections": [
     {
+      "id": "overview",
+      "title": "What the administrator workspace is for",
+      "paragraphs": [
+        "The MelliAtlas administrator workspace supports operators who configure sources and inspect the quality of information shown on the beekeeper map. The goal is not merely to download records from another service: the application must preserve provenance, expose possible errors and allow a person to review uncertain evidence. The public map and the administrator workspace share the backend and PostGIS storage, but serve different purposes. One is for reading geographic information; the other is for managing its collection and review.",
+        "The workflow starts with a provider configuration: endpoint, HTTP method, regional parameters and access constraints. Saving those settings does not automatically fetch any records. For diagnostics, an operator can currently request one page at a time; this is a temporary development feature, not a complete district synchronization process. The backend preserves source material, parsed observations and ingestion history so that operators can understand where a field record came from and why it is visible or excluded.",
+        "The preview map lets you select a polygon and inspect its details in a persistent sidebar. Even a successfully imported record may contain incomplete or incorrect geometry, dates or product names. Mark evidence as verified only after comparing it with an accessible original source and documenting the reason for the decision. Pending means the operator review is not complete; rejected records must not appear on the public map. Evidence review is not a scientific assessment of whether a pesticide is safe for bees.",
+        "An isolated local DEMO database is available for learning and interface testing. It contains fictional parcels, products and review states, makes no Saturn requests and must not be mixed with real evidence. Automated district synchronization with a shared 24-hour cache is still disabled until the actual upstream district-filter contract is verified. The sections below describe current operator tasks, temporary controls, review steps and troubleshooting. Because the administrator API does not yet have production-grade internet authentication, keep this workspace local."
+      ]
+    },
+    {
       "id": "navigation",
       "title": "1. Find your way around",
       "paragraphs": [
