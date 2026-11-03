@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 export const DISTRICT_TTL_HOURS = 24;
 export const MAX_DISTRICT_PAGES = 2000;
+export const DISTRICT_LEASE_MINUTES = 5;
 
 export type DistrictCacheKey = {
   sourceId: string;
@@ -67,7 +68,10 @@ export function districtCoverage(
   now: Date,
 ): DistrictCacheCoverage {
   if (!entry) return "unknown";
-  if (entry.state !== "completed") return "partial";
+  if (entry.state !== "completed") {
+    // Earlier successful coverage remains historical, never newly fresh.
+    return entry.completedAt && entry.expiresAt ? "stale" : "partial";
+  }
   if (!entry.completedAt || !entry.expiresAt || entry.nextPage !== 0)
     return "partial";
   const expires = Date.parse(entry.expiresAt);
@@ -115,10 +119,10 @@ export function advanceDistrictCache(
     pagesFetched: current.pagesFetched + 1,
     recordsReceived: current.recordsReceived + received,
     recordsStored: current.recordsStored + stored,
-    completedAt: completed ? now.toISOString() : null,
+    completedAt: completed ? now.toISOString() : current.completedAt,
     expiresAt: completed
       ? new Date(now.getTime() + DISTRICT_TTL_HOURS * 3_600_000).toISOString()
-      : null,
+      : current.expiresAt,
     lastErrorCode: capped ? "DISTRICT_PAGE_LIMIT" : null,
   };
 }
