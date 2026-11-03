@@ -41,6 +41,8 @@ export const messages = {
       "Дополнительные параметры HTTP-запроса в виде корректного JSON-объекта. Не добавляйте сюда токены, пароли или неподтверждённые фильтры.",
     helpEvidence:
       "Кратко укажите, какие сведения первоисточника вы проверили и почему решение обосновано. Требуется минимум 20 символов.",
+    syntheticDataNotice:
+      "ДЕМОДАННЫЕ: все записи, поля и статусы проверки вымышлены. Не использовать как сведения Сатурн или оценку опасности.",
     title: "Управление данными",
     subtitle: "Локальная административная панель",
     sources: "Источники",
@@ -173,6 +175,8 @@ export const messages = {
       "Additional HTTP request parameters as a valid JSON object. Do not enter credentials or unverified filters here.",
     helpEvidence:
       "Briefly explain which original-source facts were checked and why the decision is justified. At least 20 characters are required.",
+    syntheticDataNotice:
+      "DEMO DATA: all records, fields and review statuses are fictional. Not Saturn evidence or a safety assessment.",
     title: "Data administration",
     subtitle: "Local operator workspace",
     sources: "Sources",

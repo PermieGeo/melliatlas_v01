@@ -18,6 +18,8 @@ export const messages = {
     treatments: "Планы обработок",
     sourceReviewNotice:
       "Показаны данные источников, включая записи без независимой проверки. Это не оценка опасности для пчёл.",
+    syntheticDataNotice:
+      "ДЕМОДАННЫЕ: все поля, планы и статусы вымышлены. Это не сведения Сатурн и не оценка опасности.",
     noTreatments:
       "Полигонов обработок пока нет. Отсутствие сведений не означает отсутствие обработок.",
     mapLoadError: "Не удалось загрузить слой обработок.",
@@ -76,6 +78,8 @@ export const messages = {
     treatments: "Planned treatments",
     sourceReviewNotice:
       "Source-attributed records may be shown without independent verification. This is not a bee safety assessment.",
+    syntheticDataNotice:
+      "DEMO DATA: all fields, plans and statuses are fictional. Not Saturn evidence or a safety assessment.",
     noTreatments:
       "No treatment polygons are available yet. Missing records do not mean no treatments.",
     mapLoadError: "Unable to load treatment layer.",

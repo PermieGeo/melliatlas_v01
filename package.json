@@ -15,7 +15,10 @@
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/api db:migrate",
     "e2e": "playwright test",
-    "provider:seed:saturn": "pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json"
+    "provider:seed:saturn": "pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json",
+    "demo:prepare": "node scripts/demo.mjs prepare",
+    "demo:dev": "node scripts/demo.mjs dev",
+    "e2e:demo": "node scripts/demo.mjs e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
