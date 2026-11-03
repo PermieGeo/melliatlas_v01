@@ -79,9 +79,17 @@ test("shows development-only import guidance and inline help", async ({
     name: "Справка: Получить следующую страницу",
   });
   await help.click();
-  await expect(page.getByText(/Страница не является районом/)).toBeVisible();
+  const explanation = page.getByText(/Страница не является районом/);
+  await expect(explanation).toBeVisible();
+  await page.getByText("На период разработки").click();
+  await expect(explanation).toBeHidden();
+  await help.click();
+  await expect(explanation).toBeVisible();
+  await help.press("Escape");
+  await expect(explanation).toBeHidden();
+  await help.click();
   await help.press("Enter");
-  await expect(page.getByText(/Страница не является районом/)).toBeHidden();
+  await expect(explanation).toBeHidden();
   await expect(
     page.getByRole("button", { name: "Обновить район сейчас", exact: true }),
   ).toBeDisabled();
