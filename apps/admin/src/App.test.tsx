@@ -185,8 +185,36 @@ it("localizes contextual field help without changing provider settings", async (
   ).toBe(false);
 });
 
-it("offers RU/EN operator help without triggering source collection", async () => {
+it("loads RU/EN operator help from separate files without source collection", async () => {
   const fetcher = vi.fn(async (url: string) => {
+    if (url.startsWith("/help/")) {
+      const locale = url.includes("/en.json") ? "en" : "ru";
+      return new Response(
+        JSON.stringify({
+          version: 1,
+          locale,
+          title:
+            locale === "ru"
+              ? "Руководство по административной панели"
+              : "Administrator guide",
+          intro: "Fixture intro",
+          sections: [
+            {
+              id: "collection",
+              title: "Collection",
+              paragraphs: ["A page is not a district"],
+            },
+          ],
+          example: {
+            id: "demo",
+            title: "Demo data",
+            paragraphs: ["Fictional records only"],
+          },
+          warningsTitle: "Security",
+          warnings: ["Local only"],
+        }),
+      );
+    }
     if (url === "/api/v1/operator/notices/map-preview")
       return new Response(JSON.stringify({ notices: [] }));
     if (url === "/api/v1/sources")
@@ -203,15 +231,20 @@ it("offers RU/EN operator help without triggering source collection", async () =
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Помощь" }));
   expect(
-    screen.getByRole("heading", {
-      name: "Как работать в административной панели",
+    await screen.findByRole("heading", {
+      name: "Руководство по административной панели",
     }),
   ).toBeTruthy();
-  expect(screen.getByText(/вымышленные поля/)).toBeTruthy();
+  expect(screen.getByText("Fictional records only")).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Язык"), { target: { value: "en" } });
   expect(
-    screen.getByRole("heading", { name: "Using the administrator interface" }),
+    await screen.findByRole("heading", { name: "Administrator guide" }),
   ).toBeTruthy();
+  expect(
+    fetcher.mock.calls
+      .filter(([url]) => url.startsWith("/help/"))
+      .map(([url]) => url),
+  ).toEqual(["/help/ru.json", "/help/en.json"]);
   fireEvent.click(screen.getByRole("button", { name: "Open data collection" }));
   expect(screen.getByRole("heading", { name: "Data collection" })).toBeTruthy();
   expect(fetcher.mock.calls.some(([url]) => url.includes("/sync"))).toBe(false);

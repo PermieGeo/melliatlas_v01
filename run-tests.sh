@@ -39,7 +39,7 @@ python3 -B tools/specs/validate_state.py
 pnpm format:check
 pnpm typecheck
 pnpm test
-node --test scripts/check-saturn-api.test.mjs
+node --test scripts/check-saturn-api.test.mjs scripts/help-content.test.mjs
 pnpm build
 pnpm --dir apps/api test:db
 pnpm e2e

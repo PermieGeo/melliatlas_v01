@@ -305,3 +305,6 @@ export const regionalScanStatusSchema = z
   })
   .strict();
 export type RegionalScanStatus = z.infer<typeof regionalScanStatusSchema>;
+
+export { helpDocumentSchema } from "./helpContent.js";
+export type { HelpDocument, HelpSection } from "./helpContent.js";

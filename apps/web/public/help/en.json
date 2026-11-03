@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "locale": "en",
+  "title": "Using MelliAtlas",
+  "intro": "MelliAtlas displays stored, source-attributed information about planned field treatments. It does not independently confirm spraying or determine whether an apiary is safe.",
+  "sections": [
+    {
+      "id": "getting-started",
+      "title": "1. Start with the map",
+      "paragraphs": [
+        "Open Map. The map is in the center, layer and radius controls are on the left, and forecast plus selected-field details are on the right. On narrow screens these panels may appear below the map."
+      ],
+      "steps": [
+        "Make sure the Planned treatments layer is enabled.",
+        "Zoom to an area of interest and allow the field polygons to load.",
+        "Select a field outline; details appear in the sidebar without a popup or automatic map movement.",
+        "Use Close field details to clear the selection."
+      ],
+      "notes": [
+        "Panning reads previously stored records from PostGIS. It does not query the Saturn provider."
+      ]
+    },
+    {
+      "id": "field-details",
+      "title": "2. Read field details",
+      "paragraphs": [
+        "The sidebar contains the organization, cadastral references, planned dates, products, crop, source-reported bee hazard class where present, provenance and retrieval time.",
+        "Cadastral references appear on separate lines. A missing value means it was not supplied; it does not mean a product was not used or that a location is safe."
+      ],
+      "steps": [
+        "Compare the organization and parcel references with the field you are inspecting.",
+        "Check the planned date range; it is a source claim, not evidence that spraying occurred.",
+        "Inspect products and reported hazard classes when available.",
+        "Follow View original source to verify the claim against its publisher if the link is accessible."
+      ]
+    },
+    {
+      "id": "review-status",
+      "title": "3. Understand borders and review status",
+      "paragraphs": [
+        "Dashed outlines mean Pending / not independently reviewed. Solid outlines mark an operator-reviewed record. These statuses describe the review of evidence, not scientific or pesticide safety.",
+        "Rejected records and records without suitable polygons are excluded from the public map."
+      ],
+      "notes": [
+        "Never treat a polygon style or reviewed status as a recommendation that bees are safe."
+      ]
+    },
+    {
+      "id": "weather-radius",
+      "title": "4. Weather and the visual radius",
+      "paragraphs": [
+        "Selecting open map space chooses a point for Open-Meteo model forecast values, with provider attribution and retrieval time.",
+        "The radius slider only draws a circle around the selected point. It does not filter treatments, estimate risk, or identify safe spraying windows."
+      ],
+      "steps": [
+        "Select open map space rather than a field polygon.",
+        "Read the available temperature, wind, humidity and forecast measures.",
+        "Adjust the visual radius to compare the surrounding area.",
+        "If forecast retrieval fails, select Retry."
+      ]
+    },
+    {
+      "id": "refresh",
+      "title": "5. Why the map may be empty",
+      "paragraphs": [
+        "Refresh map repeats the query against the local database. Moving the map reads another viewport bounding box; neither action starts Saturn ingestion.",
+        "Each map response is limited to 200 polygons. Zoom in to narrow the result set. An empty viewport may mean no records have been imported, not that no treatment was planned."
+      ],
+      "steps": [
+        "Check that the treatment layer is enabled.",
+        "Refresh the map and zoom in on the area you want to inspect.",
+        "If the layer fails, check the local API and database status."
+      ]
+    },
+    {
+      "id": "source-limitations",
+      "title": "6. Data quality and freshness",
+      "paragraphs": [
+        "MelliAtlas keeps a source name, original URL, retrieval time and operator-review status. Source records may be incomplete, stale or incorrect.",
+        "Automatic district refresh with a 24-hour TTL is not enabled yet. Actual Saturn district and date filter request fields still require verification. Do not rely on this prototype as a complete live warning service."
+      ],
+      "notes": [
+        "There is no automatic apiary risk assessment, guaranteed district coverage, or independent confirmation that an application took place."
+      ]
+    },
+    {
+      "id": "language",
+      "title": "7. Language and accessibility",
+      "paragraphs": [
+        "Switch Russian or English in the header. Application labels and this guide switch languages; original organization names and source evidence remain unchanged.",
+        "On mobile, map panels may stack below the map. Standard keyboard and browser controls are available for navigation."
+      ]
+    }
+  ],
+  "example": {
+    "id": "demo-example",
+    "title": "Walkthrough: fictional demo fields",
+    "paragraphs": [
+      "To try populated screens without provider calls, run pnpm demo:prepare and pnpm demo:dev from the repository root. This uses an isolated local demo database.",
+      "The demo has 12 synthetic records; 10 have polygons visible on the map. For example, DEMO agricultural cooperative 01, DEMO-PARCEL-01 and DEMO preparation A are entirely fictional."
+    ],
+    "steps": [
+      "Open Web at http://127.0.0.1:5173.",
+      "Select a DEMO polygon near the default Smolensk map center.",
+      "Compare the organization, parcel marker, product and review status in the sidebar.",
+      "Inspect a record with missing product details; missing source fields must remain missing."
+    ],
+    "notes": [
+      "All DEMO organizations, polygons, dates and statuses are fabricated. They are not cadastral evidence or real Saturn observations."
+    ]
+  },
+  "warningsTitle": "Important limitations",
+  "warnings": [
+    "An empty map does not prove there are no treatments.",
+    "Operator-reviewed does not mean safe for bees.",
+    "Weather forecasts and the drawn radius do not calculate pesticide risk.",
+    "Never use fictional demo records for real apiary decisions."
+  ]
+}
