@@ -1,6 +1,6 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY, NOTICES.EXTRACTION, NOTICES.MAP_OVERLAY, NOTICES.SPATIAL_PRECISION
 import { createHash } from "node:crypto";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { ApiFailure } from "../../lib/errors.js";
 import {
@@ -128,6 +128,27 @@ export class TreatmentIngestionService {
     });
   }
 
+  /** Close a failed run even when its original database connection is unusable. */
+  private async failIngestionRun(
+    client: PoolClient,
+    runId: string,
+    errorCode: string,
+  ): Promise<void> {
+    await client.query("ROLLBACK").catch(() => undefined);
+    const sql = `UPDATE ingestion_runs SET status='failed', completed_at=now(),
+      error_code=$2 WHERE id=$1 AND status='started'`;
+    try {
+      await client.query(sql, [runId, errorCode]);
+    } catch {
+      // A failed session may be unusable; retry the idempotent status write on a fresh pool connection.
+      await this.pool.query(sql, [runId, errorCode]).catch(() => {
+        console.error("Ingestion run failure status could not be persisted", {
+          errorCode,
+        });
+      });
+    }
+  }
+
   async syncOnePage(mode: "manual" | "scan" = "manual"): Promise<{
     runId: string;
     pageNumber: number;
@@ -149,6 +170,12 @@ export class TreatmentIngestionService {
           "Another ingestion is running",
         );
       locked = true;
+      // An exclusive schema lock proves previous workers are gone; close orphaned runs.
+      await client.query(
+        `UPDATE ingestion_runs SET status='failed', completed_at=now(),
+           error_code='INGEST_INTERRUPTED' WHERE source_id=$1 AND status='started'`,
+        [SOURCE_ID],
+      );
       const row = await client.query<ConnectionRow>(
         "SELECT name, kind, lifecycle, url, api_request_config, registry_revision, source_cursor FROM source_catalog WHERE id=$1",
         [SOURCE_ID],
@@ -412,17 +439,13 @@ export class TreatmentIngestionService {
           nextPage,
         };
       } catch (error) {
-        await client.query("ROLLBACK").catch(() => undefined);
         const code =
           error instanceof SourceFetchFailure
             ? error.code
             : error instanceof ApiFailure
               ? error.code
               : "INVALID_UPSTREAM_RESPONSE";
-        await client.query(
-          "UPDATE ingestion_runs SET status='failed', completed_at=now(), error_code=$2 WHERE id=$1 AND status='started'",
-          [runId, code],
-        );
+        await this.failIngestionRun(client, runId, code);
         throw error instanceof SourceFetchFailure
           ? new ApiFailure(503, code, "Source fetch unavailable")
           : error;

@@ -263,6 +263,35 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     });
   });
 
+  it("recovers orphaned started runs after a worker crash", async () => {
+    await pool.query(
+      "UPDATE source_catalog SET lifecycle='configured' WHERE id='treatment-feed'",
+    );
+    const orphan = await pool.query<{ id: string }>(
+      "INSERT INTO ingestion_runs(source_id, status) VALUES('treatment-feed', 'started') RETURNING id",
+    );
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => ({
+          canonicalUrl: sourceFixture.url,
+          contentType: "application/json",
+          bytes: Buffer.from(JSON.stringify(portalFixture)),
+        }),
+      },
+      evidenceTestGate,
+    );
+    await service.syncOnePage();
+    const recovery = await pool.query<{ status: string; error_code: string }>(
+      "SELECT status, error_code FROM ingestion_runs WHERE id=$1",
+      [orphan.rows[0]!.id],
+    );
+    expect(recovery.rows[0]).toEqual({
+      status: "failed",
+      error_code: "INGEST_INTERRUPTED",
+    });
+  });
+
   it("uses the persistent source gate before issuing another provider request", async () => {
     await pool.query(
       "UPDATE source_catalog SET lifecycle='configured' WHERE id='treatment-feed'",
