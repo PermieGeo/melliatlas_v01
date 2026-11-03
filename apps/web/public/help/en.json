@@ -5,6 +5,16 @@
   "intro": "MelliAtlas displays stored, source-attributed information about planned field treatments. It does not independently confirm spraying or determine whether an apiary is safe.",
   "sections": [
     {
+      "id": "overview",
+      "title": "About MelliAtlas",
+      "paragraphs": [
+        "MelliAtlas is a geospatial application for beekeepers. Its purpose is to bring published notices of planned agricultural treatments into one place and show the fields associated with those notices. When information is scattered across different sources, it can be difficult to tell which land parcel a notice concerns and when the work is planned. The map offers a geographic starting point and helps you move from a regional overview to an individual field.",
+        "At this stage, MelliAtlas primarily displays records already stored by the backend. The server ingests configured sources, checks whether their geometries can be used, and preserves available dates, products and source references. Panning the map reads the application’s PostGIS database; it does not request a new page from the Saturn portal. An empty map area therefore may mean that records have not been imported or do not contain suitable polygons, rather than that no treatments are planned.",
+        "Select a field outline to inspect its organization, cadastral references, dates, products and provenance in the sidebar. A dashed border means the record has not been independently reviewed by an operator; a solid border indicates an operator review of the evidence. Neither status confirms that spraying took place or that the area is safe for bees. The weather forecast and visual radius provide context, not a pesticide-risk calculation or a recommendation to move an apiary.",
+        "For a first walkthrough, use the local DEMO mode. It contains fictional fields and treatments that you can inspect without contacting the real provider. The following sections explain map controls, field details, review labels and source attribution. Automated district-wide refresh, private apiaries and notifications remain future development work, so this prototype must not be treated as a complete or sole warning system."
+      ]
+    },
+    {
       "id": "getting-started",
       "title": "1. Start with the map",
       "paragraphs": [
