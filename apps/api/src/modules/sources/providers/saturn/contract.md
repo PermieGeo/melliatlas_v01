@@ -10,6 +10,7 @@
 - The viewport collection service owns district and revision preflight, checkpoint selection and composition. `saturnViewportPageFetcher.ts` owns the single Saturn HTTP POST and provider-schema validation; its validated response is separately committed by the index repository. The shared [auditedSourceRequest.ts](../../auditedSourceRequest.ts) owns the audited throttle lifecycle for both viewport page collection and explicit directory refresh, without provider URLs or parsing rules.
 - `saturnDistrictDirectory.ts` owns explicit directory refresh and cache reads. Index repositories, stored field previews, history and request receipts remain distinct persistence responsibilities.
 - `saturnEvidenceLinks.ts` is an inert, offline identity comparison for separately captured map-index IDs, polygon IDs and the minimal `/acr/{id}` response ID. It reports only candidate ID matches, missing entries, repeated exact geometry and ACR URL/body ID discrepancies. It cannot establish a treatment-plan join, a valid spatial relationship or coverage.
+- `saturnCaptureInspection.ts` composes the existing validators into an offline-only identity report. `saturnCaptureCli.ts` reads bounded, local direct-body captures via `pnpm --dir apps/api evidence:saturn -- ...`; it never makes HTTP or database requests. Its JSON output contains IDs, exact-geometry digests and counts only, not source-provided names, arbitrary properties or coordinates. The operator must independently verify capture provenance, matching viewport/zoom and dates.
 
 ## Owned data and dependencies
 
