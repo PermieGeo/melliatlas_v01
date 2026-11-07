@@ -72,6 +72,7 @@ features:
       - apps/api/src/modules/sources/saturnMapEvidence.ts
       - apps/api/src/modules/sources/saturnViewportQuery.ts
       - apps/api/src/modules/sources/saturnViewportProgress.ts
+      - apps/api/src/modules/sources/saturnViewportIndexRepository.ts
       - apps/admin/src/components/CollectionPanel.tsx
     test_paths:
       - apps/api/test/regionalScanState.test.ts
@@ -81,6 +82,7 @@ features:
       - apps/api/test/saturnMapEvidence.test.ts
       - apps/api/test/saturnViewportQuery.test.ts
       - apps/api/test/saturnViewportProgress.test.ts
+      - apps/api/integration/saturnViewportIndex.test.ts
       - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
