@@ -23,7 +23,7 @@ Install browsers once where required:
 pnpm exec playwright install chromium
 ```
 
-The E2E configuration starts `pnpm dev` automatically (or may reuse an existing server outside CI; stop stale manual instances first). It intercepts source/weather API responses with synthetic test-only fixtures; these are never product fallback data. The API server still requires local PostgreSQL. **Intercepted Playwright tests verify UI behavior, not database/source integration.**
+The regular Playwright E2E configuration builds the shared contracts, starts independent Web (`127.0.0.1:5173`) and Admin (`127.0.0.1:5174`) Vite processes, and waits for both before running tests. Existing servers are never reused: stop all manually started frontend servers first, or Playwright fails clearly when a port is occupied. These browser scenarios intercept source/weather API responses with synthetic test-only fixtures; they do not start the API or require a database on their own. The canonical `run-tests.sh` still requires local PostGIS for its separate integration tests. **Intercepted Playwright tests verify UI behavior, not database/source integration.**
 
 ## Test ownership
 
@@ -64,7 +64,7 @@ python3 tools/specs/validate_state.py
 
 The PostGIS integration tests require `DATABASE_URL` in their process environment. The test script does **not** automatically load `apps/api/.env` in every invocation, so provide a test-only URL explicitly or load a local environment file in the shell without printing secrets. CI supplies `DATABASE_URL` directly. Do not claim `test:db` passed if the database/URL was not available.
 
-Playwright requires a Chromium installation (`pnpm exec playwright install chromium`) and the database; run `pnpm e2e` with the normal dev server stopped to avoid stale sessions. Browser tests with intercepted responses do not establish that real provider retrieval or storage works.
+Playwright requires a Chromium installation (`pnpm exec playwright install chromium`). Stop normal `pnpm dev` or other frontend processes before `pnpm e2e`; an occupied Web or Admin port now fails startup instead of silently running tests against the wrong application. The regular intercepted browser suite does not require PostGIS, but the canonical runner and separate full-stack DEMO suite do. Browser tests with intercepted responses do not establish that real provider retrieval or storage works.
 
 ### SRC-01/S3c.1 viewport-query evidence checks
 
@@ -196,3 +196,32 @@ counts, absent review status, empty-state honesty and RU/EN messages.
 No historical claims or risk predictions are made by these counts.
 The shared color tokens are in `packages/theme/colors.css` and are loaded by both
 frontend stylesheets.
+
+### Slow regional JSON archive export (offline)
+
+`python3 -B -m unittest discover -s scripts -p 'test_slow_saturn_history.py'`
+verifies the direct-to-JSON export: region-to-provider-ID validation, a
+network-free dry run, exact POST pagination payload, bounded page budgets,
+persisted cross-run request delays, atomic page/manifest writes, resumability,
+recovery of a page saved before a manifest checkpoint, refusal of incompatible
+state, concurrent-process locking, and fail-closed HTTP/JSON validation. Tests
+use local fake transports and temporary directories: no live Saturn, MelliAtlas
+API or PostGIS connection is made. A passing suite does not prove upstream
+permission, availability, consistent historical snapshots or geographic
+completeness.
+
+### Local historical JSON selection
+
+Run `python3 -B -m unittest discover -s scripts -p "test_saturn_period_archive.py"`
+to verify UTC date-window overlap, raw-page immutability, separate period folders,
+regional metadata, legacy resume, missing-date accounting, and fail-closed
+checksum checks. These tests use synthetic pages and never access the provider.
+The canonical `run-tests.sh` includes them before TypeScript/PostGIS checks.
+
+## Captured Saturn district and polygon contract (offline S3c.1 increment)
+
+`apps/api/test/saturnMapEvidence.test.ts` exercises the district-directory and JSONP polygon parsers with synthetic fixtures shaped like user-captured Saturn responses. It verifies provider IDs versus plan IDs, non-boundary district centers, exact-geometry hashing without merging feature identities, map-cluster/marker exclusion, closed WGS84 rings, malformed bodies, callback mismatch, duplicate IDs and response limits. Run `pnpm --dir apps/api test -- saturnMapEvidence.test.ts` after installing dependencies. No test requests the live provider, proves polygon topology, certifies historical completeness, or enables district refresh.
+
+### S3c.1 captured district/time viewport contract (offline)
+
+`apps/api/test/saturnViewportQuery.test.ts` checks the browser-observed Yartsevo request/first-page response against sanitized JSON fixtures. It verifies district-directory membership, bbox orientation, exact UTC-midnight `UpdateMap` parameters, distinct feature IDs versus repeated plan IDs, page-cursor validation, synthetic terminal/empty pages, and fail-closed invalid filters, bounds, dates, duplicated IDs and truncated responses. The builder and parser perform **no live network calls**, source ingestion or cache updates. A valid first map-index page cannot establish complete district history, treatment details or polygons. Run `pnpm --dir apps/api test -- test/saturnViewportQuery.test.ts` after installing dependencies, then the canonical `run-tests.sh`.

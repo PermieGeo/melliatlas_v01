@@ -1,0 +1,205 @@
+// Feature IDs: SOURCES.DOCUMENT_HISTORY
+import { describe, expect, it } from "vitest";
+import {
+  parseSaturnDistrictCatalog,
+  parseSaturnPolygonJsonp,
+} from "../src/modules/sources/saturnMapEvidence.js";
+
+const callback = "id_179398920866287088800";
+const geometry = {
+  type: "Polygon",
+  coordinates: [
+    [
+      [31.02, 54.93],
+      [31.03, 54.93],
+      [31.03, 54.94],
+      [31.02, 54.93],
+    ],
+  ],
+};
+const secondGeometry = {
+  type: "Polygon",
+  coordinates: [
+    [
+      [31.1, 55.0],
+      [31.11, 55.0],
+      [31.11, 55.01],
+      [31.1, 55.0],
+    ],
+  ],
+};
+function jsonp(features: unknown[]): string {
+  return `${callback}(${JSON.stringify({ data: { type: "FeatureCollection", features } })})`;
+}
+function polygon(id: string, shape: unknown = geometry): unknown {
+  return {
+    type: "Feature",
+    id,
+    geometry: shape,
+    properties: { balloonContent: "<script>not executed</script>" },
+    options: { fillColor: "#2BA040" },
+  };
+}
+
+describe("captured Saturn spatial reference contracts", () => {
+  it("keeps provider district identifiers and centers without inventing borders", () => {
+    const result = parseSaturnDistrictCatalog([
+      {
+        id: 1477,
+        name: "Ярцевский муниципальный район",
+        latitude: 55.06,
+        longitude: 32.68,
+      },
+      { id: 2670, name: "город Смоленск", latitude: 54.79, longitude: 32.05 },
+    ]);
+    expect(result.map((item) => item.id)).toEqual([1477, 2670]);
+    expect(result[0]).not.toHaveProperty("geometry");
+    expect(result[0]).toMatchObject({ name: "Ярцевский муниципальный район" });
+  });
+
+  it("rejects duplicate districts, malformed centers and arbitrary collections", () => {
+    const original = {
+      id: 1477,
+      name: "District",
+      latitude: 55,
+      longitude: 32,
+    };
+    expect(() => parseSaturnDistrictCatalog([original, original])).toThrow();
+    expect(() =>
+      parseSaturnDistrictCatalog([{ ...original, latitude: 100 }]),
+    ).toThrow();
+    expect(() => parseSaturnDistrictCatalog({ content: [original] })).toThrow();
+  });
+
+  it("preserves map IDs and deduplicates only identical polygons, not plans", () => {
+    const batch = parseSaturnPolygonJsonp(
+      jsonp([
+        polygon("238001"),
+        polygon("238194"),
+        polygon("2712972", secondGeometry),
+        {
+          type: "Feature",
+          id: "point_2712972",
+          geometry: { type: "Point", coordinates: [31, 55] },
+        },
+        {
+          type: "Cluster",
+          id: "-123",
+          number: 3,
+          geometry: { type: "Point", coordinates: [31, 55] },
+        },
+      ]),
+      callback,
+    );
+    expect(batch.polygons.map((item) => item.featureId)).toEqual([
+      "238001",
+      "238194",
+      "2712972",
+    ]);
+    expect(batch.uniqueGeometryCount).toBe(2);
+    expect(batch.clusterCount).toBe(1);
+    expect(batch.markerCount).toBe(1);
+    expect(batch.polygons[0].geometrySha256).toBe(
+      batch.polygons[1].geometrySha256,
+    );
+    expect(batch.polygons[0].geometrySha256).not.toBe(
+      batch.polygons[2].geometrySha256,
+    );
+    expect(batch.polygons[0].geometry.coordinates).toEqual(
+      geometry.coordinates,
+    );
+    expect(batch.polygons[0]).not.toHaveProperty("planId");
+  });
+
+  it("retains valid multipolygons without inferring topological equivalence", () => {
+    const multi = {
+      type: "MultiPolygon",
+      coordinates: [geometry.coordinates, secondGeometry.coordinates],
+    };
+    const batch = parseSaturnPolygonJsonp(
+      jsonp([polygon("9", multi)]),
+      callback,
+    );
+    expect(batch.polygons[0].geometry.type).toBe("MultiPolygon");
+    expect(batch.uniqueGeometryCount).toBe(1);
+    expect(batch.polygons[0]).not.toHaveProperty("properties");
+    expect(batch.polygons[0]).not.toHaveProperty("options");
+  });
+
+  it("never executes JSONP scripts or accepts the wrong callback", () => {
+    expect(() =>
+      parseSaturnPolygonJsonp(jsonp([]), "anotherCallback"),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(jsonp([]), "callback;alert(1)"),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(`${jsonp([])};alert(1)`, callback),
+    ).toThrow();
+    expect(() => parseSaturnPolygonJsonp("not JSONP", callback)).toThrow();
+    expect(() => parseSaturnPolygonJsonp(jsonp([null]), callback)).toThrow();
+  });
+
+  it("refuses invalid polygon IDs, rings, coordinates and duplicate feature IDs", () => {
+    expect(() =>
+      parseSaturnPolygonJsonp(jsonp([polygon("point_1")]), callback),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("5", {
+            type: "Polygon",
+            coordinates: [
+              [
+                [31, 55],
+                [32, 55],
+                [32, 56],
+                [31, 56],
+              ],
+            ],
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("5", {
+            type: "Polygon",
+            coordinates: [
+              [
+                [181, 55],
+                [32, 55],
+                [32, 56],
+                [181, 55],
+              ],
+            ],
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(jsonp([polygon("5"), polygon("5")]), callback),
+    ).toThrow();
+  });
+
+  it("rejects oversized and structurally unexpected captures", () => {
+    expect(() =>
+      parseSaturnPolygonJsonp("x".repeat(8 * 1024 * 1024 + 1), callback),
+    ).toThrow("Saturn JSONP response exceeds the offline limit");
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          {
+            type: "Unknown",
+            id: "1",
+            geometry: { type: "Point" },
+          },
+        ]),
+        callback,
+      ),
+    ).toThrow();
+  });
+});
