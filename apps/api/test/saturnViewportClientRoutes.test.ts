@@ -15,15 +15,24 @@ const selection: ViewportCollectionSelection = {
 function setup(enabled = true) {
   const status = vi.fn(async () => ({ enabled, progress: null }));
   const fetchNext = vi.fn(async () => ({ enabled, progress: null }));
+  const history = vi.fn(async () => ({ entries: [] }));
   const services: ApiServices = {
     inspectLocation: async () => {
       throw new Error("Unused weather service");
     },
     listSources: async () => [],
     checkReadiness: async () => true,
-    viewportCollection: { status, fetchNext },
+    viewportCollection: { status, fetchNext, history },
+    providerConfiguration: {
+      get: async () => {
+        throw new Error("Unused provider settings");
+      },
+      update: async () => {
+        throw new Error("Unused provider settings");
+      },
+    },
   };
-  return { app: createApp(services), status, fetchNext };
+  return { app: createApp(services), status, fetchNext, history };
 }
 
 /** Local client requests use their own bounded route and never call operator paths. */
@@ -103,5 +112,22 @@ describe("local beekeeper viewport collection boundary", () => {
       .set("Origin", origin)
       .send(selection);
     expect(denied.status).toBe(503);
+  });
+});
+
+describe("local operator cache history", () => {
+  it("reads shared saved checkpoints without source fetching", async () => {
+    const { app, history, fetchNext } = setup();
+    const result = await request(app)
+      .get("/api/v1/operator/provider/viewport/history")
+      .set("Origin", "http://127.0.0.1:5174");
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({ entries: [] });
+    expect(history).toHaveBeenCalledTimes(1);
+    expect(fetchNext).not.toHaveBeenCalled();
+    const blocked = await request(app)
+      .get("/api/v1/operator/provider/viewport/history")
+      .set("Origin", "https://other.example");
+    expect(blocked.status).toBe(403);
   });
 });

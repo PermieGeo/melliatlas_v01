@@ -101,7 +101,13 @@ export class SaturnViewportIndexRepository {
   }
 
   /** Read only saved center points; neither exact field geometry nor spray evidence. */
-  async listFeatures(key: ViewportIndexKey): Promise<StoredViewportFeature[]> {
+  async listFeatures(
+    key: ViewportIndexKey,
+    limit = 100,
+  ): Promise<StoredViewportFeature[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error("Invalid viewport preview limit");
+    }
     const { hash } = validateKey(key);
     const result = await this.db.query<{
       feature_id: string;
@@ -113,8 +119,8 @@ export class SaturnViewportIndexRepository {
               ST_Y(center) AS center_y
        FROM source_viewport_index_features
        WHERE source_id=$1 AND source_revision=$2 AND request_hash=$3
-       ORDER BY page_number, feature_id`,
-      [key.sourceId, key.sourceRevision, hash],
+       ORDER BY page_number, feature_id LIMIT $4::integer`,
+      [key.sourceId, key.sourceRevision, hash, limit],
     );
     return result.rows.map((row) => ({
       featureId: row.feature_id,

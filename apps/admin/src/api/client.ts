@@ -3,8 +3,10 @@ import {
   apiErrorSchema,
   viewportCollectionSelectionSchema,
   viewportCollectionResultSchema,
+  viewportCacheHistoryResponseSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
+  type ViewportCacheHistoryResponse,
   mapTreatmentsResponseSchema,
   providerCollectionStatusSchema,
   districtCacheStatusSchema,
@@ -167,5 +169,12 @@ export async function fetchViewportNextPage(
       "POST",
       viewportCollectionSelectionSchema.parse(selection),
     ),
+  );
+}
+
+/** Read committed map-index page history across Web and Admin without contacting Saturn. */
+export async function loadViewportCacheHistory(): Promise<ViewportCacheHistoryResponse> {
+  return viewportCacheHistoryResponseSchema.parse(
+    await operatorRequest("/api/v1/operator/provider/viewport/history"),
   );
 }

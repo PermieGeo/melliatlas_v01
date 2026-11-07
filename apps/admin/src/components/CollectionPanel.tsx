@@ -3,6 +3,7 @@ import type { ProviderCollectionStatus } from "@melliatlas/contracts";
 import { useEffect, useState } from "react";
 import { loadProviderCollectionStatus, syncProviderPage } from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
+import { ViewportCacheHistoryPanel } from "./ViewportCacheHistoryPanel";
 import { ViewportCollectionPanel } from "./ViewportCollectionPanel";
 import { DistrictCachePanel } from "./DistrictCachePanel";
 import { FieldHelp } from "./FieldHelp";
@@ -75,6 +76,7 @@ export function CollectionPanel({
           {text("viewportGuideOpen")}
         </a>
       </div>
+      <ViewportCacheHistoryPanel locale={locale} />
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
@@ -122,6 +124,10 @@ export function CollectionPanel({
       )}
       <ViewportCollectionPanel locale={locale} />
       <DistrictCachePanel locale={locale} />
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+        <h4 className="font-semibold">{text("legacyCollectorTitle")}</h4>
+        <p className="mt-1 text-slate-600">{text("legacyCollectorExplain")}</p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"

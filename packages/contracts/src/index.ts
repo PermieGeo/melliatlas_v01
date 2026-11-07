@@ -312,8 +312,14 @@ export type { HelpDocument, HelpSection } from "./helpContent.js";
 export {
   viewportCollectionSelectionSchema,
   viewportCollectionResultSchema,
+  viewportCacheHistoryResponseSchema,
 } from "./viewportCollection.js";
 export type {
   ViewportCollectionSelection,
   ViewportCollectionResult,
+} from "./viewportCollection.js";
+
+export type {
+  ViewportIndexCenter,
+  ViewportCacheHistoryResponse,
 } from "./viewportCollection.js";

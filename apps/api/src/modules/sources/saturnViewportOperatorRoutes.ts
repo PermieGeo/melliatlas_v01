@@ -4,6 +4,7 @@ import {
   viewportCollectionSelectionSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
+  type ViewportCacheHistoryResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../lib/errors.js";
 
@@ -14,6 +15,7 @@ export type ViewportCollectionActions = {
   fetchNext(
     selection: ViewportCollectionSelection,
   ): Promise<ViewportCollectionResult>;
+  history?(): Promise<ViewportCacheHistoryResponse>;
 };
 
 /** Local operator boundary for one-page bounded Saturn map-index collection. */
@@ -21,6 +23,23 @@ export function createSaturnViewportOperatorRouter(
   service?: ViewportCollectionActions,
 ): Router {
   const router = Router();
+  router.get("/history", async (_req, res, next) => {
+    if (!service?.history) {
+      return next(
+        new ApiFailure(
+          503,
+          "VIEWPORT_COLLECTION_UNAVAILABLE",
+          "Viewport cache history unavailable",
+        ),
+      );
+    }
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await service.history());
+    } catch (error) {
+      next(error);
+    }
+  });
   for (const [path, action] of [
     ["status", "status"],
     ["next", "fetchNext"],

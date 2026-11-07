@@ -59,6 +59,7 @@ features:
       - SRC-R23
       - SRC-R25
       - SRC-R33
+      - SRC-R34
     code_paths:
       - apps/api/src/modules/sources/regionalScanState.ts
       - apps/api/src/modules/sources/regionalCollection.ts
@@ -75,6 +76,7 @@ features:
       - apps/api/src/modules/sources/saturnViewportProgress.ts
       - apps/api/src/modules/sources/saturnViewportIndexRepository.ts
       - apps/api/src/modules/sources/saturnViewportCollection.ts
+      - apps/api/src/modules/sources/saturnViewportCacheHistory.ts
       - apps/api/src/modules/sources/saturnViewportOperatorRoutes.ts
       - apps/api/src/modules/sources/saturnViewportClientRoutes.ts
       - apps/web/src/components/DistrictViewportPanel.tsx
@@ -84,6 +86,8 @@ features:
       - apps/admin/src/components/ViewportCollectionPanel.tsx
       - packages/contracts/src/viewportCollection.ts
       - apps/admin/src/components/CollectionPanel.tsx
+      - apps/admin/src/components/ViewportCacheHistoryPanel.tsx
+      - apps/admin/src/cacheHistoryMessages.ts
     test_paths:
       - apps/api/test/regionalScanState.test.ts
       - apps/api/integration/regionalCollection.test.ts
@@ -99,6 +103,7 @@ features:
       - apps/web/src/components/DistrictViewportPanel.test.tsx
       - tests/e2e/map.spec.ts
       - apps/admin/src/components/ViewportCollectionPanel.test.tsx
+      - apps/admin/src/components/ViewportCacheHistoryPanel.test.tsx
       - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts

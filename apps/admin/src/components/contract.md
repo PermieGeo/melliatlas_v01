@@ -15,3 +15,5 @@
 - `ViewportCollectionPanel` separately exposes an explicit, bounded Yartsevo map-index pilot: operator-editable bbox and UpdateMap dates, a read-only checkpoint query and a one-page fetch action. It does not automatically contact the upstream on render, selection change, pan or map zoom. State reports map index progress, not district freshness or verified spray events. Disabled backend mode is reported without hidden requests.
 
 - The Data collection section now leads with a localized three-step guide to the **client-driven** pilot workflow on the local beekeeper map; low-level viewport coordinates are in a disclosure. Legacy single-page import and operator viewport diagnostics remain available for troubleshooting, not as the default beekeeper journey.
+
+- `ViewportCacheHistoryPanel` reads the persisted local operator `/provider/viewport/history` endpoint and displays bounded recent `source_viewport_index_*` evidence from both Web and Admin, with per-page receipt timestamps. Refresh is read-only; the initiating UI identity is not stored. Field centers are distinct from treatment polygons and district completeness.

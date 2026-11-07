@@ -216,8 +216,10 @@ test("local district pilot loads only after an explicit beekeeper click", async 
     .selectOption("1477");
   expect(fetches).toBe(0);
   await expect(
-    page.getByRole("button", { name: "Загрузить страницу" }),
+    page.getByRole("button", { name: "Получить ещё до 10 записей" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Загрузить страницу" }).click();
+  await page
+    .getByRole("button", { name: "Получить ещё до 10 записей" })
+    .click();
   await expect.poll(() => fetches).toBe(1);
 });

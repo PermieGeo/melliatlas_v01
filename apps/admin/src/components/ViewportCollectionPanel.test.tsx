@@ -51,7 +51,7 @@ it("distinguishes read-only progress from one requested upstream page", async ()
   expect(check).toHaveBeenCalledTimes(1);
   expect(fetchNext).not.toHaveBeenCalled();
   fireEvent.click(
-    screen.getByRole("button", { name: "Загрузить следующую страницу" }),
+    screen.getByRole("button", { name: "Получить ещё до 10 записей" }),
   );
   expect(await screen.findByText(/Страниц: 1 \/ 3/)).toBeTruthy();
   expect(fetchNext).toHaveBeenCalledTimes(1);

@@ -5,6 +5,7 @@ import {
   viewportCollectionSelectionSchema,
   type ViewportCollectionResult,
   type ViewportCollectionSelection,
+  type ViewportCacheHistoryResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../lib/errors.js";
 import { sourceDefinitionSchema } from "./contracts.js";
@@ -18,6 +19,7 @@ import {
   SaturnViewportIndexRepository,
   type ViewportIndexKey,
 } from "./saturnViewportIndexRepository.js";
+import { listViewportCacheHistory } from "./saturnViewportCacheHistory.js";
 import {
   parseSaturnViewportPage,
   validateSaturnViewportQuery,
@@ -41,7 +43,7 @@ type SourceRow = {
 };
 type IndexPort = Pick<
   SaturnViewportIndexRepository,
-  "getStatus" | "appendCapturedPage"
+  "getStatus" | "appendCapturedPage" | "listFeatures"
 >;
 type FetchPort = Pick<RestrictedSourceFetcher, "fetch">;
 
@@ -130,9 +132,18 @@ export class SaturnViewportCollectionService {
   async status(
     selection: ViewportCollectionSelection,
   ): Promise<ViewportCollectionResult> {
-    if (!this.enabled) return { enabled: false, progress: null };
     const { key } = await this.key(selection);
-    return { enabled: true, progress: await this.index.getStatus(key) };
+    const progress = await this.index.getStatus(key);
+    return {
+      enabled: this.enabled,
+      progress,
+      cachedCenters: progress ? await this.index.listFeatures(key, 100) : [],
+    };
+  }
+
+  /** Inspect stored pages from both client and operator workflows, even when live access is disabled. */
+  history(): Promise<ViewportCacheHistoryResponse> {
+    return listViewportCacheHistory(this.pool);
   }
 
   /** Never retries automatically; 429/503 responses consume the shared throttle slot. */
@@ -149,7 +160,11 @@ export class SaturnViewportCollectionService {
     const { key, name } = await this.key(selection);
     const previous = await this.index.getStatus(key);
     if (previous?.state === "viewport_index_complete") {
-      return { enabled: true, progress: previous };
+      return {
+        enabled: true,
+        progress: previous,
+        cachedCenters: await this.index.listFeatures(key, 100),
+      };
     }
     if (previous && !previous.sourceRevisionCurrent) {
       throw new ApiFailure(
@@ -225,6 +240,10 @@ export class SaturnViewportCollectionService {
       );
     }
     const progress = await this.index.appendCapturedPage(key, body);
-    return { enabled: true, progress };
+    return {
+      enabled: true,
+      progress,
+      cachedCenters: await this.index.listFeatures(key, 100),
+    };
   }
 }

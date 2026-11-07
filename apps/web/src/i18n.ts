@@ -2,14 +2,14 @@ export const messages = {
   ru: {
     districtPanelTitle: "Загрузить данные по району",
     districtSteps:
-      "1. Выберите район. 2. Карта переместится к нему: приблизьте нужные поля. 3. Укажите период и нажмите «Загрузить страницу».",
+      "1. Выберите район. 2. Приблизьте нужную часть карты. 3. Укажите период до 124 дней и нажмите «Получить ещё до 10 записей».",
     districtSelect: "Район (пилот)",
     districtChoose: "Выберите район…",
     districtYartsevo: "Ярцевский район",
     districtFrom: "Обновления карты с",
     districtTo: "Обновления карты по",
     districtCheck: "Проверить кэш",
-    districtFetch: "Загрузить страницу",
+    districtFetch: "Получить ещё до 10 записей",
     districtBusy: "Загружаем…",
     districtHint:
       "Запрос касается только видимой части карты. За одно нажатие загружается одна страница (до 10 записей). Повторное нажатие продолжит загрузку. Это индекс точек полей, не полигоны и не подтверждённые обработки.",
@@ -28,7 +28,19 @@ export const messages = {
     districtItemsCount: "Записей индекса",
     districtComplete:
       "Все страницы этого квадрата получены; полнота района неизвестна.",
-    districtPartial: "Загрузка квадрата не завершена.",
+    districtPartial:
+      "Загрузка квадрата не завершена. Следующая порция сохраняется по явному нажатию после паузы источника.",
+    districtDatesInvalid:
+      "Недопустимый период: даты должны быть корректны, начальная дата — не позже конечной, интервал не более 124 дней. Весь год пока загружается отдельными периодами.",
+    districtLimitDates: "Оставить последние 124 дня периода",
+    districtCacheSaved:
+      "Данные сохранены в PostgreSQL и повторно читаются из общего кэша.",
+    districtCachedPreview: "Синих точек центров полей на карте (максимум 100)",
+    districtCacheKeyNote:
+      "Кэш зависит от точных границ карты и периода. При их изменении это другой запрос; ранее сохранённые данные остаются в БД и видны в Admin → Загрузка данных. Синие точки — индекс полей, не места обработки.",
+    districtStaleRevision:
+      "Версия источника изменилась. Старые записи доступны для просмотра, но продолжение этого запроса заблокировано.",
+    districtPointTooltip: "Центр поля из кэша Сатурна, ID",
 
     navigation: "Навигация",
     mapNav: "Карта",
@@ -100,14 +112,14 @@ export const messages = {
   en: {
     districtPanelTitle: "Load district data",
     districtSteps:
-      "1. Choose a district. 2. The map moves there: zoom to the fields you need. 3. Choose an update period and select Load page.",
+      "1. Choose a district. 2. Zoom to the relevant map area. 3. Select up to 124 days and fetch up to 10 more records.",
     districtSelect: "District (pilot)",
     districtChoose: "Select a district…",
     districtYartsevo: "Yartsevo District",
     districtFrom: "Map updates from",
     districtTo: "Map updates through",
     districtCheck: "Check cache",
-    districtFetch: "Load page",
+    districtFetch: "Fetch up to 10 more records",
     districtBusy: "Loading…",
     districtHint:
       "Only the visible map rectangle is requested. Each click loads one page (up to 10 index entries); another click resumes. These are field centers, not polygons or confirmed treatments.",
@@ -126,7 +138,19 @@ export const messages = {
     districtItemsCount: "Index entries",
     districtComplete:
       "All pages of this rectangle loaded; district completeness is unknown.",
-    districtPartial: "This rectangle is not yet complete.",
+    districtPartial:
+      "This rectangle is not yet complete. Fetch the next batch explicitly after the provider cooldown.",
+    districtDatesInvalid:
+      "Invalid dates: the start must not exceed the end and a single window is limited to 124 days. Split a year into separate windows.",
+    districtLimitDates: "Keep the last 124 days of this range",
+    districtCacheSaved:
+      "Saved in PostgreSQL; repeat reads use the shared cache.",
+    districtCachedPreview: "Blue cached field-center points shown (up to 100)",
+    districtCacheKeyNote:
+      "The cache key includes exact map bounds and dates. Changing either creates a different request; earlier entries remain in PostgreSQL under Admin → Data collection. Blue dots are a field index, not spraying locations.",
+    districtStaleRevision:
+      "The source revision changed. Saved records remain readable, but this request cannot resume.",
+    districtPointTooltip: "Cached Saturn field center, ID",
 
     navigation: "Navigation",
     mapNav: "Map",

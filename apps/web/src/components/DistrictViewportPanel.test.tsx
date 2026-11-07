@@ -8,12 +8,15 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { DistrictViewportPanel } from "./DistrictViewportPanel";
+import type { ViewportCollectionResult } from "@melliatlas/contracts";
 
 const { status, next } = vi.hoisted(() => ({
-  status: vi.fn(async (_selection: unknown) => ({
-    enabled: true,
-    progress: null,
-  })),
+  status: vi.fn(
+    async (_selection: unknown): Promise<ViewportCollectionResult> => ({
+      enabled: true,
+      progress: null,
+    }),
+  ),
   next: vi.fn(async (_selection: unknown) => ({
     enabled: true,
     progress: {
@@ -27,6 +30,9 @@ const { status, next } = vi.hoisted(() => ({
       completedAt: null,
       sourceRevisionCurrent: true,
     },
+    cachedCenters: [
+      { featureId: "55", planId: "60", centerX: 32.6, centerY: 55.1 },
+    ],
   })),
 }));
 vi.mock("../api/client", () => ({
@@ -46,6 +52,7 @@ it("shows setup guidance and never collects on render, selecting a district or m
       locale="ru"
       viewport={bbox}
       onFocusDistrict={onFocusDistrict}
+      onCachedCentersChange={() => {}}
     />,
   );
   expect(screen.getByText(/1\. Выберите район/)).toBeTruthy();
@@ -59,17 +66,20 @@ it("shows setup guidance and never collects on render, selecting a district or m
       locale="ru"
       viewport={[32.42, 54.94, 33.02, 55.2]}
       onFocusDistrict={onFocusDistrict}
+      onCachedCentersChange={() => {}}
     />,
   );
   expect(next).not.toHaveBeenCalled();
 });
 
 it("loads only one page on explicit click and reports separate index progress", async () => {
+  const onCenters = vi.fn();
   render(
     <DistrictViewportPanel
       locale="ru"
       viewport={bbox}
       onFocusDistrict={() => {}}
+      onCachedCentersChange={onCenters}
     />,
   );
   fireEvent.change(screen.getByRole("combobox", { name: "Район (пилот)" }), {
@@ -82,9 +92,14 @@ it("loads only one page on explicit click and reports separate index progress", 
     ),
   ).toBeTruthy();
   expect(next).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Загрузить страницу" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Получить ещё до 10 записей" }),
+  );
   await waitFor(() => expect(next).toHaveBeenCalledTimes(1));
   expect(await screen.findByText(/Страниц: 1 \/ 3/)).toBeTruthy();
+  expect(onCenters).toHaveBeenCalledWith([
+    { featureId: "55", planId: "60", centerX: 32.6, centerY: 55.1 },
+  ]);
   expect(next.mock.calls[0]?.[0]).toMatchObject({
     districtId: 1477,
     bbox: {
@@ -102,14 +117,93 @@ it("blocks oversized viewports and invalid dates before sending a request", () =
       locale="en"
       viewport={[30, 53, 35, 55]}
       onFocusDistrict={() => {}}
+      onCachedCentersChange={() => {}}
     />,
   );
   fireEvent.change(screen.getByRole("combobox", { name: "District (pilot)" }), {
     target: { value: "1477" },
   });
   expect(
-    (screen.getByRole("button", { name: "Load page" }) as HTMLButtonElement)
-      .disabled,
+    (
+      screen.getByRole("button", {
+        name: "Fetch up to 10 more records",
+      }) as HTMLButtonElement
+    ).disabled,
   ).toBe(true);
+  expect(next).not.toHaveBeenCalled();
+});
+
+it("explains the 124-day limit and offers a bounded range instead of silently disabling collection", () => {
+  render(
+    <DistrictViewportPanel
+      locale="ru"
+      viewport={bbox}
+      onFocusDistrict={() => {}}
+      onCachedCentersChange={() => {}}
+    />,
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Район (пилот)" }), {
+    target: { value: "1477" },
+  });
+  fireEvent.change(screen.getByLabelText("Обновления карты с"), {
+    target: { value: "2026-01-01" },
+  });
+  expect(screen.getByText(/интервал не более 124 дней/)).toBeTruthy();
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Получить ещё до 10 записей",
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Оставить последние 124 дня периода" }),
+  );
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Получить ещё до 10 записей",
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(false);
+  expect(next).not.toHaveBeenCalled();
+});
+
+it("inspects the exact cached viewport after selection without triggering provider traffic", async () => {
+  status.mockResolvedValueOnce({
+    enabled: true,
+    progress: {
+      requestHash: "a".repeat(64),
+      state: "partial",
+      nextPage: 1,
+      pagesFetched: 1,
+      entriesReceived: 10,
+      totalPages: 3,
+      totalElements: 22,
+      completedAt: null,
+      sourceRevisionCurrent: true,
+    },
+    cachedCenters: [
+      { featureId: "55", planId: "60", centerX: 32.6, centerY: 55.1 },
+    ],
+  });
+  const onCenters = vi.fn();
+  render(
+    <DistrictViewportPanel
+      locale="ru"
+      viewport={bbox}
+      onFocusDistrict={() => {}}
+      onCachedCentersChange={onCenters}
+    />,
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Район (пилот)" }), {
+    target: { value: "1477" },
+  });
+  await waitFor(() => expect(status).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(onCenters).toHaveBeenCalledWith([
+      { featureId: "55", planId: "60", centerX: 32.6, centerY: 55.1 },
+    ]),
+  );
   expect(next).not.toHaveBeenCalled();
 });
