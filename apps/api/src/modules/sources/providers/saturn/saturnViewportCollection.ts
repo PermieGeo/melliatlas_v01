@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Pool } from "pg";
 import {
-  viewportCollectionSelectionSchema,
   type ViewportCollectionResult,
   type ViewportCollectionSelection,
   type ViewportCacheHistoryResponse,
@@ -12,12 +11,15 @@ import {
   type SaturnStoredFieldsResponse,
   type SaturnRequestLogResponse,
 } from "@melliatlas/contracts";
-import { ApiFailure } from "../../lib/errors.js";
-import { RestrictedSourceFetcher, SourceFetchFailure } from "./httpFetcher.js";
+import { ApiFailure } from "../../../../lib/errors.js";
+import {
+  RestrictedSourceFetcher,
+  SourceFetchFailure,
+} from "../../httpFetcher.js";
 import {
   ProviderRequestThrottle,
   type ProviderRequestGate,
-} from "./providerRequestThrottle.js";
+} from "../../providerRequestThrottle.js";
 import {
   SaturnViewportIndexRepository,
   type ViewportIndexKey,
@@ -35,22 +37,15 @@ import { SaturnStoredIndex } from "./saturnStoredIndex.js";
 import {
   SATURN_SOURCE_ID,
   SATURN_VIEWPORT_URL,
+  SATURN_CONFIGURED_ENDPOINTS,
+  SATURN_MAX_VIEWPORT_PAGES,
+  SATURN_VERIFIED_FALLBACK_DISTRICT_ID,
   saturnJsonSource,
-} from "./providers/saturn/sourceProfile.js";
-import {
-  SATURN_JSON_PROFILE_ID,
-  SATURN_JSON_REQUEST_PROFILE,
-} from "./providers/saturn/requestProfile.js";
-import {
-  parseSaturnViewportPage,
-  validateSaturnViewportQuery,
-  type SaturnViewportQuery,
-} from "./saturnViewportQuery.js";
+} from "./sourceProfile.js";
+import { SATURN_JSON_PROFILE_ID } from "./requestProfile.js";
+import { SaturnProvider, type SaturnProviderPort } from "./SaturnProvider.js";
 
-const CONFIGURED_ENDPOINTS = new Set([
-  "https://bee-saturn.ru/backend/beemaster/planapplybees",
-  SATURN_VIEWPORT_URL,
-]);
+export { makeViewportFirstRequest } from "./SaturnProvider.js";
 type SourceRow = {
   registry_revision: string;
   name: string;
@@ -67,29 +62,6 @@ type FetchPort = Pick<RestrictedSourceFetcher, "fetch">;
 type JournalPort = Pick<SaturnRequestJournal, "start" | "finish" | "list">;
 type StoredPort = Pick<SaturnStoredIndex, "districtPoints" | "requestFields">;
 
-/** Request shape is a viewport index, never a treatment or whole-district query. */
-export function makeViewportFirstRequest(
-  selection: ViewportCollectionSelection,
-): SaturnViewportQuery {
-  const parsed = viewportCollectionSelectionSchema.parse(selection);
-  return validateSaturnViewportQuery({
-    filter: {
-      leftTop: { longitude: parsed.bbox.west, latitude: parsed.bbox.north },
-      rightDown: { longitude: parsed.bbox.east, latitude: parsed.bbox.south },
-      subject: "55",
-      district: String(parsed.districtId),
-      startDateUpdateMap: `${parsed.fromDate}T00:00:00.000Z`,
-      endDateUpdateMap: `${parsed.toDate}T00:00:00.000Z`,
-      culture: [],
-      classesDangerBee: [],
-      classesDangerMan: [],
-      query: null,
-    },
-    pageNumber: 0,
-    pageSize: 10,
-  });
-}
-
 /** Explicit one-page collector; all inspection methods read PostgreSQL only. */
 export class SaturnViewportCollectionService {
   private readonly index: IndexPort;
@@ -98,6 +70,7 @@ export class SaturnViewportCollectionService {
   private readonly directory: DirectoryPort;
   private readonly journal: JournalPort;
   private readonly stored: StoredPort;
+  private readonly provider: SaturnProviderPort;
 
   constructor(
     private readonly pool: Pick<Pool, "query">,
@@ -109,14 +82,16 @@ export class SaturnViewportCollectionService {
       directory?: DirectoryPort;
       journal?: JournalPort;
       stored?: StoredPort;
+      provider?: SaturnProviderPort;
     } = {},
   ) {
+    this.provider = dependencies.provider ?? new SaturnProvider();
     this.index =
       dependencies.index ?? new SaturnViewportIndexRepository(pool as Pool);
     this.fetcher =
       dependencies.fetcher ??
       new RestrictedSourceFetcher({
-        requestProfiles: [SATURN_JSON_REQUEST_PROFILE],
+        requestProfiles: this.provider.requestProfiles,
       });
     this.gate = dependencies.gate ?? new ProviderRequestThrottle(pool as Pool);
     this.journal = dependencies.journal ?? new SaturnRequestJournal(pool);
@@ -126,6 +101,7 @@ export class SaturnViewportCollectionService {
         fetcher: this.fetcher,
         gate: this.gate,
         journal: this.journal,
+        provider: this.provider,
       });
     this.stored = dependencies.stored ?? new SaturnStoredIndex(pool);
   }
@@ -133,7 +109,7 @@ export class SaturnViewportCollectionService {
   private async key(
     selection: ViewportCollectionSelection,
   ): Promise<{ key: ViewportIndexKey; name: string }> {
-    const firstPageRequest = makeViewportFirstRequest(selection);
+    const firstPageRequest = this.provider.firstPage(selection);
     const result = await this.pool.query<SourceRow>(
       `SELECT registry_revision::text, name, kind, lifecycle, url, api_request_config
        FROM source_catalog WHERE id=$1`,
@@ -148,7 +124,7 @@ export class SaturnViewportCollectionService {
       !source ||
       source.kind !== "treatment" ||
       source.lifecycle !== "configured" ||
-      !CONFIGURED_ENDPOINTS.has(source.url) ||
+      !SATURN_CONFIGURED_ENDPOINTS.has(source.url) ||
       !config.success ||
       config.data.endpoint !== source.url
     ) {
@@ -160,7 +136,7 @@ export class SaturnViewportCollectionService {
     }
     // The observed Yartsevo ID remains available before the catalog is first refreshed.
     if (
-      selection.districtId !== 1477 &&
+      selection.districtId !== SATURN_VERIFIED_FALLBACK_DISTRICT_ID &&
       !(await this.directory.includes(selection.districtId))
     ) {
       throw new ApiFailure(
@@ -258,7 +234,7 @@ export class SaturnViewportCollectionService {
           "Provider configuration has changed",
         );
       }
-      if (pageNumber >= 2000) {
+      if (pageNumber >= SATURN_MAX_VIEWPORT_PAGES) {
         throw new ApiFailure(
           409,
           "VIEWPORT_PAGE_LIMIT",
@@ -272,10 +248,7 @@ export class SaturnViewportCollectionService {
           "Provider request cooldown is active",
         );
       }
-      const request = validateSaturnViewportQuery({
-        ...key.firstPageRequest,
-        pageNumber,
-      });
+      const request = this.provider.pageAt(key.firstPageRequest, pageNumber);
       let body: unknown;
       try {
         const response = await this.fetcher.fetch(
@@ -288,7 +261,7 @@ export class SaturnViewportCollectionService {
           },
         );
         body = JSON.parse(response.bytes.toString("utf8")) as unknown;
-        records = parseSaturnViewportPage(body, request).entries.length;
+        records = this.provider.parsePage(body, request).entries.length;
       } catch (error) {
         if (error instanceof SourceFetchFailure) {
           throw new ApiFailure(

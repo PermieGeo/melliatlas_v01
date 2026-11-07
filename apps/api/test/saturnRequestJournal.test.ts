@@ -1,7 +1,7 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { describe, expect, it, vi } from "vitest";
 import type { Pool } from "pg";
-import { SaturnRequestJournal } from "../src/modules/sources/saturnRequestJournal.js";
+import { SaturnRequestJournal } from "../src/modules/sources/providers/saturn/saturnRequestJournal.js";
 
 describe("Saturn request audit writes and bounded reads", () => {
   it("stores a started attempt, a sanitized result, and reads the bounded log", async () => {

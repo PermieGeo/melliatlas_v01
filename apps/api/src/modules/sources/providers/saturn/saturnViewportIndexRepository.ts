@@ -6,6 +6,10 @@ import {
   validateSaturnViewportQuery,
   type SaturnViewportQuery,
 } from "./saturnViewportQuery.js";
+import {
+  SATURN_MAX_VIEWPORT_ELEMENTS,
+  SATURN_MAX_VIEWPORT_PAGES,
+} from "./sourceProfile.js";
 
 export type ViewportIndexKey = {
   sourceId: string;
@@ -192,8 +196,8 @@ export class SaturnViewportIndexRepository {
           current.total_pages !== page.totalPages) ||
         (current.total_elements !== null &&
           current.total_elements !== page.totalElements) ||
-        page.totalPages > 2000 ||
-        page.totalElements > 20000 ||
+        page.totalPages > SATURN_MAX_VIEWPORT_PAGES ||
+        page.totalElements > SATURN_MAX_VIEWPORT_ELEMENTS ||
         (page.nextPage === null &&
           current.entries_received + page.entries.length !== page.totalElements)
       ) {

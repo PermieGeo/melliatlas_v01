@@ -10,7 +10,7 @@ import {
   type SaturnStoredFieldsResponse,
   type SaturnRequestLogResponse,
 } from "@melliatlas/contracts";
-import { ApiFailure } from "../../lib/errors.js";
+import { ApiFailure } from "../../../../lib/errors.js";
 
 export type ViewportCollectionActions = {
   status(

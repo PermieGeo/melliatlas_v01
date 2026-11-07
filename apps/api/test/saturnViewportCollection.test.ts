@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   SaturnViewportCollectionService,
   makeViewportFirstRequest,
-} from "../src/modules/sources/saturnViewportCollection.js";
+} from "../src/modules/sources/providers/saturn/saturnViewportCollection.js";
 import {
   viewportCollectionSelectionSchema,
   type ViewportCollectionSelection,
@@ -12,8 +12,12 @@ import type { Pool } from "pg";
 import type {
   SaturnViewportIndexRepository,
   ViewportIndexStatus,
-} from "../src/modules/sources/saturnViewportIndexRepository.js";
+} from "../src/modules/sources/providers/saturn/saturnViewportIndexRepository.js";
 import type { RestrictedSourceFetcher } from "../src/modules/sources/httpFetcher.js";
+import {
+  SaturnProvider,
+  type SaturnProviderPort,
+} from "../src/modules/sources/providers/saturn/SaturnProvider.js";
 
 const selected: ViewportCollectionSelection = {
   districtId: 1477,
@@ -46,7 +50,7 @@ const page = (n: number, total = 11) => ({
   size: 10,
   empty: false,
 });
-function setup() {
+function setup(provider?: SaturnProviderPort) {
   let status: ViewportIndexStatus | null = null;
   const query = vi.fn(async (sql: string) =>
     sql.includes("FROM source_saturn_district_catalog")
@@ -113,12 +117,31 @@ function setup() {
       journal,
       gate: { reserve },
       fetcher: { fetch } as unknown as RestrictedSourceFetcher,
+      provider,
     },
   );
   return { service, query, reserve, fetch, appendCapturedPage, index, journal };
 }
 
 describe("explicit Saturn viewport retrieval", () => {
+  it("delegates source query and response parsing through its provider port", async () => {
+    const provider = new SaturnProvider();
+    const firstPage = vi.spyOn(provider, "firstPage");
+    const pageAt = vi.spyOn(provider, "pageAt");
+    const parsePage = vi.spyOn(provider, "parsePage");
+    const { service } = setup(provider);
+    await service.fetchNext(selected);
+    expect(firstPage).toHaveBeenCalledWith(selected);
+    expect(pageAt).toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 0 }),
+      0,
+    );
+    expect(parsePage).toHaveBeenCalledWith(
+      expect.objectContaining({ totalElements: 11 }),
+      expect.objectContaining({ pageNumber: 0 }),
+    );
+  });
+
   it("produces only the observed district, bbox, date and pagination envelope", () => {
     const request = makeViewportFirstRequest(selected);
     expect(request).toMatchObject({

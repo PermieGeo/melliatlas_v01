@@ -1,6 +1,11 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { z } from "zod";
 import { parseSaturnDistrictCatalog } from "./saturnMapEvidence.js";
+import {
+  SATURN_MAX_VIEWPORT_PAGES,
+  SATURN_SUBJECT_CODE,
+  SATURN_VIEWPORT_PAGE_SIZE,
+} from "./sourceProfile.js";
 
 const positionSchema = z
   .object({
@@ -13,7 +18,7 @@ const viewportFilterSchema = z
   .object({
     leftTop: positionSchema,
     rightDown: positionSchema,
-    subject: z.literal("55"),
+    subject: z.literal(SATURN_SUBJECT_CODE),
     district: z.string().regex(/^[1-9][0-9]{0,9}$/),
     startDateUpdateMap: timestampSchema,
     endDateUpdateMap: timestampSchema,
@@ -26,8 +31,12 @@ const viewportFilterSchema = z
 const requestSchema = z
   .object({
     filter: viewportFilterSchema,
-    pageNumber: z.number().int().min(0).max(1999),
-    pageSize: z.literal(10),
+    pageNumber: z
+      .number()
+      .int()
+      .min(0)
+      .max(SATURN_MAX_VIEWPORT_PAGES - 1),
+    pageSize: z.literal(SATURN_VIEWPORT_PAGE_SIZE),
   })
   .strict();
 const summarySchema = z
@@ -41,19 +50,19 @@ const summarySchema = z
   .passthrough();
 const pageSchema = z
   .object({
-    content: z.array(summarySchema).max(10),
-    totalPages: z.number().int().nonnegative().max(2000),
+    content: z.array(summarySchema).max(SATURN_VIEWPORT_PAGE_SIZE),
+    totalPages: z.number().int().nonnegative().max(SATURN_MAX_VIEWPORT_PAGES),
     totalElements: z.number().int().nonnegative().safe(),
     last: z.boolean(),
     first: z.boolean(),
-    numberOfElements: z.number().int().min(0).max(10),
+    numberOfElements: z.number().int().min(0).max(SATURN_VIEWPORT_PAGE_SIZE),
     number: z.number().int().nonnegative(),
-    size: z.literal(10),
+    size: z.literal(SATURN_VIEWPORT_PAGE_SIZE),
     empty: z.boolean(),
     pageable: z
       .object({
         pageNumber: z.number().int().nonnegative(),
-        pageSize: z.literal(10),
+        pageSize: z.literal(SATURN_VIEWPORT_PAGE_SIZE),
       })
       .passthrough(),
   })
@@ -125,7 +134,7 @@ export function buildSaturnViewportQuery(
     filter: {
       leftTop: { longitude: west, latitude: north },
       rightDown: { longitude: east, latitude: south },
-      subject: "55",
+      subject: SATURN_SUBJECT_CODE,
       district: String(options.districtId),
       startDateUpdateMap,
       endDateUpdateMap,
@@ -135,7 +144,7 @@ export function buildSaturnViewportQuery(
       query: null,
     },
     pageNumber: options.pageNumber,
-    pageSize: 10,
+    pageSize: SATURN_VIEWPORT_PAGE_SIZE,
   });
 }
 

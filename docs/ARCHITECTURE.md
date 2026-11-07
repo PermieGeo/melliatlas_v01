@@ -34,7 +34,7 @@ First-party, institutional and third-party sources each require their own licens
 
 The generic restricted HTTPS transport does not embed Saturn URLs or branch on Saturn-specific profile identifiers. Instead, each trusted provider adapter may register a named `SourceRequestProfile` with an exact source ID, exact endpoint URLs, and constrained, non-credential header metadata. The fetcher rejects missing, mismatched, or unregistered profiles before DNS and applies its ordinary approved-destination, DNS/IP, TLS, redirect, response-size, and MIME checks independently of the profile.
 
-The first adapter-owned policy lives in [Saturn's provider module](../apps/api/src/modules/sources/providers/saturn/contract.md). The existing Saturn query and collection implementations still need to be moved behind an explicit capability interface; this incremental separation does not claim that the broader ingestion module has been refactored.
+The first implementation lives in [Saturn's provider module](../apps/api/src/modules/sources/providers/saturn/contract.md). The module owns its query/directory validation, viewport collection, index storage, audit and local HTTP routes. `SaturnProvider` implements source-neutral `ViewportIndexProvider` and `DistrictDirectoryProvider` capability ports; application composition imports only the module's public `index.ts`. The existing manually configured treatment feed and regional scanner remain separate legacy paths in the parent source-ingestion module. This is a provider-boundary extraction, not a migration to a generic ingestion engine.
 
 ## Spatial processing
 

@@ -6,8 +6,8 @@ import { Pool } from "pg";
 import {
   SaturnViewportIndexRepository,
   type ViewportIndexKey,
-} from "../src/modules/sources/saturnViewportIndexRepository.js";
-import { validateSaturnViewportQuery } from "../src/modules/sources/saturnViewportQuery.js";
+} from "../src/modules/sources/providers/saturn/saturnViewportIndexRepository.js";
+import { validateSaturnViewportQuery } from "../src/modules/sources/providers/saturn/saturnViewportQuery.js";
 
 let rootPool: Pool;
 let pool: Pool;

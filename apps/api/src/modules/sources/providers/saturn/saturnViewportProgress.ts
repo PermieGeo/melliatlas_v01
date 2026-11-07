@@ -5,6 +5,10 @@ import {
   type SaturnViewportPage,
   type SaturnViewportQuery,
 } from "./saturnViewportQuery.js";
+import {
+  SATURN_MAX_VIEWPORT_ELEMENTS,
+  SATURN_MAX_VIEWPORT_PAGES,
+} from "./sourceProfile.js";
 
 export type SaturnViewportProgress = {
   /** The exact map-index filter; this is not a district-wide history key. */
@@ -67,7 +71,10 @@ export function advanceSaturnViewportProgress(
   }
   const totalPages = state.totalPages ?? page.totalPages;
   const totalElements = state.totalElements ?? page.totalElements;
-  if (totalPages > 2_000 || totalElements > 20_000) {
+  if (
+    totalPages > SATURN_MAX_VIEWPORT_PAGES ||
+    totalElements > SATURN_MAX_VIEWPORT_ELEMENTS
+  ) {
     throw new Error("Saturn viewport listing exceeds the observed page cap");
   }
   const featureIds = new Set(state.entries.map((item) => item.featureId));
