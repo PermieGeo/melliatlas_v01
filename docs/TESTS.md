@@ -225,3 +225,7 @@ The canonical `run-tests.sh` includes them before TypeScript/PostGIS checks.
 ### S3c.1 captured district/time viewport contract (offline)
 
 `apps/api/test/saturnViewportQuery.test.ts` checks the browser-observed Yartsevo request/first-page response against sanitized JSON fixtures. It verifies district-directory membership, bbox orientation, exact UTC-midnight `UpdateMap` parameters, distinct feature IDs versus repeated plan IDs, page-cursor validation, synthetic terminal/empty pages, and fail-closed invalid filters, bounds, dates, duplicated IDs and truncated responses. The builder and parser perform **no live network calls**, source ingestion or cache updates. A valid first map-index page cannot establish complete district history, treatment details or polygons. Run `pnpm --dir apps/api test -- test/saturnViewportQuery.test.ts` after installing dependencies, then the canonical `run-tests.sh`.
+
+### S3c.1 offline viewport multi-page reconciliation
+
+`apps/api/test/saturnViewportProgress.test.ts` starts from the captured Yartsevo page-zero fixture and uses clearly synthetic later pages to verify ordered pagination, stable counts, repeated plan IDs, duplicate-feature rejection, truncated/empty terminal pages and refusal of unsupported filters. Run `pnpm --dir apps/api test -- test/saturnViewportProgress.test.ts` and then the canonical `run-tests.sh`. A complete **viewport index** is not district coverage, real historical observations, polygon evidence or an authorized external fetch. This helper performs no database writes or HTTP calls.

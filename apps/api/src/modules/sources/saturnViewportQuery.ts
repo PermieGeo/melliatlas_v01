@@ -121,7 +121,7 @@ export function buildSaturnViewportQuery(
   if (startDateUpdateMap > endDateUpdateMap) {
     throw new Error("Saturn map update window is reversed");
   }
-  return requestSchema.parse({
+  return validateSaturnViewportQuery({
     filter: {
       leftTop: { longitude: west, latitude: north },
       rightDown: { longitude: east, latitude: south },
@@ -139,6 +139,27 @@ export function buildSaturnViewportQuery(
   });
 }
 
+/** Validate the complete observed request shape before using it as a listing key. */
+export function validateSaturnViewportQuery(
+  input: unknown,
+): SaturnViewportQuery {
+  const request = requestSchema.parse(input);
+  const { filter } = request;
+  if (
+    filter.leftTop.longitude >= filter.rightDown.longitude ||
+    filter.leftTop.latitude <= filter.rightDown.latitude ||
+    filter.startDateUpdateMap > filter.endDateUpdateMap ||
+    !Number.isFinite(Date.parse(filter.startDateUpdateMap)) ||
+    !Number.isFinite(Date.parse(filter.endDateUpdateMap)) ||
+    new Date(filter.startDateUpdateMap).toISOString() !==
+      filter.startDateUpdateMap ||
+    new Date(filter.endDateUpdateMap).toISOString() !== filter.endDateUpdateMap
+  ) {
+    throw new Error("Invalid Saturn viewport selection");
+  }
+  return request;
+}
+
 /**
  * Validate one browser-observed map-index page for the exact selected viewport.
  * `nextPage === null` is a page boundary, not proof of district-history coverage.
@@ -148,15 +169,7 @@ export function parseSaturnViewportPage(
   body: unknown,
   request: SaturnViewportQuery,
 ): SaturnViewportPage {
-  const validatedRequest = requestSchema.parse(request);
-  const { filter } = validatedRequest;
-  if (!(
-    filter.leftTop.longitude < filter.rightDown.longitude &&
-    filter.leftTop.latitude > filter.rightDown.latitude &&
-    filter.startDateUpdateMap <= filter.endDateUpdateMap
-  )) {
-    throw new Error("Invalid Saturn viewport selection");
-  }
+  const validatedRequest = validateSaturnViewportQuery(request);
   const page = pageSchema.parse(body);
   if (
     page.number !== validatedRequest.pageNumber ||
@@ -167,6 +180,7 @@ export function parseSaturnViewportPage(
     page.totalPages !== Math.ceil(page.totalElements / page.size) ||
     page.last !==
       (page.totalPages === 0 || page.number === page.totalPages - 1) ||
+    (page.totalPages === 0 && page.number !== 0) ||
     (page.totalPages > 0 && page.number >= page.totalPages) ||
     page.content.length !==
       Math.min(
