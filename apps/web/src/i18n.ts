@@ -2,6 +2,7 @@ export const messages = {
   ru: {
     districtRefreshCatalog: "Получить все районы из Сатурна",
     districtCatalogUpdated: "Справочник районов сохранён",
+    districtCatalogCount: "Районов в списке",
     districtCatalogMissing:
       "Полный справочник пока не загружен: доступен Ярцевский район. Нажмите «Получить все районы».",
     districtArchiveCount: "Уникальных центров полей в общем кэше района",
@@ -27,7 +28,7 @@ export const messages = {
     districtLocalOnly:
       "Загрузка доступна только в локальном пилотном приложении.",
     districtThrottle:
-      "Сатурн: пауза между запросами не меньше 65 секунд. Повторите позже.",
+      "Сатурн: пауза между запросами не меньше 20 секунд. Повторите позже.",
     districtLoadFailed:
       "Не удалось получить страницу. Сохранённый прогресс не удалён.",
     districtNoPages: "Для выбранного квадрата пока нет сохранённых страниц.",
@@ -119,6 +120,7 @@ export const messages = {
   en: {
     districtRefreshCatalog: "Fetch all districts from Saturn",
     districtCatalogUpdated: "District directory saved",
+    districtCatalogCount: "Districts in selector",
     districtCatalogMissing:
       "The full directory is not downloaded yet; only Yartsevo is available. Fetch all districts first.",
     districtArchiveCount: "Unique cached field centers in this district",
@@ -144,7 +146,7 @@ export const messages = {
     districtLocalOnly:
       "Collection is available only in the local pilot application.",
     districtThrottle:
-      "Saturn: wait at least 65 seconds between upstream requests and try again.",
+      "Saturn: wait at least 20 seconds between upstream requests and try again.",
     districtLoadFailed:
       "Unable to fetch the page. Previously saved progress is retained.",
     districtNoPages: "No saved pages for this rectangle yet.",

@@ -27,7 +27,7 @@
       "title": "2. Development-only page retrieval",
       "paragraphs": [
         "Fetch next page is a diagnostic action retained during development. It fetches one bounded provider page and saves valid candidates. Next page is a technical cursor, not a district identifier.",
-        "The source-wide throttle reserves request starts at least 65 seconds apart. A quick repeat may produce SOURCE_THROTTLED. One page is not evidence of complete district coverage."
+        "The source-wide throttle reserves request starts at least 20 seconds apart. A quick repeat may produce SOURCE_THROTTLED. One page is not evidence of complete district coverage."
       ],
       "steps": [
         "Open Data collection and check the provider configuration state.",
