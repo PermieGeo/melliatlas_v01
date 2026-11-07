@@ -16,13 +16,38 @@ function setup(enabled = true) {
   const status = vi.fn(async () => ({ enabled, progress: null }));
   const fetchNext = vi.fn(async () => ({ enabled, progress: null }));
   const history = vi.fn(async () => ({ entries: [] }));
+  const districts = vi.fn(async () => ({
+    enabled,
+    districts: [
+      {
+        id: 1477,
+        name: "Yartsevo",
+        latitude: 55.06,
+        longitude: 32.68,
+      },
+    ],
+    retrievedAt: "2026-11-07T00:00:00.000Z",
+  }));
+  const refreshDistricts = vi.fn(async () => districts());
+  const districtPoints = vi.fn(async () => ({ centers: [], totalKnown: 0 }));
+  const requestLog = vi.fn(async () => ({ entries: [] }));
+  const storedFields = vi.fn(async () => ({ centers: [] }));
   const services: ApiServices = {
     inspectLocation: async () => {
       throw new Error("Unused weather service");
     },
     listSources: async () => [],
     checkReadiness: async () => true,
-    viewportCollection: { status, fetchNext, history },
+    viewportCollection: {
+      status,
+      fetchNext,
+      history,
+      districts,
+      refreshDistricts,
+      districtPoints,
+      requestLog,
+      storedFields,
+    },
     providerConfiguration: {
       get: async () => {
         throw new Error("Unused provider settings");
@@ -32,7 +57,17 @@ function setup(enabled = true) {
       },
     },
   };
-  return { app: createApp(services), status, fetchNext, history };
+  return {
+    app: createApp(services),
+    status,
+    fetchNext,
+    history,
+    districts,
+    refreshDistricts,
+    districtPoints,
+    requestLog,
+    storedFields,
+  };
 }
 
 /** Local client requests use their own bounded route and never call operator paths. */
@@ -51,7 +86,7 @@ describe("local beekeeper viewport collection boundary", () => {
       .set("Origin", origin)
       .send(selection);
     expect(next.status).toBe(200);
-    expect(fetchNext).toHaveBeenCalledTimes(1);
+    expect(fetchNext).toHaveBeenCalledWith(selection, "web");
   });
 
   it.each(["http://evil.example", "http://127.0.0.1:5174"])(
@@ -78,7 +113,7 @@ describe("local beekeeper viewport collection boundary", () => {
       ).status,
     ).toBe(403);
     for (const input of [
-      { ...selection, districtId: 2670 },
+      { ...selection, districtId: -1 },
       { ...selection, bbox: { ...selection.bbox, east: 35 } },
       { ...selection, toDate: "2027-12-31" },
     ]) {
@@ -129,5 +164,87 @@ describe("local operator cache history", () => {
       .get("/api/v1/operator/provider/viewport/history")
       .set("Origin", "https://other.example");
     expect(blocked.status).toBe(403);
+  });
+});
+
+describe("district catalog and stored-index browser boundaries", () => {
+  it("serves cached districts and district points without upstream refresh", async () => {
+    const { app, districts, refreshDistricts, districtPoints } = setup();
+    expect(
+      (
+        await request(app)
+          .post("/api/v1/map/saturn-viewport/districts")
+          .set("Origin", origin)
+          .send({})
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(app)
+          .post("/api/v1/map/saturn-viewport/district-points")
+          .set("Origin", origin)
+          .send({ districtId: 1477 })
+      ).status,
+    ).toBe(200);
+    expect(districts).toHaveBeenCalledTimes(1);
+    expect(districtPoints).toHaveBeenCalledWith(1477);
+    expect(refreshDistricts).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the directory only on explicit local action", async () => {
+    const { app, refreshDistricts } = setup();
+    expect(
+      (
+        await request(app)
+          .post("/api/v1/map/saturn-viewport/districts/refresh")
+          .set("Origin", "https://remote.invalid")
+          .send({})
+      ).status,
+    ).toBe(403);
+    expect(refreshDistricts).not.toHaveBeenCalled();
+    expect(
+      (
+        await request(app)
+          .post("/api/v1/map/saturn-viewport/districts/refresh")
+          .set("Origin", origin)
+          .send({})
+      ).status,
+    ).toBe(200);
+    expect(refreshDistricts).toHaveBeenCalledWith("web");
+  });
+
+  it("restricts saved fields and request audit to the operator boundary", async () => {
+    const { app, requestLog, storedFields } = setup();
+    const hash = "a".repeat(64);
+    expect(
+      (
+        await request(app)
+          .get("/api/v1/operator/provider/viewport/requests")
+          .set("Origin", "http://127.0.0.1:5174")
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(app)
+          .get(`/api/v1/operator/provider/viewport/fields?hash=${hash}`)
+          .set("Origin", "http://127.0.0.1:5174")
+      ).status,
+    ).toBe(200);
+    expect(storedFields).toHaveBeenCalledWith(hash);
+    expect(requestLog).toHaveBeenCalledTimes(1);
+    expect(
+      (
+        await request(app)
+          .get("/api/v1/operator/provider/viewport/requests")
+          .set("Origin", "http://127.0.0.1:5173")
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .get("/api/v1/operator/provider/viewport/fields?hash=no")
+          .set("Origin", "http://127.0.0.1:5174")
+      ).status,
+    ).toBe(400);
   });
 });

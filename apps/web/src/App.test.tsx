@@ -114,6 +114,8 @@ it("does not invent forecast data after failed fetch and allows retry", async ()
     vi.fn(async (url: string) => {
       if (url.startsWith("/api/v1/notices?bbox="))
         return new Response(JSON.stringify({ notices: [] }));
+      if (!url.startsWith("/api/v1/locations/inspect?"))
+        return new Response(null, { status: 404 });
       attempts += 1;
       if (attempts === 1)
         return new Response(

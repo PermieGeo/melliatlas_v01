@@ -25,6 +25,17 @@ pnpm exec playwright install chromium
 
 The regular Playwright E2E configuration builds the shared contracts, starts independent Web (`127.0.0.1:5173`) and Admin (`127.0.0.1:5174`) Vite processes, and waits for both before running tests. Existing servers are never reused: stop all manually started frontend servers first, or Playwright fails clearly when a port is occupied. These browser scenarios intercept source/weather API responses with synthetic test-only fixtures; they do not start the API or require a database on their own. The canonical `run-tests.sh` still requires local PostGIS for its separate integration tests. **Intercepted Playwright tests verify UI behavior, not database/source integration.**
 
+### Stable Admin disclosure selectors
+
+When editing nested Admin disclosures, give each `<summary>` a distinct localized accessible name (including RU and EN). Scope browser locators to their owning region and assert a unique match before clicking; do not use `.first()` to work around ambiguous labels. Use isolated component tests for both locale variants and run the affected Admin browser scenario before the full canonical check:
+
+```bash
+pnpm --dir apps/admin test
+pnpm exec playwright test tests/e2e/admin.spec.ts --project=desktop-chromium --grep "shows development-only import guidance"
+```
+
+Playwright starts its own Web/Admin processes; stop `pnpm dev` first. A targeted green run is a fast regression gate, not a replacement for `./run-tests.sh` and desktop/mobile coverage.
+
 ## Test ownership
 
 - API routes and failures: `apps/api/test/app.test.ts`.
@@ -242,3 +253,7 @@ The canonical `run-tests.sh` includes them before TypeScript/PostGIS checks.
 ## SRC-R34 — Viewport index cache visibility (local-only)
 
 The existing `saturnViewportCollection.test.ts`, `saturnViewportClientRoutes.test.ts` and `DistrictViewportPanel.test.tsx` cover read-only caches, local-only origin access, distinct blue field-center marker metadata, and explicit 124-day feedback. `ViewportCacheHistoryPanel.test.tsx` checks operator-side persisted history rendering. `pnpm --dir apps/api test:db` includes `saturnViewportCollection.test.ts` against a disposable PostGIS schema, verifying durable per-page receipts and restart reading. For desktop/mobile E2E run `pnpm e2e` with ports 5173/5174 free. No test contacts the real Saturn API; only an explicit live pilot action with `SATURN_VIEWPORT_LIVE_ENABLED=true` may do so after source authorization review.
+
+### Saturn directory and persistent request audit (migration 015)
+
+Run `pnpm db:migrate` before testing the feature locally. The new `apps/api/test/saturnDistrictDirectory.test.ts` checks cached-read versus explicit fetch, duplicate directory rejection, disable and throttle policy; `apps/api/test/saturnRequestJournal.test.ts` checks sanitized attempt receipts. `apps/api/integration/saturnViewportCollection.test.ts` covers persistent index reads and request audit against isolated PostGIS (all external HTTP is stubbed). `apps/api/test/saturnViewportClientRoutes.test.ts` verifies local-only directory and operator audit route separation; Web/Admin UI and Playwright tests verify directory refresh requires a click, empty/partial center display and bounded saved fields. The canonical `./run-tests.sh` includes these suites. Inspect `source_saturn_request_log` via Admin (not raw DB logs) for `started`, `succeeded`, `failed` and `throttled` events. A `started` entry after a crash is an unknown outcome, not a successful download. No test establishes the legality of external fetches, actual provider response or complete district coverage.

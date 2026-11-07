@@ -409,7 +409,7 @@ describe("operator-only viewport route", () => {
     });
     const invalid = await request(app)
       .post("/api/v1/operator/provider/viewport/next")
-      .send({ ...selection, districtId: 2670 });
+      .send({ ...selection, districtId: -1 });
     expect(invalid.status).toBe(400);
     expect(fetched).toBe(0);
     const status = await request(app)
@@ -417,6 +417,10 @@ describe("operator-only viewport route", () => {
       .send(selection);
     expect(status.status).toBe(200);
     expect(status.body).toEqual({ enabled: true, progress: null });
+    const otherDistrict = await request(app)
+      .post("/api/v1/operator/provider/viewport/status")
+      .send({ ...selection, districtId: 2670 });
+    expect(otherDistrict.status).toBe(200);
     expect(fetched).toBe(0);
     const next = await request(app)
       .post("/api/v1/operator/provider/viewport/next")

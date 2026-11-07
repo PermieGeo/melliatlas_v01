@@ -57,6 +57,7 @@ describe("Saturn viewport live collection persistence", () => {
       "002_source_access_registry.sql",
       "003_saturn_api_configuration.sql",
       "014_saturn_viewport_index.sql",
+      "015_saturn_directory_and_request_log.sql",
     ]) {
       await pool.query(
         await readFile(
@@ -78,6 +79,41 @@ describe("Saturn viewport live collection persistence", () => {
       await mainPool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
       await mainPool.end();
     }
+  });
+
+  it("persists an explicitly fetched district directory across restarts without automatic source calls", async () => {
+    const districts = [
+      { id: 1477, name: "Fixture Yartsevo", latitude: 55.06, longitude: 32.68 },
+      { id: 2670, name: "Fixture Smolensk", latitude: 54.78, longitude: 32.05 },
+    ];
+    const fetch = vi.fn(async () => ({
+      bytes: Buffer.from(JSON.stringify(districts)),
+      canonicalUrl: "https://bee-saturn.ru/backend/beemaster/district/55",
+      contentType: "application/json",
+    }));
+    const enabled = new SaturnViewportCollectionService(pool, true, {
+      fetcher: { fetch } as unknown as RestrictedSourceFetcher,
+      gate: { reserve: vi.fn(async () => true) },
+    });
+    expect((await enabled.refreshDistricts("web")).districts).toHaveLength(2);
+    const restarted = new SaturnViewportCollectionService(pool, false);
+    expect(
+      (await restarted.districts()).districts.map((item) => item.id),
+    ).toEqual([1477, 2670]);
+    expect(
+      (await restarted.status({ ...selection, districtId: 2670 })).progress,
+    ).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((await restarted.requestLog()).entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "district_directory",
+          initiator: "web",
+          status: "succeeded",
+          receivedCount: 2,
+        }),
+      ]),
+    );
   });
 
   it("fetches real service pages, saves durable checkpoints, and resumes across service instances", async () => {
@@ -145,6 +181,25 @@ describe("Saturn viewport live collection persistence", () => {
     );
     expect(count.rows[0]?.n).toBe(22);
     const history = await resumed.history();
+    const points = await resumed.districtPoints(1477);
+    expect(points.totalKnown).toBe(22);
+    expect(points.centers).toHaveLength(22);
+    expect(
+      (await resumed.storedFields(history.entries[0]!.requestHash)).centers,
+    ).toHaveLength(22);
+    const log = await resumed.requestLog();
+    const viewportAttempts = log.entries.filter(
+      (entry) => entry.action === "viewport_page",
+    );
+    expect(viewportAttempts.map((entry) => entry.status)).toEqual([
+      "cache_hit",
+      "succeeded",
+      "succeeded",
+      "succeeded",
+    ]);
+    expect(viewportAttempts.every((entry) => entry.initiator === "admin")).toBe(
+      true,
+    );
     expect(history.entries).toHaveLength(1);
     expect(history.entries[0]).toMatchObject({
       districtId: 1477,

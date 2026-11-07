@@ -203,16 +203,34 @@ test("local district pilot loads only after an explicit beekeeper click", async 
     }),
   );
   await page.route("**/api/v1/map/saturn-viewport/**", (route) => {
-    if (route.request().url().endsWith("/next")) fetches++;
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/next")) fetches++;
+    const payload =
+      path.endsWith("/districts") || path.endsWith("/districts/refresh")
+        ? {
+            enabled: true,
+            districts: [
+              {
+                id: 1477,
+                name: "Ярцевский район",
+                latitude: 55.06,
+                longitude: 32.68,
+              },
+            ],
+            retrievedAt: null,
+          }
+        : path.endsWith("/district-points")
+          ? { centers: [], totalKnown: 0 }
+          : { enabled: true, progress: null, cachedCenters: [] };
     return route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ enabled: true, progress: null }),
+      body: JSON.stringify(payload),
     });
   });
   await page.goto("/");
   expect(fetches).toBe(0);
   await page
-    .getByRole("combobox", { name: "Район (пилот)" })
+    .getByRole("combobox", { name: "Район Смоленской области" })
     .selectOption("1477");
   expect(fetches).toBe(0);
   await expect(

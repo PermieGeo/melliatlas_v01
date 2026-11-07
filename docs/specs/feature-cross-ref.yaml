@@ -60,6 +60,7 @@ features:
       - SRC-R25
       - SRC-R33
       - SRC-R34
+      - SRC-R35
     code_paths:
       - apps/api/src/modules/sources/regionalScanState.ts
       - apps/api/src/modules/sources/regionalCollection.ts
@@ -77,6 +78,10 @@ features:
       - apps/api/src/modules/sources/saturnViewportIndexRepository.ts
       - apps/api/src/modules/sources/saturnViewportCollection.ts
       - apps/api/src/modules/sources/saturnViewportCacheHistory.ts
+      - apps/api/src/modules/sources/saturnDistrictDirectory.ts
+      - apps/api/src/modules/sources/saturnRequestJournal.ts
+      - apps/api/src/modules/sources/saturnStoredIndex.ts
+      - apps/api/src/modules/sources/saturnSourceProfile.ts
       - apps/api/src/modules/sources/saturnViewportOperatorRoutes.ts
       - apps/api/src/modules/sources/saturnViewportClientRoutes.ts
       - apps/web/src/components/DistrictViewportPanel.tsx
@@ -87,6 +92,8 @@ features:
       - packages/contracts/src/viewportCollection.ts
       - apps/admin/src/components/CollectionPanel.tsx
       - apps/admin/src/components/ViewportCacheHistoryPanel.tsx
+      - apps/admin/src/components/SaturnRequestLogPanel.tsx
+      - apps/admin/src/components/StoredViewportFieldsPanel.tsx
       - apps/admin/src/cacheHistoryMessages.ts
     test_paths:
       - apps/api/test/regionalScanState.test.ts
@@ -99,6 +106,9 @@ features:
       - apps/api/integration/saturnViewportIndex.test.ts
       - apps/api/integration/saturnViewportCollection.test.ts
       - apps/api/test/saturnViewportCollection.test.ts
+      - apps/api/test/saturnDistrictDirectory.test.ts
+      - apps/api/test/saturnRequestJournal.test.ts
+      - apps/admin/src/components/SaturnRequestLogPanel.test.tsx
       - apps/api/test/saturnViewportClientRoutes.test.ts
       - apps/web/src/components/DistrictViewportPanel.test.tsx
       - tests/e2e/map.spec.ts
@@ -119,10 +129,12 @@ features:
       - apps/api/src/modules/sources/destinationPolicy.ts
       - apps/api/src/modules/sources/municipalSourceRegistry.ts
       - apps/api/src/modules/sources/httpFetcher.ts
+      - apps/api/src/modules/sources/sourceHttpHeaders.ts
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/test/municipalSourceRegistry.test.ts
       - apps/api/test/httpFetcher.test.ts
+      - apps/api/test/sourceHttpHeaders.test.ts
       - apps/api/integration/treatmentAccessMigration.test.ts
       - apps/api/integration/sourceCatalogMigration.test.ts
   - id: NOTICES.EXTRACTION

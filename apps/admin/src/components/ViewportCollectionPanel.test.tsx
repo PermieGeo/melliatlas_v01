@@ -56,3 +56,14 @@ it("distinguishes read-only progress from one requested upstream page", async ()
   expect(await screen.findByText(/Страниц: 1 \/ 3/)).toBeTruthy();
   expect(fetchNext).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  { locale: "ru" as const, label: "Точные координаты и даты квадрата" },
+  { locale: "en" as const, label: "Exact viewport bounds and date range" },
+])(
+  "uses a dedicated disclosure name for technical viewport inputs in $locale",
+  ({ locale, label }) => {
+    render(<ViewportCollectionPanel locale={locale} />);
+    expect(screen.getByText(label)).toBeTruthy();
+  },
+);

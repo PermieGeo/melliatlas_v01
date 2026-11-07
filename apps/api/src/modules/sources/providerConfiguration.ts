@@ -63,6 +63,7 @@ export type ProviderRequest = {
   url: string;
   method: "GET" | "POST";
   body?: string;
+  requestProfile?: "saturn-json";
 };
 
 /** Pure request builder; the caller must enforce operator authorization and DNS/transport policy. */

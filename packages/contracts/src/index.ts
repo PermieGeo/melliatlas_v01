@@ -323,3 +323,16 @@ export type {
   ViewportIndexCenter,
   ViewportCacheHistoryResponse,
 } from "./viewportCollection.js";
+
+export {
+  saturnDistrictCatalogResponseSchema,
+  saturnDistrictPointsResponseSchema,
+  saturnStoredFieldsResponseSchema,
+  saturnRequestLogResponseSchema,
+} from "./viewportCollection.js";
+export type {
+  SaturnDistrictCatalogResponse,
+  SaturnDistrictPointsResponse,
+  SaturnStoredFieldsResponse,
+  SaturnRequestLogResponse,
+} from "./viewportCollection.js";

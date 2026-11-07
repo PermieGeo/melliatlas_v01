@@ -1,9 +1,16 @@
 export const messages = {
   ru: {
+    districtRefreshCatalog: "Получить все районы из Сатурна",
+    districtCatalogUpdated: "Справочник районов сохранён",
+    districtCatalogMissing:
+      "Полный справочник пока не загружен: доступен Ярцевский район. Нажмите «Получить все районы».",
+    districtArchiveCount: "Уникальных центров полей в общем кэше района",
+    districtArchiveNote:
+      "Синие точки показывают ранее сохранённый индекс, независимо от выбранных дат и квадрата. Это не сведения о выполненных обработках.",
     districtPanelTitle: "Загрузить данные по району",
     districtSteps:
-      "1. Выберите район. 2. Приблизьте нужную часть карты. 3. Укажите период до 124 дней и нажмите «Получить ещё до 10 записей».",
-    districtSelect: "Район (пилот)",
+      "1. Один раз получите справочник районов. 2. Выберите район и нужную часть карты. 3. Укажите период до 124 дней и нажмите «Получить ещё до 10 записей».",
+    districtSelect: "Район Смоленской области",
     districtChoose: "Выберите район…",
     districtYartsevo: "Ярцевский район",
     districtFrom: "Обновления карты с",
@@ -110,10 +117,17 @@ export const messages = {
     pilot: "Пилотная территория",
   },
   en: {
+    districtRefreshCatalog: "Fetch all districts from Saturn",
+    districtCatalogUpdated: "District directory saved",
+    districtCatalogMissing:
+      "The full directory is not downloaded yet; only Yartsevo is available. Fetch all districts first.",
+    districtArchiveCount: "Unique cached field centers in this district",
+    districtArchiveNote:
+      "Blue markers show previously cached index points across all saved filters. They are not evidence of pesticide application.",
     districtPanelTitle: "Load district data",
     districtSteps:
-      "1. Choose a district. 2. Zoom to the relevant map area. 3. Select up to 124 days and fetch up to 10 more records.",
-    districtSelect: "District (pilot)",
+      "1. Fetch the district directory once. 2. Choose a district and date range. 3. Zoom in and load the next batch of up to 10 fields.",
+    districtSelect: "Smolensk Oblast district",
     districtChoose: "Select a district…",
     districtYartsevo: "Yartsevo District",
     districtFrom: "Map updates from",

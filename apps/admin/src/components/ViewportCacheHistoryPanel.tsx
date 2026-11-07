@@ -1,12 +1,19 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { useEffect, useState } from "react";
 import type { ViewportCacheHistoryResponse } from "@melliatlas/contracts";
-import { loadViewportCacheHistory } from "../api/client";
+import {
+  loadViewportCacheHistory,
+  loadOperatorSaturnDistricts,
+} from "../api/client";
+import { StoredViewportFieldsPanel } from "./StoredViewportFieldsPanel";
 import { t, type Key, type Locale } from "../i18n";
 
 /** Display committed DB checkpoints, including those collected from the beekeeper map. */
 export function ViewportCacheHistoryPanel({ locale }: { locale: Locale }) {
   const [data, setData] = useState<ViewportCacheHistoryResponse | null>(null);
+  const [districtNames, setDistrictNames] = useState<Record<number, string>>(
+    {},
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const text = (key: Key): string => t(locale, key);
@@ -24,6 +31,15 @@ export function ViewportCacheHistoryPanel({ locale }: { locale: Locale }) {
   }
   useEffect(() => {
     void refresh();
+    void loadOperatorSaturnDistricts()
+      .then((value) => {
+        setDistrictNames(
+          Object.fromEntries(
+            value.districts.map((district) => [district.id, district.name]),
+          ),
+        );
+      })
+      .catch(() => {});
   }, []);
   const stamp = (iso: string): string =>
     new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", {
@@ -74,7 +90,9 @@ export function ViewportCacheHistoryPanel({ locale }: { locale: Locale }) {
               className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-sm"
             >
               <p className="font-semibold">
-                {text("cacheHistoryDistrict")}: {entry.districtId}
+                {districtNames[entry.districtId] ??
+                  text("cacheHistoryDistrict")}
+                : {entry.districtId}
                 <span className="ml-2 font-normal text-slate-600">
                   {entry.fromDate} — {entry.toDate}
                 </span>
@@ -93,6 +111,10 @@ export function ViewportCacheHistoryPanel({ locale }: { locale: Locale }) {
               {!entry.sourceRevisionCurrent && (
                 <p className="text-amber-800">{text("cacheHistoryRevision")}</p>
               )}
+              <StoredViewportFieldsPanel
+                locale={locale}
+                hash={entry.requestHash}
+              />
               <details>
                 <summary className="cursor-pointer font-medium">
                   {text("cacheHistoryDetails")}

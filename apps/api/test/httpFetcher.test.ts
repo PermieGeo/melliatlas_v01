@@ -77,6 +77,7 @@ describe("restricted source fetcher", () => {
       1000,
       100,
       undefined,
+      undefined,
     );
   });
 
@@ -87,6 +88,52 @@ describe("restricted source fetcher", () => {
       fetcher.fetch({ ...source, review: { decision: "configured" } }, request),
     ).resolves.toMatchObject({ canonicalUrl: request.url });
     expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the browser-compatible Saturn JSON profile only on exact approved endpoints", async () => {
+    const transport = vi.fn(async () => ok());
+    const { fetcher, resolver } = withStub(transport);
+    const saturnSource = {
+      ...source,
+      locations: [
+        {
+          hostname: "bee-saturn.ru",
+          pathPrefixes: ["/backend/beemaster/query"],
+        },
+      ],
+    };
+    const saturnRequest = {
+      url: "https://bee-saturn.ru/backend/beemaster/query",
+      method: "POST" as const,
+      body: "{}",
+      requestProfile: "saturn-json" as const,
+    };
+    await expect(
+      fetcher.fetch(saturnSource, saturnRequest),
+    ).resolves.toMatchObject({
+      canonicalUrl: saturnRequest.url,
+    });
+    expect(transport).toHaveBeenCalledWith(
+      new URL(saturnRequest.url),
+      "POST",
+      "{}",
+      publicAddress,
+      1000,
+      100,
+      undefined,
+      "saturn-json",
+    );
+    expect(resolver).toHaveBeenCalledTimes(1);
+
+    const deniedTransport = vi.fn(async () => ok());
+    const denied = withStub(deniedTransport);
+    await expect(
+      denied.fetcher.fetch(source, {
+        ...request,
+        requestProfile: "saturn-json",
+      }),
+    ).rejects.toMatchObject({ code: "DESTINATION_DENIED" });
+    expect(deniedTransport).not.toHaveBeenCalled();
   });
 
   it("does not allow configured municipal sources to bypass source approval", async () => {
