@@ -6,6 +6,7 @@ import { createDatabasePool } from "./db/pool.js";
 import { SourceRepository } from "./db/sourceRepository.js";
 import { ProviderConfigurationRepository } from "./modules/sources/providerConfiguration.js";
 import { TreatmentIngestionService } from "./modules/sources/treatmentIngestion.js";
+import { SaturnViewportCollectionService } from "./modules/sources/saturnViewportCollection.js";
 import { DistrictCacheRepository } from "./modules/sources/districtCacheRepository.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
 import { describeStartupFailure } from "./startupDiagnostics.js";
@@ -25,6 +26,10 @@ async function start(): Promise<void> {
       providerConfiguration,
       treatmentFeed,
       districtCache,
+      viewportCollection: new SaturnViewportCollectionService(
+        pool,
+        config.SATURN_VIEWPORT_LIVE_ENABLED,
+      ),
       inspectLocation: (point) => weather.inspect(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {

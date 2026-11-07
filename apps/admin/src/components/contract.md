@@ -11,3 +11,7 @@
 - `FieldHelp` provides a keyboard-accessible explanation beside ambiguous controls. Help closes on a second trigger activation, a click outside, or Escape; interacting inside the explanation does not dismiss it. All help copy, temporary-function notices and planned replacements live in the RU/EN message catalogs. The one-page import is labelled development-only with its planned district-cache replacement; district refresh is labelled in development and remains disabled.
 - Components use `apps/admin/src/i18n.ts` for user-facing copy and delegate HTTP to `apps/admin/src/api/`.
 - No browser-side shared operator token or login is implemented in this local-only slice.
+
+- `ViewportCollectionPanel` separately exposes an explicit, bounded Yartsevo map-index pilot: operator-editable bbox and UpdateMap dates, a read-only checkpoint query and a one-page fetch action. It does not automatically contact the upstream on render, selection change, pan or map zoom. State reports map index progress, not district freshness or verified spray events. Disabled backend mode is reported without hidden requests.
+
+- The Data collection section now leads with a localized three-step guide to the **client-driven** pilot workflow on the local beekeeper map; low-level viewport coordinates are in a disclosure. Legacy single-page import and operator viewport diagnostics remain available for troubleshooting, not as the default beekeeper journey.

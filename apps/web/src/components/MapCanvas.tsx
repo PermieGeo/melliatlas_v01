@@ -1,4 +1,4 @@
-// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, NOTICES.MAP_OVERLAY
+// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { useEffect } from "react";
 import { translate, type Locale, type MessageKey } from "../i18n";
@@ -15,6 +15,7 @@ import {
 type MapCanvasProps = {
   locale: Locale;
   focus: Coordinates;
+  focusZoom?: number;
   selected: Coordinates | null;
   radiusKm: number;
   onSelect(point: Coordinates): void;
@@ -32,11 +33,14 @@ function ClickSelection({ onSelect }: Pick<MapCanvasProps, "onSelect">) {
   return null;
 }
 
-function FocusControl({ focus }: Pick<MapCanvasProps, "focus">) {
+function FocusControl({
+  focus,
+  focusZoom = 10,
+}: Pick<MapCanvasProps, "focus" | "focusZoom">) {
   const map = useMap();
   useEffect(() => {
-    map.setView([focus.lat, focus.lon], 10, { animate: true });
-  }, [focus, map]);
+    map.setView([focus.lat, focus.lon], focusZoom, { animate: true });
+  }, [focus, focusZoom, map]);
   return null;
 }
 
@@ -63,6 +67,7 @@ function ViewportObserver({
 export function MapCanvas({
   locale,
   focus,
+  focusZoom,
   selected,
   radiusKm,
   onSelect,
@@ -87,7 +92,7 @@ export function MapCanvas({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'
         maxZoom={19}
       />
-      <FocusControl focus={focus} />
+      <FocusControl focus={focus} focusZoom={focusZoom} />
       <ClickSelection onSelect={onSelect} />
       <ViewportObserver onViewportChange={onViewportChange} />
       {treatments.map((notice) => {

@@ -1,4 +1,4 @@
-// Feature IDs: WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY
+// Feature IDs: WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
 import {
   apiErrorSchema,
   inspectionResponseSchema,
@@ -6,6 +6,10 @@ import {
   type Coordinates,
   type InspectionResponse,
   type MapTreatment,
+  viewportCollectionSelectionSchema,
+  viewportCollectionResultSchema,
+  type ViewportCollectionSelection,
+  type ViewportCollectionResult,
 } from "@melliatlas/contracts";
 
 export class ApiRequestError extends Error {
@@ -50,4 +54,31 @@ export async function loadMapTreatments(
     cache: "no-store",
   });
   return mapTreatmentsResponseSchema.parse(await decode(response)).notices;
+}
+
+/** Inspect or advance one locally enabled, bounded viewport index without operator access. */
+async function clientViewportRequest(
+  action: "status" | "next",
+  selection: ViewportCollectionSelection,
+): Promise<ViewportCollectionResult> {
+  const validated = viewportCollectionSelectionSchema.parse(selection);
+  const response = await fetch(`/api/v1/map/saturn-viewport/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(validated),
+    cache: "no-store",
+  });
+  return viewportCollectionResultSchema.parse(await decode(response));
+}
+
+export function loadDistrictViewportProgress(
+  selection: ViewportCollectionSelection,
+): Promise<ViewportCollectionResult> {
+  return clientViewportRequest("status", selection);
+}
+
+export function fetchDistrictViewportPage(
+  selection: ViewportCollectionSelection,
+): Promise<ViewportCollectionResult> {
+  return clientViewportRequest("next", selection);
 }

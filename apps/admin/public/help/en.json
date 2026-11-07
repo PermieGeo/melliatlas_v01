@@ -40,6 +40,15 @@
       ]
     },
     {
+      "id": "local-beekeeper-collection",
+      "title": "Beekeeper map download (pilot)",
+      "paragraphs": [
+        "The primary workflow is now on the local beekeeper map at http://127.0.0.1:5173. Select Yartsevo District, zoom, set an UpdateMap period and press Load page. This explicit client action is never triggered by panning the map.",
+        "Each received page is saved in the shared PostGIS index behind a source-wide cooldown. Admin keeps local diagnostic controls, while low-level coordinates are folded into advanced details.",
+        "Index data is not a complete treatment record or verified polygon. Source access must be explicitly enabled on the backend after permission review, and local Origin restrictions are not sufficient for Internet deployment."
+      ]
+    },
+    {
       "id": "preview",
       "title": "3. Preview map and details sidebar",
       "paragraphs": [

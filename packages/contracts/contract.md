@@ -16,3 +16,7 @@
 - `providerCollectionStatusSchema` is the authenticated, read-only import diagnostics response. It reports counts and last run status without raw source payloads or provider keys.
 
 - `helpDocumentSchema` owns the versioned shape of locally hosted RU/EN user guides. It validates content boundaries without importing React, using network services, or treating text as HTML. The frontend owns loading and presentation.
+
+- `viewportCollectionSelectionSchema` and `viewportCollectionResultSchema` in `src/viewportCollection.ts` own the operator-only pilot request/response: exact provider district 1477, bounded bbox/UpdateMap interval, and durable page-index progress. They do not represent source treatment polygons, verified district coverage or a risk assessment.
+
+- `viewportCollectionSelectionSchema` and `viewportCollectionResultSchema` are also reused by the local-only beekeeper viewport-index pilot. The schema is intentionally restricted to one verified district and a short bounded geographic/UpdateMap window; client use grants no access to operator endpoints or complete treatment records.

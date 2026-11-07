@@ -58,6 +58,7 @@ features:
       - SRC-R22
       - SRC-R23
       - SRC-R25
+      - SRC-R33
     code_paths:
       - apps/api/src/modules/sources/regionalScanState.ts
       - apps/api/src/modules/sources/regionalCollection.ts
@@ -73,6 +74,15 @@ features:
       - apps/api/src/modules/sources/saturnViewportQuery.ts
       - apps/api/src/modules/sources/saturnViewportProgress.ts
       - apps/api/src/modules/sources/saturnViewportIndexRepository.ts
+      - apps/api/src/modules/sources/saturnViewportCollection.ts
+      - apps/api/src/modules/sources/saturnViewportOperatorRoutes.ts
+      - apps/api/src/modules/sources/saturnViewportClientRoutes.ts
+      - apps/web/src/components/DistrictViewportPanel.tsx
+      - apps/web/src/App.tsx
+      - apps/web/src/components/MapCanvas.tsx
+      - apps/web/src/api/client.ts
+      - apps/admin/src/components/ViewportCollectionPanel.tsx
+      - packages/contracts/src/viewportCollection.ts
       - apps/admin/src/components/CollectionPanel.tsx
     test_paths:
       - apps/api/test/regionalScanState.test.ts
@@ -83,6 +93,12 @@ features:
       - apps/api/test/saturnViewportQuery.test.ts
       - apps/api/test/saturnViewportProgress.test.ts
       - apps/api/integration/saturnViewportIndex.test.ts
+      - apps/api/integration/saturnViewportCollection.test.ts
+      - apps/api/test/saturnViewportCollection.test.ts
+      - apps/api/test/saturnViewportClientRoutes.test.ts
+      - apps/web/src/components/DistrictViewportPanel.test.tsx
+      - tests/e2e/map.spec.ts
+      - apps/admin/src/components/ViewportCollectionPanel.test.tsx
       - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
