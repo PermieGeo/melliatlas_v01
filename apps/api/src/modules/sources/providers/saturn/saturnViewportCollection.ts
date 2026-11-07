@@ -12,10 +12,8 @@ import {
   type SaturnRequestLogResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../../../lib/errors.js";
-import {
-  RestrictedSourceFetcher,
-  SourceFetchFailure,
-} from "../../httpFetcher.js";
+import { executeAuditedSourceRequest } from "../../auditedSourceRequest.js";
+import { RestrictedSourceFetcher } from "../../httpFetcher.js";
 import {
   ProviderRequestThrottle,
   type ProviderRequestGate,
@@ -31,19 +29,17 @@ import {
 } from "./saturnDistrictDirectory.js";
 import {
   SaturnRequestJournal,
-  type RequestOutcome,
+  type RequestAttempt,
 } from "./saturnRequestJournal.js";
 import { SaturnStoredIndex } from "./saturnStoredIndex.js";
 import {
   SATURN_SOURCE_ID,
-  SATURN_VIEWPORT_URL,
   SATURN_CONFIGURED_ENDPOINTS,
   SATURN_MAX_VIEWPORT_PAGES,
   SATURN_VERIFIED_FALLBACK_DISTRICT_ID,
-  saturnJsonSource,
 } from "./sourceProfile.js";
-import { SATURN_JSON_PROFILE_ID } from "./requestProfile.js";
 import { SaturnProvider, type SaturnProviderPort } from "./SaturnProvider.js";
+import { SaturnViewportPageFetcher } from "./saturnViewportPageFetcher.js";
 
 export { makeViewportFirstRequest } from "./SaturnProvider.js";
 type SourceRow = {
@@ -71,6 +67,7 @@ export class SaturnViewportCollectionService {
   private readonly journal: JournalPort;
   private readonly stored: StoredPort;
   private readonly provider: SaturnProviderPort;
+  private readonly pageFetcher: SaturnViewportPageFetcher;
 
   constructor(
     private readonly pool: Pick<Pool, "query">,
@@ -93,6 +90,10 @@ export class SaturnViewportCollectionService {
       new RestrictedSourceFetcher({
         requestProfiles: this.provider.requestProfiles,
       });
+    this.pageFetcher = new SaturnViewportPageFetcher(
+      this.fetcher,
+      this.provider,
+    );
     this.gate = dependencies.gate ?? new ProviderRequestThrottle(pool as Pool);
     this.journal = dependencies.journal ?? new SaturnRequestJournal(pool);
     this.directory =
@@ -208,95 +209,75 @@ export class SaturnViewportCollectionService {
       createHash("sha256")
         .update(JSON.stringify(key.firstPageRequest))
         .digest("hex");
-    const auditId = await this.journal.start({
-      action: "viewport_page",
-      initiator,
-      districtId: selection.districtId,
-      requestHash,
-      pageNumber: pageNumber ?? undefined,
-    });
-    let outcome: RequestOutcome = "failed";
-    let records = 0;
-    let errorCode: string | undefined;
-    try {
-      if (previous?.state === "viewport_index_complete") {
-        outcome = "cache_hit";
-        return {
-          enabled: true,
-          progress: previous,
-          cachedCenters: await this.index.listFeatures(key, 100),
-        };
-      }
-      if (previous && !previous.sourceRevisionCurrent) {
-        throw new ApiFailure(
-          409,
-          "SOURCE_CHANGED",
-          "Provider configuration has changed",
-        );
-      }
-      if (pageNumber >= SATURN_MAX_VIEWPORT_PAGES) {
-        throw new ApiFailure(
-          409,
-          "VIEWPORT_PAGE_LIMIT",
-          "Viewport page limit reached",
-        );
-      }
-      if (!(await this.gate.reserve(SATURN_SOURCE_ID))) {
-        throw new ApiFailure(
-          429,
-          "SOURCE_THROTTLED",
-          "Provider request cooldown is active",
-        );
-      }
-      const request = this.provider.pageAt(key.firstPageRequest, pageNumber);
-      let body: unknown;
-      try {
-        const response = await this.fetcher.fetch(
-          saturnJsonSource(name, "/backend/beemaster/query"),
-          {
-            url: SATURN_VIEWPORT_URL,
-            method: "POST",
-            body: JSON.stringify(request),
-            requestProfile: SATURN_JSON_PROFILE_ID,
-          },
-        );
-        body = JSON.parse(response.bytes.toString("utf8")) as unknown;
-        records = this.provider.parsePage(body, request).entries.length;
-      } catch (error) {
-        if (error instanceof SourceFetchFailure) {
+    return executeAuditedSourceRequest<
+      RequestAttempt,
+      ViewportCollectionResult
+    >({
+      sourceId: SATURN_SOURCE_ID,
+      attempt: {
+        action: "viewport_page",
+        initiator,
+        districtId: selection.districtId,
+        requestHash,
+        pageNumber: pageNumber ?? undefined,
+      },
+      gate: this.gate,
+      journal: this.journal,
+      preflight: async () => {
+        if (previous?.state === "viewport_index_complete") {
+          return {
+            kind: "cache_hit" as const,
+            value: {
+              enabled: true,
+              progress: previous,
+              cachedCenters: await this.index.listFeatures(key, 100),
+            },
+          };
+        }
+        if (previous && !previous.sourceRevisionCurrent) {
           throw new ApiFailure(
-            error.code === "RATE_LIMITED" ? 429 : 502,
-            error.code === "RATE_LIMITED"
-              ? "SOURCE_THROTTLED"
-              : "SOURCE_UNAVAILABLE",
-            "Unable to retrieve the requested Saturn page",
+            409,
+            "SOURCE_CHANGED",
+            "Provider configuration has changed",
           );
         }
-        throw new ApiFailure(
-          502,
-          "INVALID_SOURCE_RESPONSE",
-          "Saturn returned an invalid map-index page",
+        if (pageNumber >= SATURN_MAX_VIEWPORT_PAGES) {
+          throw new ApiFailure(
+            409,
+            "VIEWPORT_PAGE_LIMIT",
+            "Viewport page limit reached",
+          );
+        }
+        return { kind: "proceed" as const };
+      },
+      perform: async () => {
+        const captured = await this.pageFetcher.fetch(
+          name,
+          key.firstPageRequest,
+          pageNumber,
         );
-      }
-      const progress = await this.index.appendCapturedPage(key, body);
-      outcome = "succeeded";
-      return {
-        enabled: true,
-        progress,
-        cachedCenters: await this.index.listFeatures(key, 100),
-      };
-    } catch (error) {
-      errorCode =
-        error instanceof ApiFailure ? error.code : "VIEWPORT_STORE_FAILED";
-      outcome = errorCode === "SOURCE_THROTTLED" ? "throttled" : "failed";
-      throw error;
-    } finally {
-      await this.journal.finish(
-        auditId,
-        outcome,
-        outcome === "succeeded" ? records : 0,
-        errorCode,
-      );
-    }
+        const progress = await this.index.appendCapturedPage(
+          key,
+          captured.body,
+        );
+        return {
+          value: {
+            enabled: true,
+            progress,
+            cachedCenters: await this.index.listFeatures(key, 100),
+          },
+          receivedCount: captured.receivedCount,
+        };
+      },
+      classifyFailure: (error) => {
+        const code =
+          error instanceof ApiFailure ? error.code : "VIEWPORT_STORE_FAILED";
+        return {
+          error,
+          code,
+          outcome: code === "SOURCE_THROTTLED" ? "throttled" : "failed",
+        };
+      },
+    });
   }
 }

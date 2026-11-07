@@ -157,7 +157,7 @@ describe("explicit Saturn viewport retrieval", () => {
   });
 
   it("fetches one page per action, resumes and stops after the terminal page", async () => {
-    const { service, fetch, reserve, appendCapturedPage } = setup();
+    const { service, fetch, reserve, appendCapturedPage, journal } = setup();
     expect((await service.status(selected)).progress).toBeNull();
     expect(await service.fetchNext(selected)).toMatchObject({
       progress: { nextPage: 1, pagesFetched: 1 },
@@ -176,6 +176,8 @@ describe("explicit Saturn viewport retrieval", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(reserve).toHaveBeenCalledTimes(2);
     expect(appendCapturedPage).toHaveBeenCalledTimes(2);
+    expect(journal.start).toHaveBeenCalledTimes(3);
+    expect(journal.finish).toHaveBeenNthCalledWith(3, "1", "cache_hit", 0);
     const request = fetch.mock.calls[1]?.[1];
     expect(JSON.parse(request?.body ?? "{}").pageNumber).toBe(1);
   });
@@ -229,13 +231,19 @@ describe("explicit Saturn viewport retrieval", () => {
   });
 
   it("does not contact upstream when the database-wide throttle rejects the request", async () => {
-    const { service, reserve, fetch } = setup();
+    const { service, reserve, fetch, journal } = setup();
     reserve.mockResolvedValueOnce(false);
     await expect(service.fetchNext(selected)).rejects.toMatchObject({
       code: "SOURCE_THROTTLED",
       statusCode: 429,
     });
     expect(fetch).not.toHaveBeenCalled();
+    expect(journal.finish).toHaveBeenCalledWith(
+      "1",
+      "throttled",
+      0,
+      "SOURCE_THROTTLED",
+    );
   });
 
   it("refuses a different configured endpoint before reserving or fetching", async () => {
@@ -300,7 +308,7 @@ describe("explicit Saturn viewport retrieval", () => {
   });
 
   it("never commits a malformed upstream page", async () => {
-    const { service, fetch, appendCapturedPage } = setup();
+    const { service, fetch, appendCapturedPage, journal } = setup();
     fetch.mockResolvedValueOnce({
       bytes: Buffer.from('{"content":[]}'),
       canonicalUrl: "https://bee-saturn.ru/backend/beemaster/query",
@@ -310,5 +318,11 @@ describe("explicit Saturn viewport retrieval", () => {
       code: "INVALID_SOURCE_RESPONSE",
     });
     expect(appendCapturedPage).not.toHaveBeenCalled();
+    expect(journal.finish).toHaveBeenCalledWith(
+      "1",
+      "failed",
+      0,
+      "INVALID_SOURCE_RESPONSE",
+    );
   });
 });

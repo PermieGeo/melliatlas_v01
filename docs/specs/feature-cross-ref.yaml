@@ -84,7 +84,9 @@ features:
       - apps/api/src/modules/sources/providers/saturn/sourceProfile.ts
       - apps/api/src/modules/sources/providers/saturn/SaturnProvider.ts
       - apps/api/src/modules/sources/providerPorts.ts
+      - apps/api/src/modules/sources/auditedSourceRequest.ts
       - apps/api/src/modules/sources/providers/saturn/index.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportPageFetcher.ts
       - apps/api/src/modules/sources/providers/saturn/requestProfile.ts
       - apps/api/src/modules/sources/providers/saturn/saturnViewportOperatorRoutes.ts
       - apps/api/src/modules/sources/providers/saturn/saturnViewportClientRoutes.ts
@@ -107,6 +109,8 @@ features:
       - apps/api/test/saturnMapEvidence.test.ts
       - apps/api/test/saturnViewportQuery.test.ts
       - apps/api/test/saturnProvider.test.ts
+      - apps/api/test/auditedSourceRequest.test.ts
+      - apps/api/test/saturnViewportPageFetcher.test.ts
       - apps/api/test/saturnViewportProgress.test.ts
       - apps/api/integration/saturnViewportIndex.test.ts
       - apps/api/integration/saturnViewportCollection.test.ts

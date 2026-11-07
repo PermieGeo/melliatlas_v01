@@ -6,6 +6,7 @@ import {
   type SaturnDistrictCatalogResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../../../lib/errors.js";
+import { executeAuditedSourceRequest } from "../../auditedSourceRequest.js";
 import {
   RestrictedSourceFetcher,
   SourceFetchFailure,
@@ -106,63 +107,60 @@ export class SaturnDistrictDirectory implements DirectoryPort {
         "Saturn source is not configured",
       );
     }
-    const auditId = await this.journal.start({
-      action: "district_directory",
-      initiator,
+    return executeAuditedSourceRequest({
+      sourceId: SATURN_SOURCE_ID,
+      attempt: { action: "district_directory", initiator },
+      gate: this.gate,
+      journal: this.journal,
+      perform: async () => {
+        const reply = await this.fetcher.fetch(
+          saturnJsonSource(row.name, "/backend/beemaster/district/55"),
+          {
+            url: SATURN_DISTRICT_URL,
+            method: "GET",
+            requestProfile: SATURN_JSON_PROFILE_ID,
+          },
+        );
+        const raw = JSON.parse(reply.bytes.toString("utf8")) as unknown;
+        const districts = this.provider.parseDirectory(raw);
+        if (districts.length === 0) throw new Error("Empty district directory");
+        const json = JSON.stringify(districts);
+        await this.db.query(
+          `INSERT INTO source_saturn_district_catalog
+           (source_id, source_revision, subject_code, catalog, catalog_sha256, retrieved_at)
+           VALUES ($1,$2,'55',$3::jsonb,$4,now())
+           ON CONFLICT (source_id) DO UPDATE SET source_revision=EXCLUDED.source_revision,
+            catalog=EXCLUDED.catalog, catalog_sha256=EXCLUDED.catalog_sha256, retrieved_at=now()`,
+          [
+            SATURN_SOURCE_ID,
+            row.registry_revision,
+            json,
+            createHash("sha256").update(json).digest("hex"),
+          ],
+        );
+        return { value: await this.list(), receivedCount: districts.length };
+      },
+      classifyFailure: (error) => {
+        if (error instanceof ApiFailure) {
+          return {
+            error,
+            code: error.code,
+            outcome: error.code === "SOURCE_THROTTLED" ? "throttled" : "failed",
+          };
+        }
+        return {
+          error: new ApiFailure(
+            502,
+            "DISTRICT_DIRECTORY_FAILED",
+            "Cannot load Saturn district directory",
+          ),
+          code:
+            error instanceof SourceFetchFailure
+              ? error.code
+              : "DISTRICT_DIRECTORY_FAILED",
+          outcome: "failed" as const,
+        };
+      },
     });
-    try {
-      if (!(await this.gate.reserve(SATURN_SOURCE_ID))) {
-        await this.journal.finish(auditId, "throttled", 0, "SOURCE_THROTTLED");
-        throw new ApiFailure(
-          429,
-          "SOURCE_THROTTLED",
-          "Provider cooldown is active",
-        );
-      }
-      const reply = await this.fetcher.fetch(
-        saturnJsonSource(row.name, "/backend/beemaster/district/55"),
-        {
-          url: SATURN_DISTRICT_URL,
-          method: "GET",
-          requestProfile: SATURN_JSON_PROFILE_ID,
-        },
-      );
-      const raw = JSON.parse(reply.bytes.toString("utf8")) as unknown;
-      const districts = this.provider.parseDirectory(raw);
-      if (districts.length === 0) throw new Error("Empty district directory");
-      const json = JSON.stringify(districts);
-      await this.db.query(
-        `INSERT INTO source_saturn_district_catalog
-         (source_id, source_revision, subject_code, catalog, catalog_sha256, retrieved_at)
-         VALUES ($1,$2,'55',$3::jsonb,$4,now())
-         ON CONFLICT (source_id) DO UPDATE SET source_revision=EXCLUDED.source_revision,
-          catalog=EXCLUDED.catalog, catalog_sha256=EXCLUDED.catalog_sha256, retrieved_at=now()`,
-        [
-          SATURN_SOURCE_ID,
-          row.registry_revision,
-          json,
-          createHash("sha256").update(json).digest("hex"),
-        ],
-      );
-      await this.journal.finish(auditId, "succeeded", districts.length);
-      return this.list();
-    } catch (error) {
-      if (!(error instanceof ApiFailure && error.code === "SOURCE_THROTTLED")) {
-        await this.journal.finish(
-          auditId,
-          "failed",
-          0,
-          error instanceof SourceFetchFailure
-            ? error.code
-            : "DISTRICT_DIRECTORY_FAILED",
-        );
-      }
-      if (error instanceof ApiFailure) throw error;
-      throw new ApiFailure(
-        502,
-        "DISTRICT_DIRECTORY_FAILED",
-        "Cannot load Saturn district directory",
-      );
-    }
   }
 }

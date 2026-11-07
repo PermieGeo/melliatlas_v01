@@ -7,7 +7,8 @@
 - `index.ts` is the application composition entry point for the explicit Saturn viewport service and its separate local Web/operator routers. Other functional modules must not import provider-private parsers or repositories.
 - `SaturnProvider.ts` implements the shared `ViewportIndexProvider` and `DistrictDirectoryProvider` capability ports in [providerPorts.ts](../../providerPorts.ts). It owns the observed `subject=55` query translation and validated response decoding without network or database access.
 - `sourceProfile.ts` and `requestProfile.ts` own fixed source identity, endpoint allowlists, and a trusted, non-credential header profile. The generic restricted fetcher requires a registered profile whose source ID and exact URL match before DNS and at every redirect.
-- The viewport collection service owns explicit one-page orchestration, dependency injection, source revision checks, shared throttling, request audit, and persisted progress. `saturnDistrictDirectory.ts` owns explicit directory refresh and cache reads. Index repositories, stored field previews, history and request receipts remain distinct persistence responsibilities.
+- The viewport collection service owns district and revision preflight, checkpoint selection and composition. `saturnViewportPageFetcher.ts` owns the single Saturn HTTP POST and provider-schema validation; its validated response is separately committed by the index repository. The shared [auditedSourceRequest.ts](../../auditedSourceRequest.ts) owns the audited throttle lifecycle for both viewport page collection and explicit directory refresh, without provider URLs or parsing rules.
+- `saturnDistrictDirectory.ts` owns explicit directory refresh and cache reads. Index repositories, stored field previews, history and request receipts remain distinct persistence responsibilities.
 
 ## Owned data and dependencies
 
@@ -20,7 +21,7 @@
 - Source access is off by default; cached list/status reads do not contact Saturn. Live collection requires explicit permitted operator configuration and a one-page user action.
 - Directory entries provide named centers, not district boundaries. A complete viewport pagination checkpoint does not imply full district coverage, valid polygons, treatment details, application dates, 24-hour freshness, or publication permission.
 - The `UpdateMap` window is not yet verified as a treatment interval. Retain separate feature IDs and plan IDs, immutable page evidence, and source revision identity.
-- A database-backed source-wide minimum request gap applies before every external Saturn call. Failure, crash, or pagination inconsistency preserves prior committed evidence.
+- A database-backed source-wide minimum request gap applies before every external Saturn call. Each explicit operation records one attempt and one completion status; cache hits and preflight failures do not reserve a source slot. A failed source fetch still consumes its reservation and is never automatically retried. Failure, crash, or pagination inconsistency preserves prior committed evidence.
 - The local Web router requires a loopback peer and approved origin; the operator router remains independently restricted. Neither is a production authentication mechanism.
 
 ## Extension and verification
