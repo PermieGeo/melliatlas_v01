@@ -35,7 +35,7 @@
       "title": "Local district index download (pilot)",
       "paragraphs": [
         "A separate Saturn map-index download appears above the map. For now, only Yartsevo District is supported: select it, zoom to the area of interest and choose a map-update period. This is not a record of actual treatments.",
-        "Select Check cache to inspect saved pages or Load page to fetch exactly one next page. The source-wide cooldown is at least 65 seconds. Panning or zooming the map never fetches the upstream provider.",
+        "Select Check cache to inspect saved pages or Fetch up to 10 more records to fetch exactly one next page. The source-wide cooldown is at least 65 seconds. Panning or zooming the map never fetches the upstream provider.",
         "The downloaded index contains identifiers and field center points, not polygons or full pesticide details. Completing a rectangle does not establish coverage for the whole district. This is a local, server-enabled pilot only."
       ]
     },

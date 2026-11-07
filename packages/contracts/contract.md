@@ -20,3 +20,5 @@
 - `viewportCollectionSelectionSchema` and `viewportCollectionResultSchema` in `src/viewportCollection.ts` own the operator-only pilot request/response: exact provider district 1477, bounded bbox/UpdateMap interval, and durable page-index progress. They do not represent source treatment polygons, verified district coverage or a risk assessment.
 
 - `viewportCollectionSelectionSchema` and `viewportCollectionResultSchema` are also reused by the local-only beekeeper viewport-index pilot. The schema is intentionally restricted to one verified district and a short bounded geographic/UpdateMap window; client use grants no access to operator endpoints or complete treatment records.
+
+- `viewportCollectionResultSchema` optionally includes up to 100 persisted field-center summaries for local-only map index display, distinct from published treatment geometry. `viewportCacheHistoryResponseSchema` validates the bounded operator-only history of committed viewport keys and page receipts without original source payloads. No source access capability is granted by these schemas.

@@ -63,6 +63,9 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
     >
       <h3 className="font-semibold">{text("viewportTitle")}</h3>
       <p className="text-xs text-slate-600">{text("viewportDisclaimer")}</p>
+      <p className="text-xs text-slate-600">
+        {text("viewportPageExplanation")}
+      </p>
       <p className="text-sm font-medium">{text("viewportDistrict")}: 1477</p>
       <p className="text-xs text-slate-600">{text("viewportGuideLimits")}</p>
       <details className="rounded-lg border border-slate-200 p-3">

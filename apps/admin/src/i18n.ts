@@ -1,12 +1,15 @@
+import { cacheHistoryMessages } from "./cacheHistoryMessages";
+
 export const messages = {
   ru: {
+    ...cacheHistoryMessages.ru,
     viewportGuideTitle: "Как загружать данные — три шага",
     viewportGuideOne:
       "1. Откройте обычную карту пчеловода и выберите Ярцевский район. Карта переместится к нему.",
     viewportGuideTwo:
       "2. Приблизьте нужные поля и задайте период обновлений карты (это не даты фактических обработок).",
     viewportGuideThree:
-      "3. Нажмите «Загрузить страницу». Данные сохраняются на сервере. Каждое следующее нажатие продолжит загрузку после паузы источника.",
+      "3. Нажмите «Получить ещё до 10 записей». Данные сохраняются на сервере. Каждое следующее нажатие продолжит загрузку после паузы источника.",
     viewportGuideOpen: "Перейти к карте пчеловода",
     viewportGuideLimits:
       "Пилот: только Ярцевский район. Получаем индекс центров полей; контуры и препараты пока загружаются отдельно. Запрос не доказывает полноту района.",
@@ -24,7 +27,7 @@ export const messages = {
     viewportFrom: "UpdateMap с",
     viewportTo: "UpdateMap по",
     viewportCheck: "Проверить сохранённое",
-    viewportFetch: "Загрузить следующую страницу",
+    viewportFetch: "Получить ещё до 10 записей",
     viewportDisabled:
       "Реальные запросы выключены. Настройте SATURN_VIEWPORT_LIVE_ENABLED=true на backend после проверки условий доступа.",
     viewportEmpty: "Для этого квадрата ещё не загружено страниц.",
@@ -198,6 +201,7 @@ export const messages = {
     revision: "Ревизия",
   },
   en: {
+    ...cacheHistoryMessages.en,
     viewportGuideTitle: "How to load data — three steps",
     viewportGuideOne:
       "1. Open the beekeeper map and choose Yartsevo District. The map will move to it.",

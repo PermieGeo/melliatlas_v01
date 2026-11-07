@@ -88,19 +88,23 @@ function setup() {
     };
     return status;
   });
+  const index = {
+    getStatus,
+    appendCapturedPage,
+    listFeatures: vi.fn(async () => [
+      { featureId: "1", planId: "100", centerX: 32.5, centerY: 55 },
+    ]),
+  } as unknown as SaturnViewportIndexRepository;
   const service = new SaturnViewportCollectionService(
     { query } as unknown as Pool,
     true,
     {
-      index: {
-        getStatus,
-        appendCapturedPage,
-      } as unknown as SaturnViewportIndexRepository,
+      index,
       gate: { reserve },
       fetcher: { fetch } as unknown as RestrictedSourceFetcher,
     },
   );
-  return { service, query, reserve, fetch, appendCapturedPage };
+  return { service, query, reserve, fetch, appendCapturedPage, index };
 }
 
 describe("explicit Saturn viewport retrieval", () => {
@@ -123,6 +127,7 @@ describe("explicit Saturn viewport retrieval", () => {
     expect((await service.status(selected)).progress).toBeNull();
     expect(await service.fetchNext(selected)).toMatchObject({
       progress: { nextPage: 1, pagesFetched: 1 },
+      cachedCenters: [{ featureId: "1", planId: "100" }],
     });
     expect(await service.fetchNext(selected)).toMatchObject({
       progress: {
@@ -142,20 +147,23 @@ describe("explicit Saturn viewport retrieval", () => {
   });
 
   it("disables all live traffic without an explicit backend opt-in", async () => {
-    const { service, fetch, reserve } = setup();
+    const { service, fetch, reserve, query, index } = setup();
+    await service.fetchNext(selected);
     const disabled = new SaturnViewportCollectionService(
-      { query: vi.fn() } as unknown as Pool,
+      { query } as unknown as Pool,
       false,
+      { index },
     );
-    expect(await disabled.status(selected)).toEqual({
+    expect(await disabled.status(selected)).toMatchObject({
       enabled: false,
-      progress: null,
+      progress: { pagesFetched: 1 },
+      cachedCenters: [{ featureId: "1" }],
     });
     await expect(disabled.fetchNext(selected)).rejects.toMatchObject({
       code: "SATURN_VIEWPORT_DISABLED",
     });
-    expect(fetch).not.toHaveBeenCalled();
-    expect(reserve).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(reserve).toHaveBeenCalledTimes(1);
     expect(service).toBeTruthy();
   });
 

@@ -126,9 +126,9 @@ describe("Saturn viewport live collection persistence", () => {
       pagesFetched: 1,
     });
     const resumed = new SaturnViewportCollectionService(pool, true, deps);
-    expect((await resumed.status(selection)).progress).toMatchObject({
-      nextPage: 1,
-    });
+    const restored = await resumed.status(selection);
+    expect(restored.progress).toMatchObject({ nextPage: 1 });
+    expect(restored.cachedCenters).toHaveLength(10);
     expect((await resumed.fetchNext(selection)).progress).toMatchObject({
       nextPage: 2,
       pagesFetched: 2,
@@ -144,6 +144,25 @@ describe("Saturn viewport live collection persistence", () => {
       "SELECT COUNT(*)::integer AS n FROM source_viewport_index_features WHERE source_id='treatment-feed'",
     );
     expect(count.rows[0]?.n).toBe(22);
+    const history = await resumed.history();
+    expect(history.entries).toHaveLength(1);
+    expect(history.entries[0]).toMatchObject({
+      districtId: 1477,
+      pagesFetched: 3,
+      entriesReceived: 22,
+      totalPages: 3,
+      state: "viewport_index_complete",
+      fromDate: selection.fromDate,
+      toDate: selection.toDate,
+    });
+    expect(
+      history.entries[0]?.recentPages.map((p) => [p.pageNumber, p.recordCount]),
+    ).toEqual([
+      [2, 2],
+      [1, 10],
+      [0, 10],
+    ]);
+    expect(history.entries[0]?.updatedAt).toMatch(/^\d{4}-/);
     const districtCache = await pool.query<{ n: number }>(
       "SELECT COUNT(*)::integer AS n FROM pg_tables WHERE schemaname=$1 AND tablename='source_district_cache'",
       [schema],

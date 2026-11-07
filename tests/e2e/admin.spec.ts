@@ -11,6 +11,8 @@ test("administrator settings do not implicitly start a source fetch", async ({
     if (url.endsWith("/api/v1/sources")) result = { sources: [] };
     if (url.endsWith("/operator/provider/region-scan"))
       result = { regionCode: 55, nextPage: 0, scan: null };
+    if (url.endsWith("/operator/provider/viewport/history"))
+      result = { entries: [] };
     if (url.endsWith("/operator/provider/status"))
       result = {
         sourceConfigured: true,
@@ -62,6 +64,8 @@ test("shows development-only import guidance and inline help", async ({
   await page.route("**/api/v1/**", async (route) => {
     const url = route.request().url();
     let result: unknown = { notices: [] };
+    if (url.endsWith("/operator/provider/viewport/history"))
+      result = { entries: [] };
     if (url.endsWith("/operator/provider/status"))
       result = {
         sourceConfigured: true,

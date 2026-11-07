@@ -53,8 +53,19 @@ export type ViewportCollectionSelection = z.infer<
   typeof viewportCollectionSelectionSchema
 >;
 
+export const viewportIndexCenterSchema = z
+  .object({
+    featureId: z.string().regex(/^[1-9][0-9]*$/),
+    planId: z.string().regex(/^[1-9][0-9]*$/),
+    centerX: z.number().finite().min(-180).max(180),
+    centerY: z.number().finite().min(-90).max(90),
+  })
+  .strict();
+export type ViewportIndexCenter = z.infer<typeof viewportIndexCenterSchema>;
+
 export const viewportCollectionResultSchema = z
   .object({
+    cachedCenters: z.array(viewportIndexCenterSchema).max(100).optional(),
     enabled: z.boolean(),
     progress: z
       .object({
@@ -75,4 +86,51 @@ export const viewportCollectionResultSchema = z
 
 export type ViewportCollectionResult = z.infer<
   typeof viewportCollectionResultSchema
+>;
+
+/** Bounded, read-only history of actual PostgreSQL viewport-index page checkpoints. */
+export const viewportCacheHistoryResponseSchema = z
+  .object({
+    entries: z
+      .array(
+        z
+          .object({
+            requestHash: z.string().regex(/^[0-9a-f]{64}$/),
+            sourceRevision: z.string().min(1),
+            sourceRevisionCurrent: z.boolean(),
+            districtId: z.number().int().positive(),
+            bbox: z
+              .object({
+                west: z.number(),
+                south: z.number(),
+                east: z.number(),
+                north: z.number(),
+              })
+              .strict(),
+            fromDate: isoDate,
+            toDate: isoDate,
+            state: z.enum(["partial", "viewport_index_complete"]),
+            pagesFetched: z.number().int().nonnegative(),
+            entriesReceived: z.number().int().nonnegative(),
+            totalPages: z.number().int().nonnegative().nullable(),
+            updatedAt: z.string().datetime(),
+            recentPages: z
+              .array(
+                z
+                  .object({
+                    pageNumber: z.number().int().nonnegative(),
+                    storedAt: z.string().datetime(),
+                    recordCount: z.number().int().nonnegative(),
+                  })
+                  .strict(),
+              )
+              .max(5),
+          })
+          .strict(),
+      )
+      .max(20),
+  })
+  .strict();
+export type ViewportCacheHistoryResponse = z.infer<
+  typeof viewportCacheHistoryResponseSchema
 >;
