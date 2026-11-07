@@ -1,13 +1,14 @@
 // Feature IDs: SOURCES.SAFE_FETCH
 import { describe, expect, it } from "vitest";
 import { buildSourceRequestHeaders } from "../src/modules/sources/sourceHttpHeaders.js";
+import { SATURN_JSON_REQUEST_PROFILE } from "../src/modules/sources/providers/saturn/requestProfile.js";
 
 describe("Saturn JSON request headers", () => {
   it("uses first-party browser-compatible metadata without credentials", () => {
     const headers = buildSourceRequestHeaders(
       "POST",
       '{"subject":"55"}',
-      "saturn-json",
+      SATURN_JSON_REQUEST_PROFILE.headers,
     );
     expect(headers).toMatchObject({
       Accept: "application/json, text/plain, */*",
@@ -24,7 +25,11 @@ describe("Saturn JSON request headers", () => {
   });
 
   it("does not send a browser POST Origin for GET district catalogs", () => {
-    const headers = buildSourceRequestHeaders("GET", undefined, "saturn-json");
+    const headers = buildSourceRequestHeaders(
+      "GET",
+      undefined,
+      SATURN_JSON_REQUEST_PROFILE.headers,
+    );
     expect(headers.Referer).toBe("https://bee-saturn.ru/");
     expect(headers).not.toHaveProperty("Origin");
     expect(headers).not.toHaveProperty("Content-Type");

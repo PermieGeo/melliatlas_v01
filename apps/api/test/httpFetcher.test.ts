@@ -5,9 +5,11 @@ import {
   SourceFetchFailure,
   isPublicAddress,
   type ResolvedAddress,
+  type SourceRequestProfile,
   type SourceTransport,
   type TransportResponse,
 } from "../src/modules/sources/httpFetcher.js";
+import { SATURN_JSON_REQUEST_PROFILE } from "../src/modules/sources/providers/saturn/requestProfile.js";
 
 const source = {
   id: "test-treatment",
@@ -47,6 +49,7 @@ function withStub(
   transport: SourceTransport,
   resolver = vi.fn(async () => [publicAddress]),
   now = () => 1000,
+  requestProfiles: readonly SourceRequestProfile[] = [],
 ) {
   return {
     fetcher: new RestrictedSourceFetcher({
@@ -54,6 +57,7 @@ function withStub(
       transport,
       now,
       sleep: async () => {},
+      requestProfiles,
     }),
     resolver,
   };
@@ -92,9 +96,12 @@ describe("restricted source fetcher", () => {
 
   it("uses the browser-compatible Saturn JSON profile only on exact approved endpoints", async () => {
     const transport = vi.fn(async () => ok());
-    const { fetcher, resolver } = withStub(transport);
+    const { fetcher, resolver } = withStub(transport, undefined, undefined, [
+      SATURN_JSON_REQUEST_PROFILE,
+    ]);
     const saturnSource = {
       ...source,
+      id: "treatment-feed",
       locations: [
         {
           hostname: "bee-saturn.ru",
@@ -121,7 +128,7 @@ describe("restricted source fetcher", () => {
       1000,
       100,
       undefined,
-      "saturn-json",
+      SATURN_JSON_REQUEST_PROFILE.headers,
     );
     expect(resolver).toHaveBeenCalledTimes(1);
 
@@ -134,6 +141,77 @@ describe("restricted source fetcher", () => {
       }),
     ).rejects.toMatchObject({ code: "DESTINATION_DENIED" });
     expect(deniedTransport).not.toHaveBeenCalled();
+
+    await expect(
+      fetcher.fetch(source, {
+        ...request,
+        requestProfile: "saturn-json",
+      }),
+    ).rejects.toMatchObject({ code: "DESTINATION_DENIED" });
+    await expect(
+      fetcher.fetch(
+        {
+          ...saturnSource,
+          locations: [
+            {
+              hostname: "bee-saturn.ru",
+              pathPrefixes: ["/backend/beemaster"],
+            },
+          ],
+        },
+        {
+          ...saturnRequest,
+          url: "https://bee-saturn.ru/backend/beemaster/unverified",
+        },
+      ),
+    ).rejects.toMatchObject({ code: "DESTINATION_DENIED" });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses unregistered profiles and duplicate profile identities", async () => {
+    const transport = vi.fn(async () => ok());
+    const { fetcher } = withStub(transport);
+    await expect(
+      fetcher.fetch(source, { ...request, requestProfile: "unregistered" }),
+    ).rejects.toMatchObject({ code: "DESTINATION_DENIED" });
+    expect(transport).not.toHaveBeenCalled();
+    expect(
+      () =>
+        new RestrictedSourceFetcher({
+          requestProfiles: [
+            SATURN_JSON_REQUEST_PROFILE,
+            SATURN_JSON_REQUEST_PROFILE,
+          ],
+        }),
+    ).toThrow("Duplicate source request profile ID");
+  });
+
+  it("does not reuse an adapter profile after a redirect to another endpoint", async () => {
+    const transport = vi.fn(async () => ({
+      status: 302,
+      headers: {
+        location: "https://bee-saturn.ru/backend/beemaster/unverified",
+      },
+      bytes: Buffer.alloc(0),
+    }));
+    const { fetcher } = withStub(transport, undefined, undefined, [
+      SATURN_JSON_REQUEST_PROFILE,
+    ]);
+    const saturnSource = {
+      ...source,
+      id: "treatment-feed",
+      locations: [
+        { hostname: "bee-saturn.ru", pathPrefixes: ["/backend/beemaster"] },
+      ],
+    };
+    await expect(
+      fetcher.fetch(saturnSource, {
+        url: "https://bee-saturn.ru/backend/beemaster/query",
+        method: "GET",
+        requestProfile: "saturn-json",
+      }),
+    ).rejects.toMatchObject({ code: "DESTINATION_DENIED" });
+    expect(transport).toHaveBeenCalledTimes(1);
   });
 
   it("does not allow configured municipal sources to bypass source approval", async () => {

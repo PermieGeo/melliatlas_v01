@@ -30,6 +30,12 @@ The current implementation has a **restricted HTTPS fetch transport** used by a 
 
 First-party, institutional and third-party sources each require their own license/access decision. Source adapters are separately switchable. The first source priority is a **configurable structured treatment provider** (the historical Saturn portal is a reference candidate), followed by municipal notices, OpenStreetMap/Overpass, Open-Meteo and Copernicus Data Space. The purported Saturn endpoint, region mapping and unrestricted usage asserted in the reference prototype are **not** treated as verified contracts.
 
+### Provider-specific request policy boundary
+
+The generic restricted HTTPS transport does not embed Saturn URLs or branch on Saturn-specific profile identifiers. Instead, each trusted provider adapter may register a named `SourceRequestProfile` with an exact source ID, exact endpoint URLs, and constrained, non-credential header metadata. The fetcher rejects missing, mismatched, or unregistered profiles before DNS and applies its ordinary approved-destination, DNS/IP, TLS, redirect, response-size, and MIME checks independently of the profile.
+
+The first adapter-owned policy lives in [Saturn's provider module](../apps/api/src/modules/sources/providers/saturn/contract.md). The existing Saturn query and collection implementations still need to be moved behind an explicit capability interface; this incremental separation does not claim that the broader ingestion module has been refactored.
+
 ## Spatial processing
 
 Use WGS84 (EPSG:4326) at HTTP boundaries; use PostGIS `geography` for meter-based distance operations and spatial indexes for polygon searches. Do not infer field geometry from place-name centroids or label uncertain geometry as cadastral precision. Mark observation precision (`exact_polygon`, `approximate_area`, `text_only`). All environmental conclusions require documented, independently verified models and field validation.

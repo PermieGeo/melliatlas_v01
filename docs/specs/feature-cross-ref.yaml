@@ -81,7 +81,8 @@ features:
       - apps/api/src/modules/sources/saturnDistrictDirectory.ts
       - apps/api/src/modules/sources/saturnRequestJournal.ts
       - apps/api/src/modules/sources/saturnStoredIndex.ts
-      - apps/api/src/modules/sources/saturnSourceProfile.ts
+      - apps/api/src/modules/sources/providers/saturn/sourceProfile.ts
+      - apps/api/src/modules/sources/providers/saturn/requestProfile.ts
       - apps/api/src/modules/sources/saturnViewportOperatorRoutes.ts
       - apps/api/src/modules/sources/saturnViewportClientRoutes.ts
       - apps/web/src/components/DistrictViewportPanel.tsx
@@ -129,7 +130,10 @@ features:
       - apps/api/src/modules/sources/destinationPolicy.ts
       - apps/api/src/modules/sources/municipalSourceRegistry.ts
       - apps/api/src/modules/sources/httpFetcher.ts
+      - apps/api/src/modules/sources/sourceTransport.ts
+      - apps/api/src/modules/sources/sourceFetchFailure.ts
       - apps/api/src/modules/sources/sourceHttpHeaders.ts
+      - apps/api/src/modules/sources/providers/saturn/requestProfile.ts
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/test/municipalSourceRegistry.test.ts
