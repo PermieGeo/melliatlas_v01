@@ -71,6 +71,13 @@ describe("source-wide provider request throttle", () => {
       [sourceA],
     );
     expect(await restarted.reserve(sourceA)).toBe(true);
+    const slot = await pool.query<{ remaining_ms: number }>(
+      `SELECT EXTRACT(EPOCH FROM (next_allowed_at - clock_timestamp())) * 1000 AS remaining_ms
+       FROM source_request_throttle WHERE source_id=$1`,
+      [sourceA],
+    );
+    expect(Number(slot.rows[0].remaining_ms)).toBeGreaterThan(18_000);
+    expect(Number(slot.rows[0].remaining_ms)).toBeLessThanOrEqual(20_000);
     expect(await new ProviderRequestThrottle(pool).reserve(sourceA)).toBe(
       false,
     );

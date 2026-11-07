@@ -1,7 +1,8 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import type { Pool } from "pg";
 
-export const SOURCE_REQUEST_GAP_MS = 65_000;
+// Minimum spacing for explicit, authorized pilot requests; provider limits take precedence.
+export const SOURCE_REQUEST_GAP_MS = 20_000;
 
 export type ProviderRequestGate = {
   reserve(sourceId: string): Promise<boolean>;

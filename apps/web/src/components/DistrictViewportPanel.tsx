@@ -54,6 +54,7 @@ export function DistrictViewportPanel({
   const [error, setError] = useState("");
   const requestSequence = useRef(0);
   const districtSequence = useRef(0);
+  const catalogRequestSequence = useRef(0);
   const key = `${districtId}|${fromDate}|${toDate}|${viewport?.join(",") ?? ""}`;
   const districts = (
     catalog?.districts.length ? catalog.districts : [pilotDistrict]
@@ -88,14 +89,14 @@ export function DistrictViewportPanel({
   const complete = progress?.progress?.state === "viewport_index_complete";
 
   useEffect(() => {
-    let alive = true;
+    const sequence = ++catalogRequestSequence.current;
     void loadSaturnDistrictCatalog()
       .then((value) => {
-        if (alive) setCatalog(value);
+        if (catalogRequestSequence.current === sequence) setCatalog(value);
       })
       .catch(() => {});
     return () => {
-      alive = false;
+      catalogRequestSequence.current++;
     };
   }, []);
 
@@ -141,14 +142,17 @@ export function DistrictViewportPanel({
   }
 
   async function refreshDirectory(): Promise<void> {
+    const sequence = ++catalogRequestSequence.current;
     setCatalogBusy(true);
     setError("");
     try {
-      setCatalog(await refreshSaturnDistrictCatalog());
+      const result = await refreshSaturnDistrictCatalog();
+      if (catalogRequestSequence.current === sequence) setCatalog(result);
     } catch (cause) {
-      setError(localizeError(cause));
+      if (catalogRequestSequence.current === sequence)
+        setError(localizeError(cause));
     } finally {
-      setCatalogBusy(false);
+      if (catalogRequestSequence.current === sequence) setCatalogBusy(false);
     }
   }
 
@@ -211,9 +215,9 @@ export function DistrictViewportPanel({
         >
           {catalogBusy ? t("districtBusy") : t("districtRefreshCatalog")}
         </button>
-        <span>
+        <span role="status">
           {catalog?.retrievedAt
-            ? `${t("districtCatalogUpdated")}: ${new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", { dateStyle: "medium" }).format(new Date(catalog.retrievedAt))}`
+            ? `${t("districtCatalogUpdated")}: ${new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", { dateStyle: "medium" }).format(new Date(catalog.retrievedAt))}. ${t("districtCatalogCount")}: ${catalog.districts.length}`
             : t("districtCatalogMissing")}
         </span>
       </div>

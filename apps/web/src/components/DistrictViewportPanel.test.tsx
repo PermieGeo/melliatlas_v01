@@ -1,5 +1,6 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -8,11 +9,14 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { DistrictViewportPanel } from "./DistrictViewportPanel";
-import type { ViewportCollectionResult } from "@melliatlas/contracts";
+import type {
+  SaturnDistrictCatalogResponse,
+  ViewportCollectionResult,
+} from "@melliatlas/contracts";
 
 const { status, next, directory, refreshDirectory, points } = vi.hoisted(
   () => ({
-    directory: vi.fn(async () => ({
+    directory: vi.fn(async (): Promise<SaturnDistrictCatalogResponse> => ({
       enabled: true,
       retrievedAt: null,
       districts: [],
@@ -263,5 +267,57 @@ it("loads the provider district directory explicitly and supports selection of a
     { target: { value: "2670" } },
   );
   expect(focus).toHaveBeenCalledWith({ lat: 54.78, lon: 32.05 });
+  expect(next).not.toHaveBeenCalled();
+});
+
+it("keeps an explicitly refreshed directory when an earlier cached read finishes later", async () => {
+  let resolveOld: ((value: SaturnDistrictCatalogResponse) => void) | undefined;
+  directory.mockImplementationOnce(
+    () =>
+      new Promise<SaturnDistrictCatalogResponse>((resolve) => {
+        resolveOld = resolve;
+      }),
+  );
+  render(
+    <DistrictViewportPanel
+      locale="ru"
+      viewport={bbox}
+      onFocusDistrict={() => {}}
+      onCachedCentersChange={() => {}}
+    />,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Получить все районы из Сатурна" }),
+  );
+  await screen.findByRole("option", { name: "Город Смоленск" });
+  expect(screen.getByText(/Районов в списке: 2/)).toBeTruthy();
+  await act(async () => {
+    resolveOld?.({ enabled: true, retrievedAt: null, districts: [] });
+  });
+  expect(screen.getByRole("option", { name: "Город Смоленск" })).toBeTruthy();
+  expect(screen.getByText(/Районов в списке: 2/)).toBeTruthy();
+  expect(next).not.toHaveBeenCalled();
+});
+
+it("renders a previously persisted district catalog without fetching Saturn", async () => {
+  directory.mockResolvedValueOnce({
+    enabled: true,
+    retrievedAt: "2026-11-07T00:00:00.000Z",
+    districts: [
+      { id: 1477, name: "Ярцевский район", latitude: 55.06, longitude: 32.68 },
+      { id: 2670, name: "Город Смоленск", latitude: 54.78, longitude: 32.05 },
+    ],
+  });
+  render(
+    <DistrictViewportPanel
+      locale="ru"
+      viewport={bbox}
+      onFocusDistrict={() => {}}
+      onCachedCentersChange={() => {}}
+    />,
+  );
+  await screen.findByRole("option", { name: "Город Смоленск" });
+  expect(screen.getByText(/Районов в списке: 2/)).toBeTruthy();
+  expect(refreshDirectory).not.toHaveBeenCalled();
   expect(next).not.toHaveBeenCalled();
 });
