@@ -1,7 +1,7 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { describe, expect, it, vi } from "vitest";
 import type { Pool } from "pg";
-import { SaturnDistrictDirectory } from "../src/modules/sources/saturnDistrictDirectory.js";
+import { SaturnDistrictDirectory } from "../src/modules/sources/providers/saturn/saturnDistrictDirectory.js";
 import type { RestrictedSourceFetcher } from "../src/modules/sources/httpFetcher.js";
 
 const districts = [

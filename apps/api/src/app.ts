@@ -20,8 +20,8 @@ import { createRegionOperatorRouter } from "./modules/sources/regionOperatorRout
 import {
   createSaturnViewportOperatorRouter,
   type ViewportCollectionActions,
-} from "./modules/sources/saturnViewportOperatorRoutes.js";
-import { createSaturnViewportClientRouter } from "./modules/sources/saturnViewportClientRoutes.js";
+  createSaturnViewportClientRouter,
+} from "./modules/sources/providers/saturn/index.js";
 
 export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;

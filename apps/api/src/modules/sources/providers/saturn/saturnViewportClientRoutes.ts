@@ -8,7 +8,7 @@ import {
   type SaturnDistrictCatalogResponse,
   type SaturnDistrictPointsResponse,
 } from "@melliatlas/contracts";
-import { ApiFailure } from "../../lib/errors.js";
+import { ApiFailure } from "../../../../lib/errors.js";
 
 export type ClientViewportActions = {
   status(

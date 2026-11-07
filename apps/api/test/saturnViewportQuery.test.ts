@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildSaturnViewportQuery,
   parseSaturnViewportPage,
-} from "../src/modules/sources/saturnViewportQuery.js";
+} from "../src/modules/sources/providers/saturn/saturnViewportQuery.js";
 
 const fixture = (name: string): unknown =>
   JSON.parse(

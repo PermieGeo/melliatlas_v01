@@ -5,23 +5,25 @@ import {
   saturnDistrictCatalogResponseSchema,
   type SaturnDistrictCatalogResponse,
 } from "@melliatlas/contracts";
-import { ApiFailure } from "../../lib/errors.js";
-import { RestrictedSourceFetcher, SourceFetchFailure } from "./httpFetcher.js";
-import { parseSaturnDistrictCatalog } from "./saturnMapEvidence.js";
+import { ApiFailure } from "../../../../lib/errors.js";
+import {
+  RestrictedSourceFetcher,
+  SourceFetchFailure,
+} from "../../httpFetcher.js";
+import type { DistrictDirectoryProvider } from "../../providerPorts.js";
+import type { SaturnDistrict } from "./saturnMapEvidence.js";
+import { SaturnProvider } from "./SaturnProvider.js";
 import {
   ProviderRequestThrottle,
   type ProviderRequestGate,
-} from "./providerRequestThrottle.js";
+} from "../../providerRequestThrottle.js";
 import { SaturnRequestJournal } from "./saturnRequestJournal.js";
 import {
   SATURN_DISTRICT_URL,
   SATURN_SOURCE_ID,
   saturnJsonSource,
-} from "./providers/saturn/sourceProfile.js";
-import {
-  SATURN_JSON_PROFILE_ID,
-  SATURN_JSON_REQUEST_PROFILE,
-} from "./providers/saturn/requestProfile.js";
+} from "./sourceProfile.js";
+import { SATURN_JSON_PROFILE_ID } from "./requestProfile.js";
 
 export type DirectoryPort = {
   list(): Promise<SaturnDistrictCatalogResponse>;
@@ -34,6 +36,7 @@ export class SaturnDistrictDirectory implements DirectoryPort {
   private readonly fetcher: Pick<RestrictedSourceFetcher, "fetch">;
   private readonly gate: ProviderRequestGate;
   private readonly journal: Pick<SaturnRequestJournal, "start" | "finish">;
+  private readonly provider: DistrictDirectoryProvider<SaturnDistrict>;
 
   constructor(
     private readonly db: Pick<Pool, "query">,
@@ -42,12 +45,14 @@ export class SaturnDistrictDirectory implements DirectoryPort {
       fetcher?: Pick<RestrictedSourceFetcher, "fetch">;
       gate?: ProviderRequestGate;
       journal?: Pick<SaturnRequestJournal, "start" | "finish">;
+      provider?: DistrictDirectoryProvider<SaturnDistrict>;
     } = {},
   ) {
+    this.provider = deps.provider ?? new SaturnProvider();
     this.fetcher =
       deps.fetcher ??
       new RestrictedSourceFetcher({
-        requestProfiles: [SATURN_JSON_REQUEST_PROFILE],
+        requestProfiles: this.provider.requestProfiles,
       });
     this.gate = deps.gate ?? new ProviderRequestThrottle(db as Pool);
     this.journal = deps.journal ?? new SaturnRequestJournal(db);
@@ -65,7 +70,7 @@ export class SaturnDistrictDirectory implements DirectoryPort {
     const row = result.rows[0];
     return saturnDistrictCatalogResponseSchema.parse({
       enabled: this.enabled,
-      districts: row ? parseSaturnDistrictCatalog(row.catalog) : [],
+      districts: row ? this.provider.parseDirectory(row.catalog) : [],
       retrievedAt: row?.retrieved_at.toISOString() ?? null,
     });
   }
@@ -123,7 +128,7 @@ export class SaturnDistrictDirectory implements DirectoryPort {
         },
       );
       const raw = JSON.parse(reply.bytes.toString("utf8")) as unknown;
-      const districts = parseSaturnDistrictCatalog(raw);
+      const districts = this.provider.parseDirectory(raw);
       if (districts.length === 0) throw new Error("Empty district directory");
       const json = JSON.stringify(districts);
       await this.db.query(

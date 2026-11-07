@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseSaturnDistrictCatalog,
   parseSaturnPolygonJsonp,
-} from "../src/modules/sources/saturnMapEvidence.js";
+} from "../src/modules/sources/providers/saturn/saturnMapEvidence.js";
 
 const callback = "id_179398920866287088800";
 const geometry = {

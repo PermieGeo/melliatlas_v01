@@ -6,8 +6,8 @@ import {
   advanceSaturnViewportProgress,
   countViewportPlanIds,
   startSaturnViewportProgress,
-} from "../src/modules/sources/saturnViewportProgress.js";
-import { validateSaturnViewportQuery } from "../src/modules/sources/saturnViewportQuery.js";
+} from "../src/modules/sources/providers/saturn/saturnViewportProgress.js";
+import { validateSaturnViewportQuery } from "../src/modules/sources/providers/saturn/saturnViewportQuery.js";
 
 function fixture(name: string): unknown {
   return JSON.parse(

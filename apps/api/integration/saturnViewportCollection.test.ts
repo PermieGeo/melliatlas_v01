@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Pool } from "pg";
-import { SaturnViewportCollectionService } from "../src/modules/sources/saturnViewportCollection.js";
+import { SaturnViewportCollectionService } from "../src/modules/sources/providers/saturn/saturnViewportCollection.js";
 import type { RestrictedSourceFetcher } from "../src/modules/sources/httpFetcher.js";
 import type { ViewportCollectionSelection } from "@melliatlas/contracts";
 

@@ -72,19 +72,22 @@ features:
       - apps/admin/src/components/DistrictCachePanel.tsx
       - apps/api/src/modules/sources/districtCacheState.ts
       - apps/api/src/modules/sources/districtCacheRepository.ts
-      - apps/api/src/modules/sources/saturnMapEvidence.ts
-      - apps/api/src/modules/sources/saturnViewportQuery.ts
-      - apps/api/src/modules/sources/saturnViewportProgress.ts
-      - apps/api/src/modules/sources/saturnViewportIndexRepository.ts
-      - apps/api/src/modules/sources/saturnViewportCollection.ts
-      - apps/api/src/modules/sources/saturnViewportCacheHistory.ts
-      - apps/api/src/modules/sources/saturnDistrictDirectory.ts
-      - apps/api/src/modules/sources/saturnRequestJournal.ts
-      - apps/api/src/modules/sources/saturnStoredIndex.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnMapEvidence.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportQuery.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportProgress.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportIndexRepository.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportCollection.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportCacheHistory.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnDistrictDirectory.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnRequestJournal.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnStoredIndex.ts
       - apps/api/src/modules/sources/providers/saturn/sourceProfile.ts
+      - apps/api/src/modules/sources/providers/saturn/SaturnProvider.ts
+      - apps/api/src/modules/sources/providerPorts.ts
+      - apps/api/src/modules/sources/providers/saturn/index.ts
       - apps/api/src/modules/sources/providers/saturn/requestProfile.ts
-      - apps/api/src/modules/sources/saturnViewportOperatorRoutes.ts
-      - apps/api/src/modules/sources/saturnViewportClientRoutes.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportOperatorRoutes.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnViewportClientRoutes.ts
       - apps/web/src/components/DistrictViewportPanel.tsx
       - apps/web/src/App.tsx
       - apps/web/src/components/MapCanvas.tsx
@@ -103,6 +106,7 @@ features:
       - apps/api/test/districtCacheState.test.ts
       - apps/api/test/saturnMapEvidence.test.ts
       - apps/api/test/saturnViewportQuery.test.ts
+      - apps/api/test/saturnProvider.test.ts
       - apps/api/test/saturnViewportProgress.test.ts
       - apps/api/integration/saturnViewportIndex.test.ts
       - apps/api/integration/saturnViewportCollection.test.ts
