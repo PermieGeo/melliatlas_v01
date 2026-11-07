@@ -85,6 +85,18 @@ test("shows development-only import guidance and inline help", async ({
   });
   await page.goto("http://127.0.0.1:5174");
   await page.getByRole("button", { name: "Загрузка данных" }).click();
+  const dataCollection = page.getByRole("region", { name: "Загрузка данных" });
+  const diagnosticsDisclosure = dataCollection.getByText(
+    "Дополнительно: ручная диагностика источника и технические координаты",
+    { exact: true },
+  );
+  await expect(diagnosticsDisclosure).toHaveCount(1);
+  await diagnosticsDisclosure.click();
+  await expect(
+    dataCollection.getByText("Точные координаты и даты квадрата", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page.getByText("На период разработки")).toBeVisible();
   await expect(page.getByText(/Её заменит выбор района/)).toBeVisible();
   const help = page.getByRole("button", {

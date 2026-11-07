@@ -13,3 +13,5 @@
 - `loadViewportProgress` and `fetchViewportNextPage` use shared selection/result schemas for the operator-only viewport index API. The former is read-only; the latter requests at most one upstream map-index page through backend policy. Neither calls `bee-saturn.ru` from the browser or retrieves/publishes polygon geometries.
 
 - `loadViewportCacheHistory()` is an operator-only, read-only PostGIS cache journal endpoint. It returns at most 20 saved request keys and five page receipts per key, validated by `viewportCacheHistoryResponseSchema`. It never starts a provider fetch or returns raw provider JSON; the initiating client is not stored.
+
+- `loadSaturnRequestLog()` returns the bounded, persisted explicit-attempt log (new `/query` and district-directory operations only), including sanitized failures and throttle events. `loadStoredViewportFields(hash)` returns a bounded read-only list of saved feature/plan center IDs; `loadOperatorSaturnDistricts()` reads provider district names from the cached catalog. None of these functions call Saturn. The legacy diagnostic importer has separate run status.

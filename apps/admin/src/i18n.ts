@@ -5,16 +5,17 @@ export const messages = {
     ...cacheHistoryMessages.ru,
     viewportGuideTitle: "Как загружать данные — три шага",
     viewportGuideOne:
-      "1. Откройте обычную карту пчеловода и выберите Ярцевский район. Карта переместится к нему.",
+      "1. На карте пчеловода получите справочник районов Сатурна и выберите нужный район Смоленской области.",
     viewportGuideTwo:
       "2. Приблизьте нужные поля и задайте период обновлений карты (это не даты фактических обработок).",
     viewportGuideThree:
       "3. Нажмите «Получить ещё до 10 записей». Данные сохраняются на сервере. Каждое следующее нажатие продолжит загрузку после паузы источника.",
     viewportGuideOpen: "Перейти к карте пчеловода",
     viewportGuideLimits:
-      "Пилот: только Ярцевский район. Получаем индекс центров полей; контуры и препараты пока загружаются отдельно. Запрос не доказывает полноту района.",
+      "Все районы берутся из серверного справочника Сатурна. Загружаем только индекс центров полей, не контуры и не препараты. Нет гарантии полноты района.",
     viewportAdvanced:
       "Дополнительно: ручная диагностика источника и технические координаты",
+    viewportCoordinates: "Точные координаты и даты квадрата",
 
     viewportTitle: "Индекс «Сатурна» по выбранному квадрату",
     viewportDisclaimer:
@@ -204,16 +205,17 @@ export const messages = {
     ...cacheHistoryMessages.en,
     viewportGuideTitle: "How to load data — three steps",
     viewportGuideOne:
-      "1. Open the beekeeper map and choose Yartsevo District. The map will move to it.",
+      "1. Open the beekeeper map, fetch the Saturn district directory and select a Smolensk Oblast district.",
     viewportGuideTwo:
       "2. Zoom to the fields and choose a map-update period (not actual treatment dates).",
     viewportGuideThree:
       "3. Select Load page. Entries are saved on the server; each later click resumes after the source cooldown.",
     viewportGuideOpen: "Open beekeeper map",
     viewportGuideLimits:
-      "Pilot: Yartsevo District only. The result is an index of field centers, not yet polygons or product details; it cannot establish complete district coverage.",
+      "All districts are loaded from the provider directory. Only field-center summaries are available, not treatment polygons, products or verified district coverage.",
     viewportAdvanced:
       "Advanced: manual source diagnostics and technical coordinates",
+    viewportCoordinates: "Exact viewport bounds and date range",
 
     viewportTitle: "Saturn map index for a bounded viewport",
     viewportDisclaimer:

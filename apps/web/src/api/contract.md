@@ -8,3 +8,5 @@
 - **Error handling:** Parse language-neutral server error codes; localized display strings belong to UI catalogs, not the HTTP client.
 
 - Local `POST /api/v1/map/saturn-viewport/status` is a strictly bounded, source-free cache read for one exact viewport/date filter. Its response may include at most 100 saved field-center points; it is safe to debounce on map selection. Only a user's explicit `POST /next` action starts one provider request. The markers must remain visually distinct from treatment polygons.
+
+- `loadSaturnDistrictCatalog`, `loadSavedDistrictPoints` and the exact-key status route are DB-only. `refreshSaturnDistrictCatalog` explicitly calls the local-only provider directory endpoint, while `fetchDistrictViewportPage` explicitly obtains at most one `/query` page. All payloads use shared Zod contracts and browser HTTP requests remain same-origin; this does not grant public access to data collection.

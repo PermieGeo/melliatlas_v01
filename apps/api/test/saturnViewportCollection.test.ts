@@ -48,20 +48,25 @@ const page = (n: number, total = 11) => ({
 });
 function setup() {
   let status: ViewportIndexStatus | null = null;
-  const query = vi.fn(async () => ({
-    rows: [
-      {
-        registry_revision: "1",
-        name: "Fixture Saturn",
-        kind: "treatment",
-        lifecycle: "configured",
-        url: "https://bee-saturn.ru/backend/beemaster/planapplybees",
-        api_request_config: {
-          endpoint: "https://bee-saturn.ru/backend/beemaster/planapplybees",
+  const query = vi.fn(async (sql: string) =>
+    sql.includes("FROM source_saturn_district_catalog")
+      ? { rows: [] }
+      : {
+          rows: [
+            {
+              registry_revision: "1",
+              name: "Fixture Saturn",
+              kind: "treatment",
+              lifecycle: "configured",
+              url: "https://bee-saturn.ru/backend/beemaster/planapplybees",
+              api_request_config: {
+                endpoint:
+                  "https://bee-saturn.ru/backend/beemaster/planapplybees",
+              },
+            },
+          ],
         },
-      },
-    ],
-  }));
+  );
   const reserve = vi.fn(async () => true);
   const fetch = vi.fn(async (_source: unknown, request: { body?: string }) => ({
     bytes: Buffer.from(
@@ -95,16 +100,22 @@ function setup() {
       { featureId: "1", planId: "100", centerX: 32.5, centerY: 55 },
     ]),
   } as unknown as SaturnViewportIndexRepository;
+  const journal = {
+    start: vi.fn(async () => "1"),
+    finish: vi.fn(async () => {}),
+    list: vi.fn(async () => ({ entries: [] })),
+  };
   const service = new SaturnViewportCollectionService(
     { query } as unknown as Pool,
     true,
     {
       index,
+      journal,
       gate: { reserve },
       fetcher: { fetch } as unknown as RestrictedSourceFetcher,
     },
   );
-  return { service, query, reserve, fetch, appendCapturedPage, index };
+  return { service, query, reserve, fetch, appendCapturedPage, index, journal };
 }
 
 describe("explicit Saturn viewport retrieval", () => {
@@ -171,7 +182,7 @@ describe("explicit Saturn viewport retrieval", () => {
     expect(
       viewportCollectionSelectionSchema.safeParse({
         ...selected,
-        districtId: 2670,
+        districtId: -1,
       }).success,
     ).toBe(false);
     expect(
@@ -223,6 +234,46 @@ describe("explicit Saturn viewport retrieval", () => {
     });
     expect(reserve).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("accepts another directory-listed district, but rejects unknown district IDs", async () => {
+    const { service } = setup();
+    const selectedOther = { ...selected, districtId: 2670 };
+    await expect(service.status(selectedOther)).rejects.toMatchObject({
+      code: "DISTRICT_NOT_IN_CATALOG",
+    });
+    const listed = new SaturnViewportCollectionService(
+      {
+        query: vi.fn(async () => ({
+          rows: [
+            {
+              registry_revision: "1",
+              name: "Fixture",
+              kind: "treatment",
+              lifecycle: "configured",
+              url: "https://bee-saturn.ru/backend/beemaster/query",
+              api_request_config: {
+                endpoint: "https://bee-saturn.ru/backend/beemaster/query",
+              },
+            },
+          ],
+        })),
+      } as unknown as Pool,
+      true,
+      {
+        directory: {
+          includes: vi.fn(async () => true),
+          list: vi.fn(),
+          refresh: vi.fn(),
+        } as never,
+        index: {
+          getStatus: vi.fn(async () => null),
+          listFeatures: vi.fn(async () => []),
+          appendCapturedPage: vi.fn(),
+        } as never,
+      },
+    );
+    expect((await listed.status(selectedOther)).progress).toBeNull();
   });
 
   it("never commits a malformed upstream page", async () => {

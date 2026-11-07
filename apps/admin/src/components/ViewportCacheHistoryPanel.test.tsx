@@ -9,7 +9,17 @@ import {
 import { afterEach, expect, it, vi } from "vitest";
 import { ViewportCacheHistoryPanel } from "./ViewportCacheHistoryPanel";
 
-const { read } = vi.hoisted(() => ({
+const { read, directory, fields } = vi.hoisted(() => ({
+  directory: vi.fn(async () => ({
+    districts: [
+      { id: 1477, name: "Ярцевский район", latitude: 55.06, longitude: 32.68 },
+    ],
+    enabled: false,
+    retrievedAt: null,
+  })),
+  fields: vi.fn(async () => ({
+    centers: [{ featureId: "1", planId: "20", centerX: 32.5, centerY: 55 }],
+  })),
   read: vi.fn(async () => ({
     entries: [
       {
@@ -37,7 +47,11 @@ const { read } = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("../api/client", () => ({ loadViewportCacheHistory: read }));
+vi.mock("../api/client", () => ({
+  loadViewportCacheHistory: read,
+  loadOperatorSaturnDistricts: directory,
+  loadStoredViewportFields: fields,
+}));
 
 afterEach(() => {
   cleanup();
@@ -69,6 +83,17 @@ it("shows persisted client and operator index history and page receipts without 
     ),
   ).toBeTruthy();
 
+  fireEvent.click(
+    screen.getByRole("button", { name: "Показать сохранённые поля" }),
+  );
+  await waitFor(() => expect(fields).toHaveBeenCalledWith("b".repeat(64)));
+  expect(
+    await screen.findByText(
+      (_, element) =>
+        element?.tagName === "LI" &&
+        /20;.*55\.00000, 32\.50000/.test(element.textContent ?? ""),
+    ),
+  ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Обновить журнал" }));
   await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
 });

@@ -70,7 +70,7 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
       <p className="text-xs text-slate-600">{text("viewportGuideLimits")}</p>
       <details className="rounded-lg border border-slate-200 p-3">
         <summary className="cursor-pointer text-sm font-medium">
-          {text("viewportAdvanced")}
+          {text("viewportCoordinates")}
         </summary>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(["west", "south", "east", "north"] as const).map((key) => (

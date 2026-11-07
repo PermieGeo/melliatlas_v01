@@ -6,7 +6,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 /** A deliberately bounded Smolensk pilot selection shared by local operator and beekeeper views. */
 export const viewportCollectionSelectionSchema = z
   .object({
-    districtId: z.literal(1477),
+    districtId: z.number().int().positive().safe(),
     bbox: z
       .object({
         west: z.number().finite().min(30).max(36),
@@ -133,4 +133,84 @@ export const viewportCacheHistoryResponseSchema = z
   .strict();
 export type ViewportCacheHistoryResponse = z.infer<
   typeof viewportCacheHistoryResponseSchema
+>;
+
+/** Provider district directory, cached server-side and never administrative boundaries. */
+export const saturnDistrictCatalogResponseSchema = z
+  .object({
+    enabled: z.boolean(),
+    retrievedAt: z.string().datetime().nullable(),
+    districts: z
+      .array(
+        z
+          .object({
+            id: z.number().int().positive(),
+            name: z.string().min(1).max(250),
+            latitude: z.number().min(-90).max(90),
+            longitude: z.number().min(-180).max(180),
+          })
+          .passthrough(),
+      )
+      .max(256),
+  })
+  .strict();
+export type SaturnDistrictCatalogResponse = z.infer<
+  typeof saturnDistrictCatalogResponseSchema
+>;
+
+/** Read-only preview of any stored center for one selected district, independent of exact viewport key. */
+export const saturnDistrictPointsResponseSchema = z
+  .object({
+    centers: z.array(viewportIndexCenterSchema).max(500),
+    totalKnown: z.number().int().nonnegative(),
+  })
+  .strict();
+export type SaturnDistrictPointsResponse = z.infer<
+  typeof saturnDistrictPointsResponseSchema
+>;
+
+export const saturnStoredFieldsResponseSchema = z
+  .object({
+    centers: z.array(viewportIndexCenterSchema).max(100),
+  })
+  .strict();
+export type SaturnStoredFieldsResponse = z.infer<
+  typeof saturnStoredFieldsResponseSchema
+>;
+
+/** Explicit provider request audit. An incomplete started entry may indicate a server interruption. */
+export const saturnRequestLogResponseSchema = z
+  .object({
+    entries: z
+      .array(
+        z
+          .object({
+            id: z.string().regex(/^[1-9][0-9]*$/),
+            action: z.enum(["viewport_page", "district_directory"]),
+            initiator: z.enum(["web", "admin"]),
+            districtId: z.number().int().positive().nullable(),
+            requestHash: z
+              .string()
+              .regex(/^[a-f0-9]{64}$/)
+              .nullable(),
+            pageNumber: z.number().int().nonnegative().nullable(),
+            status: z.enum([
+              "started",
+              "succeeded",
+              "failed",
+              "throttled",
+              "cache_hit",
+            ]),
+            receivedCount: z.number().int().nonnegative().nullable(),
+            errorCode: z.string().max(80).nullable(),
+            startedAt: z.string().datetime(),
+            finishedAt: z.string().datetime().nullable(),
+          })
+          .strict(),
+      )
+      .max(100),
+  })
+  .strict();
+export type SaturnRequestLogResponse = z.infer<
+  typeof saturnRequestLogResponseSchema
 >;

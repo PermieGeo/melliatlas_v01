@@ -1,6 +1,7 @@
 // Feature IDs: SOURCES.SAFE_FETCH, SOURCES.PROVIDER_CONFIGURATION
 import { lookup as dnsLookup } from "node:dns/promises";
 import https, { type RequestOptions } from "node:https";
+import { buildSourceRequestHeaders } from "./sourceHttpHeaders.js";
 import { BlockList, isIP } from "node:net";
 import type { IncomingHttpHeaders } from "node:http";
 import { evaluateSourceDestination } from "./destinationPolicy.js";
@@ -25,6 +26,7 @@ export type SourceTransport = (
   timeoutMs: number,
   maxBytes: number,
   signal?: AbortSignal,
+  requestProfile?: "saturn-json",
 ) => Promise<TransportResponse>;
 
 export type FetchedSourceResponse = {
@@ -113,17 +115,10 @@ export const directHttpsTransport: SourceTransport = (
   timeoutMs,
   maxBytes,
   signal,
+  requestProfile,
 ) =>
   new Promise((resolve, reject) => {
-    const headers: Record<string, string> = {
-      Accept: "application/json, text/html, text/plain, application/pdf",
-      "Accept-Encoding": "identity",
-      "User-Agent": "MelliAtlas-SourceFetcher/1.0",
-    };
-    if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-      headers["Content-Length"] = String(Buffer.byteLength(body));
-    }
+    const headers = buildSourceRequestHeaders(method, body, requestProfile);
     const options: RequestOptions = {
       hostname: url.hostname,
       port: 443,
@@ -287,7 +282,13 @@ export class RestrictedSourceFetcher {
       (request.method === "GET" && request.body !== undefined) ||
       (request.body !== undefined &&
         Buffer.byteLength(request.body) > 16_384) ||
-      typeof request.url !== "string"
+      typeof request.url !== "string" ||
+      (request.requestProfile !== undefined &&
+        (request.requestProfile !== "saturn-json" ||
+          ![
+            "https://bee-saturn.ru/backend/beemaster/query",
+            "https://bee-saturn.ru/backend/beemaster/district/55",
+          ].includes(request.url)))
     ) {
       throw new SourceFetchFailure("DESTINATION_DENIED");
     }
@@ -349,6 +350,7 @@ export class RestrictedSourceFetcher {
             source.fetchPolicy.timeoutMs,
             source.fetchPolicy.maxResponseBytes,
             signal,
+            request.requestProfile,
           );
         } catch (error) {
           if (

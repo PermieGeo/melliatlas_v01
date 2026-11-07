@@ -4,9 +4,15 @@ import {
   viewportCollectionSelectionSchema,
   viewportCollectionResultSchema,
   viewportCacheHistoryResponseSchema,
+  saturnRequestLogResponseSchema,
+  saturnStoredFieldsResponseSchema,
+  saturnDistrictCatalogResponseSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
   type ViewportCacheHistoryResponse,
+  type SaturnRequestLogResponse,
+  type SaturnStoredFieldsResponse,
+  type SaturnDistrictCatalogResponse,
   mapTreatmentsResponseSchema,
   providerCollectionStatusSchema,
   districtCacheStatusSchema,
@@ -176,5 +182,30 @@ export async function fetchViewportNextPage(
 export async function loadViewportCacheHistory(): Promise<ViewportCacheHistoryResponse> {
   return viewportCacheHistoryResponseSchema.parse(
     await operatorRequest("/api/v1/operator/provider/viewport/history"),
+  );
+}
+
+/** Operator-only audit of both successful and unsuccessful explicit Saturn requests. */
+export async function loadSaturnRequestLog(): Promise<SaturnRequestLogResponse> {
+  return saturnRequestLogResponseSchema.parse(
+    await operatorRequest("/api/v1/operator/provider/viewport/requests"),
+  );
+}
+
+/** Read saved field centers for one persisted viewport, not raw provider records. */
+export async function loadStoredViewportFields(
+  hash: string,
+): Promise<SaturnStoredFieldsResponse> {
+  return saturnStoredFieldsResponseSchema.parse(
+    await operatorRequest(
+      `/api/v1/operator/provider/viewport/fields?hash=${encodeURIComponent(hash)}`,
+    ),
+  );
+}
+
+/** Cached provider district names and center points. */
+export async function loadOperatorSaturnDistricts(): Promise<SaturnDistrictCatalogResponse> {
+  return saturnDistrictCatalogResponseSchema.parse(
+    await operatorRequest("/api/v1/operator/provider/viewport/districts"),
   );
 }

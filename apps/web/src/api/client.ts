@@ -8,8 +8,12 @@ import {
   type MapTreatment,
   viewportCollectionSelectionSchema,
   viewportCollectionResultSchema,
+  saturnDistrictCatalogResponseSchema,
+  saturnDistrictPointsResponseSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
+  type SaturnDistrictCatalogResponse,
+  type SaturnDistrictPointsResponse,
 } from "@melliatlas/contracts";
 
 export class ApiRequestError extends Error {
@@ -81,4 +85,48 @@ export function fetchDistrictViewportPage(
   selection: ViewportCollectionSelection,
 ): Promise<ViewportCollectionResult> {
   return clientViewportRequest("next", selection);
+}
+
+/** Return the cached district directory; no provider traffic. */
+export async function loadSaturnDistrictCatalog(): Promise<SaturnDistrictCatalogResponse> {
+  return saturnDistrictCatalogResponseSchema.parse(
+    await decode(
+      await fetch("/api/v1/map/saturn-viewport/districts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+        cache: "no-store",
+      }),
+    ),
+  );
+}
+
+/** Explicitly refresh the provider's district directory once. */
+export async function refreshSaturnDistrictCatalog(): Promise<SaturnDistrictCatalogResponse> {
+  return saturnDistrictCatalogResponseSchema.parse(
+    await decode(
+      await fetch("/api/v1/map/saturn-viewport/districts/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+        cache: "no-store",
+      }),
+    ),
+  );
+}
+
+/** All stored centers of one district, even when the map's exact viewport key changes. */
+export async function loadSavedDistrictPoints(
+  districtId: number,
+): Promise<SaturnDistrictPointsResponse> {
+  return saturnDistrictPointsResponseSchema.parse(
+    await decode(
+      await fetch("/api/v1/map/saturn-viewport/district-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ districtId }),
+        cache: "no-store",
+      }),
+    ),
+  );
 }
