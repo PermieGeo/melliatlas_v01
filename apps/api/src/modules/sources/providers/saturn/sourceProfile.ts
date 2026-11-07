@@ -1,6 +1,9 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
-import { sourceDefinitionSchema, type SourceDefinition } from "./contracts.js";
-import { SOURCE_REQUEST_GAP_MS } from "./providerRequestThrottle.js";
+import {
+  sourceDefinitionSchema,
+  type SourceDefinition,
+} from "../../contracts.js";
+import { SOURCE_REQUEST_GAP_MS } from "../../providerRequestThrottle.js";
 
 export const SATURN_SOURCE_ID = "treatment-feed";
 export const SATURN_VIEWPORT_URL =

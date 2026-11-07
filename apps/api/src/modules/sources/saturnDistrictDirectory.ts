@@ -17,7 +17,11 @@ import {
   SATURN_DISTRICT_URL,
   SATURN_SOURCE_ID,
   saturnJsonSource,
-} from "./saturnSourceProfile.js";
+} from "./providers/saturn/sourceProfile.js";
+import {
+  SATURN_JSON_PROFILE_ID,
+  SATURN_JSON_REQUEST_PROFILE,
+} from "./providers/saturn/requestProfile.js";
 
 export type DirectoryPort = {
   list(): Promise<SaturnDistrictCatalogResponse>;
@@ -40,7 +44,11 @@ export class SaturnDistrictDirectory implements DirectoryPort {
       journal?: Pick<SaturnRequestJournal, "start" | "finish">;
     } = {},
   ) {
-    this.fetcher = deps.fetcher ?? new RestrictedSourceFetcher();
+    this.fetcher =
+      deps.fetcher ??
+      new RestrictedSourceFetcher({
+        requestProfiles: [SATURN_JSON_REQUEST_PROFILE],
+      });
     this.gate = deps.gate ?? new ProviderRequestThrottle(db as Pool);
     this.journal = deps.journal ?? new SaturnRequestJournal(db);
   }
@@ -111,7 +119,7 @@ export class SaturnDistrictDirectory implements DirectoryPort {
         {
           url: SATURN_DISTRICT_URL,
           method: "GET",
-          requestProfile: "saturn-json",
+          requestProfile: SATURN_JSON_PROFILE_ID,
         },
       );
       const raw = JSON.parse(reply.bytes.toString("utf8")) as unknown;

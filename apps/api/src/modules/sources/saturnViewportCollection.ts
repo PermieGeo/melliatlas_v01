@@ -36,7 +36,11 @@ import {
   SATURN_SOURCE_ID,
   SATURN_VIEWPORT_URL,
   saturnJsonSource,
-} from "./saturnSourceProfile.js";
+} from "./providers/saturn/sourceProfile.js";
+import {
+  SATURN_JSON_PROFILE_ID,
+  SATURN_JSON_REQUEST_PROFILE,
+} from "./providers/saturn/requestProfile.js";
 import {
   parseSaturnViewportPage,
   validateSaturnViewportQuery,
@@ -109,7 +113,11 @@ export class SaturnViewportCollectionService {
   ) {
     this.index =
       dependencies.index ?? new SaturnViewportIndexRepository(pool as Pool);
-    this.fetcher = dependencies.fetcher ?? new RestrictedSourceFetcher();
+    this.fetcher =
+      dependencies.fetcher ??
+      new RestrictedSourceFetcher({
+        requestProfiles: [SATURN_JSON_REQUEST_PROFILE],
+      });
     this.gate = dependencies.gate ?? new ProviderRequestThrottle(pool as Pool);
     this.journal = dependencies.journal ?? new SaturnRequestJournal(pool);
     this.directory =
@@ -276,7 +284,7 @@ export class SaturnViewportCollectionService {
             url: SATURN_VIEWPORT_URL,
             method: "POST",
             body: JSON.stringify(request),
-            requestProfile: "saturn-json",
+            requestProfile: SATURN_JSON_PROFILE_ID,
           },
         );
         body = JSON.parse(response.bytes.toString("utf8")) as unknown;
