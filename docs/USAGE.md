@@ -121,3 +121,9 @@ and Retry action. It does not silently substitute another language.
 Run `node --test scripts/help-content.test.mjs` for a dependency-free structure
 and locale-parity check, followed by the canonical `./run-tests.sh` and browser
 E2E suites. The dev servers serve JSON from their app's `public/` directory.
+
+### Local viewport index collection from the beekeeper map (Yartsevo pilot)
+
+After reviewing third-party automated-access terms, enable bounded collection in local development by starting the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true pnpm dev`. Open `http://127.0.0.1:5173`, select Yartsevo District in **Load district data**, zoom to the requested fields, choose an `UpdateMap` period, then click **Load page**. The map immediately re-centers on district selection, but moving/zooming it never starts an upstream request. **Check cache** reads a saved checkpoint without upstream traffic. One **Load page** click retrieves at most one source page; wait at least 65 seconds before another attempt. Progress survives restarts via PostGIS migration 014. The selected viewport must be at most 1° × 1° and within the configured pilot coordinates; no other district is enabled yet.
+
+This pilot stores map-index entries with field centers, not complete treatment notices, cadastral polygons, pesticide details, actual application evidence or completed district coverage. Therefore these entries do not automatically appear as treatment polygons on the beekeeper map. A local origin and loopback connection are required; do not publish this source-triggering endpoint until authenticated public access and abuse controls have been designed. In Admin (`http://127.0.0.1:5174`), **Data collection** now provides the same three-step instructions with advanced diagnostic controls.

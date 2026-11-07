@@ -1,5 +1,38 @@
 export const messages = {
   ru: {
+    viewportGuideTitle: "Как загружать данные — три шага",
+    viewportGuideOne:
+      "1. Откройте обычную карту пчеловода и выберите Ярцевский район. Карта переместится к нему.",
+    viewportGuideTwo:
+      "2. Приблизьте нужные поля и задайте период обновлений карты (это не даты фактических обработок).",
+    viewportGuideThree:
+      "3. Нажмите «Загрузить страницу». Данные сохраняются на сервере. Каждое следующее нажатие продолжит загрузку после паузы источника.",
+    viewportGuideOpen: "Перейти к карте пчеловода",
+    viewportGuideLimits:
+      "Пилот: только Ярцевский район. Получаем индекс центров полей; контуры и препараты пока загружаются отдельно. Запрос не доказывает полноту района.",
+    viewportAdvanced:
+      "Дополнительно: ручная диагностика источника и технические координаты",
+
+    viewportTitle: "Индекс «Сатурна» по выбранному квадрату",
+    viewportDisclaimer:
+      "Пилот: только Ярцевский район. По нажатию загружается одна страница /query, не полигоны и не фактические обработки. Даты — UpdateMap; полнота истории района неизвестна.",
+    viewportDistrict: "Район источника",
+    viewportWest: "Запад (долгота)",
+    viewportSouth: "Юг (широта)",
+    viewportEast: "Восток (долгота)",
+    viewportNorth: "Север (широта)",
+    viewportFrom: "UpdateMap с",
+    viewportTo: "UpdateMap по",
+    viewportCheck: "Проверить сохранённое",
+    viewportFetch: "Загрузить следующую страницу",
+    viewportDisabled:
+      "Реальные запросы выключены. Настройте SATURN_VIEWPORT_LIVE_ENABLED=true на backend после проверки условий доступа.",
+    viewportEmpty: "Для этого квадрата ещё не загружено страниц.",
+    viewportPages: "Страниц",
+    viewportEntries: "Записей индекса",
+    viewportNext: "Следующая страница",
+    viewportState: "Статус индекса",
+
     help: "Помощь",
     mapAnalysis: "Карта и анализ",
     analysisSummary: "Краткая статистика",
@@ -165,6 +198,39 @@ export const messages = {
     revision: "Ревизия",
   },
   en: {
+    viewportGuideTitle: "How to load data — three steps",
+    viewportGuideOne:
+      "1. Open the beekeeper map and choose Yartsevo District. The map will move to it.",
+    viewportGuideTwo:
+      "2. Zoom to the fields and choose a map-update period (not actual treatment dates).",
+    viewportGuideThree:
+      "3. Select Load page. Entries are saved on the server; each later click resumes after the source cooldown.",
+    viewportGuideOpen: "Open beekeeper map",
+    viewportGuideLimits:
+      "Pilot: Yartsevo District only. The result is an index of field centers, not yet polygons or product details; it cannot establish complete district coverage.",
+    viewportAdvanced:
+      "Advanced: manual source diagnostics and technical coordinates",
+
+    viewportTitle: "Saturn map index for a bounded viewport",
+    viewportDisclaimer:
+      "Pilot: Yartsevo district only. Each click fetches one /query page, not polygons or confirmed treatments. Dates filter UpdateMap; district history completeness is unknown.",
+    viewportDistrict: "Provider district",
+    viewportWest: "West (longitude)",
+    viewportSouth: "South (latitude)",
+    viewportEast: "East (longitude)",
+    viewportNorth: "North (latitude)",
+    viewportFrom: "UpdateMap from",
+    viewportTo: "UpdateMap to",
+    viewportCheck: "Check saved progress",
+    viewportFetch: "Fetch next page",
+    viewportDisabled:
+      "Live requests are disabled. Set SATURN_VIEWPORT_LIVE_ENABLED=true on the backend after reviewing access terms.",
+    viewportEmpty: "No pages are stored for this viewport yet.",
+    viewportPages: "Pages",
+    viewportEntries: "Index entries",
+    viewportNext: "Next page",
+    viewportState: "Index status",
+
     help: "Help",
     mapAnalysis: "Map and analysis",
     analysisSummary: "Quick summary",

@@ -308,3 +308,12 @@ export type RegionalScanStatus = z.infer<typeof regionalScanStatusSchema>;
 
 export { helpDocumentSchema } from "./helpContent.js";
 export type { HelpDocument, HelpSection } from "./helpContent.js";
+
+export {
+  viewportCollectionSelectionSchema,
+  viewportCollectionResultSchema,
+} from "./viewportCollection.js";
+export type {
+  ViewportCollectionSelection,
+  ViewportCollectionResult,
+} from "./viewportCollection.js";

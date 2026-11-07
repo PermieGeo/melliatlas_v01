@@ -9,3 +9,5 @@
 - **Deployment:** Local loopback boundary only. Production administration requires backend authentication and network isolation before exposure.
 
 - `/api/v1/operator/provider/district-cache` exposes read-only district coverage with shared contract validation. The refresh command is disabled until a verified upstream district filter is available. The former full-region frontend workflow is retired; the backend retains only compatibility routes that cannot run without a wired legacy worker.
+
+- `loadViewportProgress` and `fetchViewportNextPage` use shared selection/result schemas for the operator-only viewport index API. The former is read-only; the latter requests at most one upstream map-index page through backend policy. Neither calls `bee-saturn.ru` from the browser or retrieves/publishes polygon geometries.

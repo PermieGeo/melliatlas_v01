@@ -1,6 +1,10 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.CATALOG, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import {
   apiErrorSchema,
+  viewportCollectionSelectionSchema,
+  viewportCollectionResultSchema,
+  type ViewportCollectionSelection,
+  type ViewportCollectionResult,
   mapTreatmentsResponseSchema,
   providerCollectionStatusSchema,
   districtCacheStatusSchema,
@@ -137,5 +141,31 @@ export async function loadProviderCollectionStatus(): Promise<ProviderCollection
 export async function loadDistrictCacheStatus(): Promise<DistrictCacheStatus> {
   return districtCacheStatusSchema.parse(
     await operatorRequest("/api/v1/operator/provider/district-cache"),
+  );
+}
+
+/** Read a stored viewport checkpoint without contacting Saturn. */
+export async function loadViewportProgress(
+  selection: ViewportCollectionSelection,
+): Promise<ViewportCollectionResult> {
+  return viewportCollectionResultSchema.parse(
+    await operatorRequest(
+      "/api/v1/operator/provider/viewport/status",
+      "POST",
+      viewportCollectionSelectionSchema.parse(selection),
+    ),
+  );
+}
+
+/** Fetch and persist at most one provider page per explicit operator action. */
+export async function fetchViewportNextPage(
+  selection: ViewportCollectionSelection,
+): Promise<ViewportCollectionResult> {
+  return viewportCollectionResultSchema.parse(
+    await operatorRequest(
+      "/api/v1/operator/provider/viewport/next",
+      "POST",
+      viewportCollectionSelectionSchema.parse(selection),
+    ),
   );
 }

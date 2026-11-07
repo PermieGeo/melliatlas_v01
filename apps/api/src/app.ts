@@ -17,6 +17,11 @@ import helmet from "helmet";
 import { ApiFailure } from "./lib/errors.js";
 import type { RegionCollectionActions } from "./modules/sources/regionOperatorRoutes.js";
 import { createRegionOperatorRouter } from "./modules/sources/regionOperatorRoutes.js";
+import {
+  createSaturnViewportOperatorRouter,
+  type ViewportCollectionActions,
+} from "./modules/sources/saturnViewportOperatorRoutes.js";
+import { createSaturnViewportClientRouter } from "./modules/sources/saturnViewportClientRoutes.js";
 
 export type ApiServices = {
   inspectLocation(point: Coordinates): Promise<InspectionResponse>;
@@ -59,6 +64,7 @@ export type ApiServices = {
   };
   regionCollection?: RegionCollectionActions;
   districtCache?: { list(): Promise<unknown[]> };
+  viewportCollection?: ViewportCollectionActions;
   providerConfiguration?: {
     get(): Promise<ProviderConfiguration>;
     update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration>;
@@ -261,6 +267,18 @@ export function createApp(services: ApiServices): express.Express {
         next(error);
       }
     },
+  );
+
+  app.use(
+    "/api/v1/operator/provider/viewport",
+    requireOperator,
+    createSaturnViewportOperatorRouter(services.viewportCollection),
+  );
+
+  // The local beekeeper pilot can explicitly request one bounded index page.
+  app.use(
+    "/api/v1/map/saturn-viewport",
+    createSaturnViewportClientRouter(services.viewportCollection),
   );
 
   // District refresh stays disabled until the provider district/filter request is verified.

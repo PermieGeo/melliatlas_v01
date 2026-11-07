@@ -374,3 +374,54 @@ it("district cache is operator-only and cannot refresh before the upstream contr
     .set("Origin", "http://localhost:5173");
   expect(publicOrigin.status).toBe(403);
 });
+
+describe("operator-only viewport route", () => {
+  const selection = {
+    districtId: 1477,
+    bbox: {
+      west: 32.409804730540266,
+      south: 54.92780435298192,
+      east: 33.02984562409493,
+      north: 55.210325361370735,
+    },
+    fromDate: "2026-08-01",
+    toDate: "2026-11-30",
+  };
+  it("validates the explicit selection and never triggers a fetch from status", async () => {
+    let fetched = 0;
+    const app = createApp({
+      ...services,
+      providerConfiguration: {
+        get: async () => {
+          throw new Error("Unused");
+        },
+        update: async () => {
+          throw new Error("Unused");
+        },
+      },
+      viewportCollection: {
+        status: async () => ({ enabled: true, progress: null }),
+        fetchNext: async () => {
+          fetched++;
+          return { enabled: true, progress: null };
+        },
+      },
+    });
+    const invalid = await request(app)
+      .post("/api/v1/operator/provider/viewport/next")
+      .send({ ...selection, districtId: 2670 });
+    expect(invalid.status).toBe(400);
+    expect(fetched).toBe(0);
+    const status = await request(app)
+      .post("/api/v1/operator/provider/viewport/status")
+      .send(selection);
+    expect(status.status).toBe(200);
+    expect(status.body).toEqual({ enabled: true, progress: null });
+    expect(fetched).toBe(0);
+    const next = await request(app)
+      .post("/api/v1/operator/provider/viewport/next")
+      .send(selection);
+    expect(next.status).toBe(200);
+    expect(fetched).toBe(1);
+  });
+});

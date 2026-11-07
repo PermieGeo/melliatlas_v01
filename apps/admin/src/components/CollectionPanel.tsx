@@ -3,6 +3,7 @@ import type { ProviderCollectionStatus } from "@melliatlas/contracts";
 import { useEffect, useState } from "react";
 import { loadProviderCollectionStatus, syncProviderPage } from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
+import { ViewportCollectionPanel } from "./ViewportCollectionPanel";
 import { DistrictCachePanel } from "./DistrictCachePanel";
 import { FieldHelp } from "./FieldHelp";
 
@@ -55,6 +56,25 @@ export function CollectionPanel({
       aria-label={text("import")}
       className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5"
     >
+      <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <h3 className="font-semibold text-emerald-950">
+          {text("viewportGuideTitle")}
+        </h3>
+        <ol className="space-y-1 text-sm text-emerald-950">
+          <li>{text("viewportGuideOne")}</li>
+          <li>{text("viewportGuideTwo")}</li>
+          <li>{text("viewportGuideThree")}</li>
+        </ol>
+        <p className="text-xs text-emerald-900">
+          {text("viewportGuideLimits")}
+        </p>
+        <a
+          href="http://127.0.0.1:5173"
+          className="inline-block rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-950 underline"
+        >
+          {text("viewportGuideOpen")}
+        </a>
+      </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
@@ -100,6 +120,7 @@ export function CollectionPanel({
           {text("lastRun")}: {text(status.latestRun.status)}
         </p>
       )}
+      <ViewportCollectionPanel locale={locale} />
       <DistrictCachePanel locale={locale} />
       <div className="flex flex-wrap items-center gap-2">
         <button

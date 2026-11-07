@@ -1,4 +1,4 @@
-// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY
+// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
 import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { Layers3, MapPin, RefreshCw, Info, CircleHelp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -7,6 +7,7 @@ import { MapCanvas } from "./components/MapCanvas";
 import { WeatherPanel, type WeatherState } from "./components/WeatherPanel";
 import { TreatmentDetailsPanel } from "./components/TreatmentDetailsPanel";
 import { HelpPage } from "./components/HelpPage";
+import { DistrictViewportPanel } from "./components/DistrictViewportPanel";
 import { translate, type Locale, type MessageKey } from "./i18n";
 
 const defaultFocus: Coordinates = { lat: 54.782, lon: 32.045 };
@@ -15,6 +16,12 @@ type LayerState =
 
 export default function App() {
   const [locale, setLocale] = useState<Locale>("ru");
+  const [mapFocus, setMapFocus] = useState<Coordinates>(defaultFocus);
+  const [mapZoom, setMapZoom] = useState(10);
+  const focusOnDistrict = useCallback((center: Coordinates): void => {
+    setMapFocus(center);
+    setMapZoom(12);
+  }, []);
   useEffect(() => {
     document.documentElement.lang = locale;
     document.title = `${translate(locale, "appTitle")} — ${translate(locale, "appSubtitle")}`;
@@ -157,6 +164,11 @@ export default function App() {
                 {t("refresh")}
               </button>
             </div>
+            <DistrictViewportPanel
+              locale={locale}
+              viewport={viewport}
+              onFocusDistrict={focusOnDistrict}
+            />
             <div className="grid gap-4 lg:grid-cols-[210px_minmax(0,1fr)_300px]">
               <aside
                 aria-label={t("layers")}
@@ -244,7 +256,8 @@ export default function App() {
                 )}
                 <MapCanvas
                   locale={locale}
-                  focus={defaultFocus}
+                  focus={mapFocus}
+                  focusZoom={mapZoom}
                   selected={point}
                   radiusKm={radius}
                   onSelect={setPoint}

@@ -1,5 +1,35 @@
 export const messages = {
   ru: {
+    districtPanelTitle: "Загрузить данные по району",
+    districtSteps:
+      "1. Выберите район. 2. Карта переместится к нему: приблизьте нужные поля. 3. Укажите период и нажмите «Загрузить страницу».",
+    districtSelect: "Район (пилот)",
+    districtChoose: "Выберите район…",
+    districtYartsevo: "Ярцевский район",
+    districtFrom: "Обновления карты с",
+    districtTo: "Обновления карты по",
+    districtCheck: "Проверить кэш",
+    districtFetch: "Загрузить страницу",
+    districtBusy: "Загружаем…",
+    districtHint:
+      "Запрос касается только видимой части карты. За одно нажатие загружается одна страница (до 10 записей). Повторное нажатие продолжит загрузку. Это индекс точек полей, не полигоны и не подтверждённые обработки.",
+    districtBoundsHint:
+      "Выберите район и приблизьте карту: доступен квадрат не больше 1° × 1° внутри пилотной области, период до 124 дней.",
+    districtDisabled:
+      "Загрузка выключена на сервере. Администратор должен разрешить пилотный доступ к источнику.",
+    districtLocalOnly:
+      "Загрузка доступна только в локальном пилотном приложении.",
+    districtThrottle:
+      "Сатурн: пауза между запросами не меньше 65 секунд. Повторите позже.",
+    districtLoadFailed:
+      "Не удалось получить страницу. Сохранённый прогресс не удалён.",
+    districtNoPages: "Для выбранного квадрата пока нет сохранённых страниц.",
+    districtPageCount: "Страниц",
+    districtItemsCount: "Записей индекса",
+    districtComplete:
+      "Все страницы этого квадрата получены; полнота района неизвестна.",
+    districtPartial: "Загрузка квадрата не завершена.",
+
     navigation: "Навигация",
     mapNav: "Карта",
     help: "Помощь",
@@ -68,6 +98,36 @@ export const messages = {
     pilot: "Пилотная территория",
   },
   en: {
+    districtPanelTitle: "Load district data",
+    districtSteps:
+      "1. Choose a district. 2. The map moves there: zoom to the fields you need. 3. Choose an update period and select Load page.",
+    districtSelect: "District (pilot)",
+    districtChoose: "Select a district…",
+    districtYartsevo: "Yartsevo District",
+    districtFrom: "Map updates from",
+    districtTo: "Map updates through",
+    districtCheck: "Check cache",
+    districtFetch: "Load page",
+    districtBusy: "Loading…",
+    districtHint:
+      "Only the visible map rectangle is requested. Each click loads one page (up to 10 index entries); another click resumes. These are field centers, not polygons or confirmed treatments.",
+    districtBoundsHint:
+      "Choose a district and zoom in: the maximum rectangle is 1° × 1° within the pilot region, and the period is at most 124 days.",
+    districtDisabled:
+      "Server-side collection is disabled. An operator must enable authorized pilot access.",
+    districtLocalOnly:
+      "Collection is available only in the local pilot application.",
+    districtThrottle:
+      "Saturn: wait at least 65 seconds between upstream requests and try again.",
+    districtLoadFailed:
+      "Unable to fetch the page. Previously saved progress is retained.",
+    districtNoPages: "No saved pages for this rectangle yet.",
+    districtPageCount: "Pages",
+    districtItemsCount: "Index entries",
+    districtComplete:
+      "All pages of this rectangle loaded; district completeness is unknown.",
+    districtPartial: "This rectangle is not yet complete.",
+
     navigation: "Navigation",
     mapNav: "Map",
     help: "Help",

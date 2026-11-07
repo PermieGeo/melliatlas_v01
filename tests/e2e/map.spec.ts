@@ -191,3 +191,33 @@ test("beekeeper help loads the external guide and switches languages", async ({
   expect(requested.length).toBeGreaterThan(0);
   expect(requested.every((url) => !url.includes("/operator/"))).toBe(true);
 });
+
+test("local district pilot loads only after an explicit beekeeper click", async ({
+  page,
+}) => {
+  let fetches = 0;
+  await page.route("**/api/v1/notices**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ notices: [] }),
+    }),
+  );
+  await page.route("**/api/v1/map/saturn-viewport/**", (route) => {
+    if (route.request().url().endsWith("/next")) fetches++;
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: true, progress: null }),
+    });
+  });
+  await page.goto("/");
+  expect(fetches).toBe(0);
+  await page
+    .getByRole("combobox", { name: "Район (пилот)" })
+    .selectOption("1477");
+  expect(fetches).toBe(0);
+  await expect(
+    page.getByRole("button", { name: "Загрузить страницу" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Загрузить страницу" }).click();
+  await expect.poll(() => fetches).toBe(1);
+});
