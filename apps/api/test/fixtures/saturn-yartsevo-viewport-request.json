@@ -1,0 +1,22 @@
+{
+  "filter": {
+    "leftTop": {
+      "longitude": 32.409804730540266,
+      "latitude": 55.210325361370735
+    },
+    "rightDown": {
+      "longitude": 33.02984562409493,
+      "latitude": 54.92780435298192
+    },
+    "subject": "55",
+    "startDateUpdateMap": "2026-08-01T00:00:00.000Z",
+    "endDateUpdateMap": "2026-11-30T00:00:00.000Z",
+    "culture": [],
+    "classesDangerBee": [],
+    "classesDangerMan": [],
+    "district": "1477",
+    "query": null
+  },
+  "pageNumber": 0,
+  "pageSize": 10
+}

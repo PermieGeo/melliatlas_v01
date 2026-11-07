@@ -10,10 +10,19 @@ export default defineConfig({
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
-  webServer: {
-    command: "pnpm dev",
-    url: "http://127.0.0.1:5173",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command:
+        "pnpm --filter @melliatlas/contracts build && pnpm --filter @melliatlas/web dev",
+      url: "http://127.0.0.1:5173",
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: "pnpm --filter @melliatlas/admin dev",
+      url: "http://127.0.0.1:5174",
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 });

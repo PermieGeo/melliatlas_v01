@@ -69,12 +69,16 @@ features:
       - apps/admin/src/components/DistrictCachePanel.tsx
       - apps/api/src/modules/sources/districtCacheState.ts
       - apps/api/src/modules/sources/districtCacheRepository.ts
+      - apps/api/src/modules/sources/saturnMapEvidence.ts
+      - apps/api/src/modules/sources/saturnViewportQuery.ts
       - apps/admin/src/components/CollectionPanel.tsx
     test_paths:
       - apps/api/test/regionalScanState.test.ts
       - apps/api/integration/regionalCollection.test.ts
       - apps/api/integration/districtCache.test.ts
       - apps/api/test/districtCacheState.test.ts
+      - apps/api/test/saturnMapEvidence.test.ts
+      - apps/api/test/saturnViewportQuery.test.ts
       - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
