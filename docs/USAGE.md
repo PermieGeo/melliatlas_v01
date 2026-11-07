@@ -124,7 +124,7 @@ E2E suites. The dev servers serve JSON from their app's `public/` directory.
 
 ### Local viewport index collection from the beekeeper map (Yartsevo pilot)
 
-After reviewing third-party automated-access terms, enable bounded collection in local development by starting the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true pnpm dev`. Open `http://127.0.0.1:5173`, select Yartsevo District in **Load district data**, zoom to the requested fields, choose an `UpdateMap` period, then click **Fetch up to 10 more records**. The map immediately re-centers on district selection, but moving/zooming it never starts an upstream request. **Check cache** reads a saved checkpoint without upstream traffic. One **Fetch up to 10 more records** click retrieves at most one source page; wait at least 20 seconds before another attempt. Progress survives restarts via PostGIS migration 014. The selected viewport must be at most 1° × 1° and within the configured pilot coordinates; no other district is enabled yet.
+After reviewing third-party automated-access terms, enable bounded collection in local development by starting the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true pnpm dev`. Open `http://127.0.0.1:5173`, select Yartsevo District or a district from an explicitly refreshed persisted provider directory in **Load district data**, zoom to the requested fields, choose an `UpdateMap` period, then click **Fetch up to 10 more records**. The map immediately re-centers on district selection, but moving/zooming it never starts an upstream request. **Check cache** reads a saved checkpoint without upstream traffic. One **Fetch up to 10 more records** click retrieves at most one source page; wait at least 20 seconds before another attempt. Progress survives restarts via PostGIS migration 014. The selected viewport must be at most 1° × 1° and within the configured pilot coordinates.
 
 This pilot stores map-index entries with field centers, not complete treatment notices, cadastral polygons, pesticide details, actual application evidence or completed district coverage. Therefore these entries do not automatically appear as treatment polygons on the beekeeper map. A local origin and loopback connection are required; do not publish this source-triggering endpoint until authenticated public access and abuse controls have been designed. In Admin (`http://127.0.0.1:5174`), **Data collection** now provides the same three-step instructions with advanced diagnostic controls.
 
@@ -139,3 +139,22 @@ In local Admin → Data collection, `Saved PostgreSQL map-index cache` shows the
 On the local Web map, click **Fetch all districts from Saturn** once (only after authorized provider access has been enabled on the backend). The district list is persisted and reused on subsequent visits. Choose a district, zoom to a viewport at most 1° × 1°, choose an `UpdateMap` window of at most 124 days and explicitly fetch the next batch (up to 10 index entries). A page is a segment of the provider listing, not a geographic tile. The Web map shows blue cached field centers across all previously saved filters for the selected district, independent of the current exact viewport/dates. A count of zero is not evidence that no applications occurred. Treatments, chemicals and polygon boundaries are **not** retrieved by this workflow.
 
 In local Admin → Data Collection, inspect **Saved PostgreSQL map-index cache**, expand a saved district/period entry to see stored field IDs and centers, and use **Saturn request log** to see the most recent explicit attempts and sanitized errors. No bbox selection is required to inspect those records. Legacy importer and manual viewport coordinate controls are advanced diagnostics. If a query is still in progress, the exact-key page checkpoint persists for later explicit continuation; the UI does not silently issue additional requests.
+
+### Inspecting previously captured Saturn bodies offline
+
+When separately authorized browser Network captures are available, save the **direct response/request bodies** as local files. Do not save cookies, tokens, HAR archives or browser headers in the inputs. Required: the JSON body of one `POST /backend/beemaster/query` request; its corresponding single-page JSON response; the raw JSONP text from one `/backend/beemaster/geojson-polygons` response; and the exact callback name used in that polygon request. Optionally save direct JSON bodies of `/backend/beemaster/acr/{id}` responses, keeping the requested URL feature ID separately from the response's own `id`.
+
+From the repository root, after installing dependencies:
+
+```bash
+pnpm --dir apps/api evidence:saturn -- \
+  --query-request /path/to/query-request.json \
+  --query-response /path/to/query-response.json \
+  --polygons /path/to/polygons.jsonp \
+  --callback capturedCallback \
+  --acr 238194 /path/to/acr-238194.json
+```
+
+`--acr <requestedFeatureId> <file>` may be repeated up to 100 times or omitted. The command is **offline**: it makes no provider HTTP requests, database writes or file output. It prints a JSON report to stdout with `ID_ONLY_UNVERIFIED` status, counts, captured query filter dates, candidate common IDs, missing IDs, exact geometry digests, and mismatched ACR URL/body IDs. It does not print provider names, arbitrary response fields, polygon coordinates or input file paths on validation failure. Inputs are capped at 64 KiB (request), 1 MiB (page), 8 MiB (JSONP) and 256 KiB per ACR body; symlink inputs are refused. Redirect stdout only to an approved secure location if a saved report is needed, since identifiers and filter metadata can still be sensitive.
+
+An ID match does **not** establish a verified cross-endpoint record join. Capture origin, time, zoom, viewport correspondence, completeness, `UpdateMap` semantics, access and redistribution rights remain separate evidence gates. A single page does not establish district coverage.
