@@ -38,6 +38,8 @@ The first implementation lives in [Saturn's provider module](../apps/api/src/mod
 
 The provider-neutral [audited explicit request lifecycle](../apps/api/src/modules/sources/auditedSourceRequest.ts) is shared by the Saturn viewport loader and district-directory refresh. It records the attempt before any external call, checks optional cache/preflight conditions without consuming a throttle slot, reserves one database-backed source-wide slot and records the committed outcome exactly once. Provider-specific code remains responsible for request construction, response validation and evidence persistence. This small reused workflow does not create a generic crawler, scheduler or new provider endpoint.
 
+Saturn's separate [offline evidence identity comparison](../apps/api/src/modules/sources/providers/saturn/saturnEvidenceLinks.ts) can flag matching feature IDs between captured index and polygon lists and distinguish an `/acr/{id}` URL identifier from the returned body ID. These are investigation candidates, not verified cross-endpoint joins. A spatial association, complete polygon coverage or treatment-date interpretation requires additional independently captured provider evidence and source-access review. No new external fetch, table or published geometry is introduced by this comparison.
+
 ## Spatial processing
 
 Use WGS84 (EPSG:4326) at HTTP boundaries; use PostGIS `geography` for meter-based distance operations and spatial indexes for polygon searches. Do not infer field geometry from place-name centroids or label uncertain geometry as cadastral precision. Mark observation precision (`exact_polygon`, `approximate_area`, `text_only`). All environmental conclusions require documented, independently verified models and field validation.
