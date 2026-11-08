@@ -1,0 +1,162 @@
+// Feature IDs: SOURCES.DOCUMENT_HISTORY
+import { z } from "zod";
+import {
+  SATURN_CAPTURE_ACR_URL_PREFIX,
+  SATURN_CAPTURE_POLYGON_URL,
+} from "./sourceProfile.js";
+
+const digestSchema = z.string().regex(/^[0-9a-f]{64}$/);
+const featureIdSchema = z.string().regex(/^[1-9][0-9]{0,19}$/);
+const timestampSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
+  .refine((value) => {
+    const parsed = new Date(value);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
+  });
+const manifestSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    query: z
+      .object({
+        requestSha256: digestSchema,
+        responseSha256: digestSchema,
+        capturedAt: timestampSchema,
+      })
+      .strict(),
+    polygons: z
+      .object({
+        responseSha256: digestSchema,
+        capturedAt: timestampSchema,
+        requestUrl: z.string().min(1).max(5000),
+      })
+      .strict(),
+    acr: z
+      .array(
+        z
+          .object({
+            requestedFeatureId: featureIdSchema,
+            responseSha256: digestSchema,
+            capturedAt: timestampSchema,
+            requestUrl: z.string().min(1).max(5000),
+          })
+          .strict(),
+      )
+      .max(100),
+  })
+  .strict();
+
+export type SaturnCaptureFileHashes = {
+  queryRequestSha256: string;
+  queryResponseSha256: string;
+  polygonResponseSha256: string;
+  acrResponses: readonly { requestedFeatureId: string; sha256: string }[];
+};
+
+export type SaturnCaptureManifestReport = {
+  status: "SELF_REPORTED_METADATA_HASH_BOUND";
+  reportedCaptureSpanMs: number;
+  polygonZoom: number;
+  polygonBboxParameterPresent: true;
+  limitations: readonly string[];
+};
+
+function expectedSourceUrl(value: string, expectedUrl: string): URL {
+  const url = new URL(value);
+  if (
+    `${url.origin}${url.pathname}` !== expectedUrl ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.hash !== ""
+  ) {
+    throw new Error("Unexpected Saturn capture request URL");
+  }
+  return url;
+}
+
+function oneParameter(url: URL, key: string): string {
+  const values = url.searchParams.getAll(key);
+  if (values.length !== 1 || !values[0]) {
+    throw new Error("Missing or repeated Saturn request parameter");
+  }
+  return values[0];
+}
+
+/**
+ * Bind manually recorded capture metadata to exact local body bytes.
+ * Source host, endpoint, callback and subject must match the observed profile.
+ * Matching hashes do not authenticate the browser, server, time or legal rights.
+ *
+ * @throws Error for malformed, inconsistent or incorrectly bound metadata.
+ */
+export function verifySaturnCaptureManifest(
+  input: unknown,
+  hashes: SaturnCaptureFileHashes,
+  subject: string,
+  callback: string,
+): SaturnCaptureManifestReport {
+  const manifest = manifestSchema.parse(input);
+  if (
+    hashes.queryRequestSha256 !== manifest.query.requestSha256 ||
+    hashes.queryResponseSha256 !== manifest.query.responseSha256 ||
+    hashes.polygonResponseSha256 !== manifest.polygons.responseSha256 ||
+    hashes.acrResponses.length !== manifest.acr.length
+  ) {
+    throw new Error("Manifest does not match supplied capture bodies");
+  }
+
+  const actualAcr = new Map<string, string>();
+  for (const capture of hashes.acrResponses) {
+    if (actualAcr.has(capture.requestedFeatureId)) {
+      throw new Error("Duplicate ACR capture ID");
+    }
+    actualAcr.set(capture.requestedFeatureId, capture.sha256);
+  }
+  for (const entry of manifest.acr) {
+    if (actualAcr.get(entry.requestedFeatureId) !== entry.responseSha256) {
+      throw new Error("Manifest ACR digest or requested ID mismatch");
+    }
+    actualAcr.delete(entry.requestedFeatureId);
+    const url = expectedSourceUrl(
+      entry.requestUrl,
+      `${SATURN_CAPTURE_ACR_URL_PREFIX}${entry.requestedFeatureId}`,
+    );
+    if (url.search !== "") {
+      throw new Error("Unexpected ACR request parameters");
+    }
+  }
+
+  const url = expectedSourceUrl(
+    manifest.polygons.requestUrl,
+    SATURN_CAPTURE_POLYGON_URL,
+  );
+  if (
+    oneParameter(url, "subject") !== subject ||
+    oneParameter(url, "callback") !== callback
+  ) {
+    throw new Error("Polygon request identity does not match query context");
+  }
+  oneParameter(url, "bbox");
+  const zoomText = oneParameter(url, "zoom");
+  const polygonZoom = Number(zoomText);
+  if (!/^\d+$/.test(zoomText) || !Number.isSafeInteger(polygonZoom)) {
+    throw new Error("Invalid polygon request zoom");
+  }
+
+  const times = [
+    manifest.query.capturedAt,
+    manifest.polygons.capturedAt,
+    ...manifest.acr.map((item) => item.capturedAt),
+  ].map((value) => Date.parse(value));
+  return {
+    status: "SELF_REPORTED_METADATA_HASH_BOUND",
+    reportedCaptureSpanMs: Math.max(...times) - Math.min(...times),
+    polygonZoom,
+    polygonBboxParameterPresent: true,
+    limitations: [
+      "Manifest timestamps and request URLs are operator-supplied, not authenticated.",
+      "Polygon bbox contents and equivalence to the query viewport are unverified.",
+      "Body digests prove local file binding only, not a cross-endpoint join.",
+    ],
+  };
+}

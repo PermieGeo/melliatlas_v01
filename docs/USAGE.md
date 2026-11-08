@@ -158,3 +158,37 @@ pnpm --dir apps/api evidence:saturn -- \
 `--acr <requestedFeatureId> <file>` may be repeated up to 100 times or omitted. The command is **offline**: it makes no provider HTTP requests, database writes or file output. It prints a JSON report to stdout with `ID_ONLY_UNVERIFIED` status, counts, captured query filter dates, candidate common IDs, missing IDs, exact geometry digests, and mismatched ACR URL/body IDs. It does not print provider names, arbitrary response fields, polygon coordinates or input file paths on validation failure. Inputs are capped at 64 KiB (request), 1 MiB (page), 8 MiB (JSONP) and 256 KiB per ACR body; symlink inputs are refused. Redirect stdout only to an approved secure location if a saved report is needed, since identifiers and filter metadata can still be sensitive.
 
 An ID match does **not** establish a verified cross-endpoint record join. Capture origin, time, zoom, viewport correspondence, completeness, `UpdateMap` semantics, access and redistribution rights remain separate evidence gates. A single page does not establish district coverage.
+
+#### Optional capture-integrity manifest
+
+For a captured set that should remain reproducible, manually record UTC timestamps and the sanitized polygon/ACR **request URLs** from the same browser Network session. Calculate SHA-256 for the exact saved files (on macOS: `shasum -a 256 query-request.json query-response.json polygons.jsonp acr-238194.json`). Do not invent timestamps or reformat files after hashing. Use the complete provider response body, not a HAR wrapper, and keep secrets/cookies out of the manifest.
+
+Save a separate `manifest.json` with this schema. Replace each example digest with the corresponding **64 lowercase hexadecimal characters** produced by hashing the named file, and copy the actual polygon URL including its original `bbox`, `zoom`, `subject` and `callback` query parameters:
+
+```json
+{
+  "schemaVersion": 1,
+  "query": {
+    "requestSha256": "<query-request-sha256>",
+    "responseSha256": "<query-response-sha256>",
+    "capturedAt": "2026-11-07T08:00:00.000Z"
+  },
+  "polygons": {
+    "responseSha256": "<polygons-response-sha256>",
+    "capturedAt": "2026-11-07T08:00:01.000Z",
+    "requestUrl": "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=<original-bbox>&zoom=13&subject=55&callback=capturedCallback"
+  },
+  "acr": [
+    {
+      "requestedFeatureId": "238194",
+      "responseSha256": "<acr-response-sha256>",
+      "capturedAt": "2026-11-07T08:00:02.000Z",
+      "requestUrl": "https://bee-saturn.ru/backend/beemaster/acr/238194"
+    }
+  ]
+}
+```
+
+The dates above are illustrative, not actual capture evidence. Each `--acr` entry must appear exactly once in `acr`; use `"acr": []` when no ACR file is supplied. Run the original CLI command with `--manifest /path/to/manifest.json` appended. The manifest must be a regular local file no larger than 64 KiB. A hash mismatch, unknown endpoint, inconsistent `subject`/`callback` or wrong ACR requested ID causes a nonzero exit without printing raw input. Without a manifest, `provenance.status` is `NOT_PROVIDED`; on successful **self-reported** metadata binding it becomes `SELF_REPORTED_METADATA_HASH_BOUND`.
+
+The tool checks the presence, not the syntax or spatial meaning, of the polygon `bbox`. It cannot establish that the operator's URL/timestamp metadata is truthful, that the captures came from one stable portal state, or that a matching ID refers to the same treatment. The primary report stays `ID_ONLY_UNVERIFIED` in both modes.

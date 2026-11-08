@@ -1,17 +1,24 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
+import { createHash } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   inspectSaturnCaptureBodies,
   type SaturnCaptureBodies,
+  type SaturnCaptureInspection,
 } from "./saturnCaptureInspection.js";
+import {
+  verifySaturnCaptureManifest,
+  type SaturnCaptureManifestReport,
+} from "./saturnCaptureManifest.js";
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const MAX_POLYGON_BYTES = 8 * 1024 * 1024;
 const MAX_ACR_BYTES = 256 * 1024;
 const MAX_ACR_FILES = 100;
+const MAX_MANIFEST_BYTES = 64 * 1024;
 
 export type SaturnCaptureCliOptions = {
   queryRequestPath: string;
@@ -19,11 +26,19 @@ export type SaturnCaptureCliOptions = {
   polygonPath: string;
   callback: string;
   acrFiles: Array<{ requestedFeatureId: string; path: string }>;
+  manifestPath?: string;
 };
+
+export type SaturnCaptureFileReport = SaturnCaptureInspection & {
+  provenance: SaturnCaptureManifestReport | { status: "NOT_PROVIDED" };
+};
+
+type BoundedFile = { text: string; sha256: string };
+type JsonCapture = { value: unknown; sha256: string };
 
 const usage = [
   "Offline Saturn capture inspection (no HTTP requests or database writes)",
-  "Usage: pnpm --dir apps/api evidence:saturn -- --query-request <request.json> --query-response <response.json> --polygons <response.jsonp> --callback <name> [--acr <requestedFeatureId> <response.json>]...",
+  "Usage: pnpm --dir apps/api evidence:saturn -- --query-request <request.json> --query-response <response.json> --polygons <response.jsonp> --callback <name> [--acr <requestedFeatureId> <response.json>]... [--manifest <manifest.json>]",
   "Input files must contain direct provider bodies, not HAR wrappers.",
   "Output includes source IDs and hashes only; it does not verify cross-endpoint joins.",
 ].join("\n");
@@ -57,6 +72,7 @@ export function parseSaturnCaptureCliArgs(
         "--query-response",
         "--polygons",
         "--callback",
+        "--manifest",
       ].includes(flag) ||
       values.has(flag)
     ) {
@@ -82,6 +98,9 @@ export function parseSaturnCaptureCliArgs(
     polygonPath,
     callback,
     acrFiles,
+    ...(values.has("--manifest")
+      ? { manifestPath: values.get("--manifest") }
+      : {}),
   };
 }
 
@@ -89,7 +108,7 @@ export function parseSaturnCaptureCliArgs(
 async function readBoundedCapture(
   path: string,
   maxBytes: number,
-): Promise<string> {
+): Promise<BoundedFile> {
   const info = await lstat(path);
   if (!info.isFile() || info.size > maxBytes) {
     throw new Error("Invalid capture file size or type");
@@ -98,22 +117,25 @@ async function readBoundedCapture(
   if (data.byteLength > maxBytes) {
     throw new Error("Capture grew beyond the permitted limit");
   }
-  return data.toString("utf8");
+  return {
+    text: new TextDecoder("utf-8", { fatal: true }).decode(data),
+    sha256: createHash("sha256").update(data).digest("hex"),
+  };
 }
 
 async function readJsonCapture(
   path: string,
   maxBytes: number,
-): Promise<unknown> {
-  const text = await readBoundedCapture(path, maxBytes);
-  return JSON.parse(text) as unknown;
+): Promise<JsonCapture> {
+  const capture = await readBoundedCapture(path, maxBytes);
+  return { value: JSON.parse(capture.text) as unknown, sha256: capture.sha256 };
 }
 
 /** Load independently captured local bodies; never retrieve remote URLs. */
 export async function inspectSaturnCaptureFiles(
   options: SaturnCaptureCliOptions,
-): Promise<ReturnType<typeof inspectSaturnCaptureBodies>> {
-  const [[queryRequest, queryResponse, polygonJsonp], acrResponses] =
+): Promise<SaturnCaptureFileReport> {
+  const [[queryRequest, queryResponse, polygons], acrResponses, manifest] =
     await Promise.all([
       Promise.all([
         readJsonCapture(options.queryRequestPath, MAX_REQUEST_BYTES),
@@ -125,18 +147,38 @@ export async function inspectSaturnCaptureFiles(
           readJsonCapture(path, MAX_ACR_BYTES),
         ),
       ),
+      options.manifestPath
+        ? readJsonCapture(options.manifestPath, MAX_MANIFEST_BYTES)
+        : Promise.resolve(undefined),
     ]);
   const captures: SaturnCaptureBodies = {
-    queryRequest,
-    queryResponse,
-    polygonJsonp,
+    queryRequest: queryRequest.value,
+    queryResponse: queryResponse.value,
+    polygonJsonp: polygons.text,
     callback: options.callback,
     acrCaptures: options.acrFiles.map((capture, index) => ({
       requestedFeatureId: capture.requestedFeatureId,
-      response: acrResponses[index],
+      response: acrResponses[index].value,
     })),
   };
-  return inspectSaturnCaptureBodies(captures);
+  const report = inspectSaturnCaptureBodies(captures);
+  const provenance = manifest
+    ? verifySaturnCaptureManifest(
+        manifest.value,
+        {
+          queryRequestSha256: queryRequest.sha256,
+          queryResponseSha256: queryResponse.sha256,
+          polygonResponseSha256: polygons.sha256,
+          acrResponses: options.acrFiles.map((item, index) => ({
+            requestedFeatureId: item.requestedFeatureId,
+            sha256: acrResponses[index].sha256,
+          })),
+        },
+        report.selection.subject,
+        options.callback,
+      )
+    : { status: "NOT_PROVIDED" as const };
+  return { ...report, provenance };
 }
 
 async function main(args: readonly string[]): Promise<void> {
