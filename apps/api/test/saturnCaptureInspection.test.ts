@@ -1,4 +1,5 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -239,7 +240,49 @@ describe("local Saturn capture CLI arguments and bounded files", () => {
     ]);
     const report = await inspectSaturnCaptureFiles(options);
     expect(report.findings.acrObservations[0].responseId).toBe("1586314");
+    expect(report.provenance).toEqual({ status: "NOT_PROVIDED" });
     expect(JSON.stringify(report)).not.toContain("apiKey");
+    const digest = async (path: string): Promise<string> =>
+      createHash("sha256")
+        .update(await readFile(path))
+        .digest("hex");
+    const manifestPath = join(dir, "manifest.json");
+    const manifest = {
+      schemaVersion: 1,
+      query: {
+        requestSha256: await digest(requestPath),
+        responseSha256: await digest(responsePath),
+        capturedAt: "2026-11-07T08:00:00.000Z",
+      },
+      polygons: {
+        responseSha256: await digest(polygonPath),
+        capturedAt: "2026-11-07T08:00:01.000Z",
+        requestUrl:
+          "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=opaque&zoom=13&subject=55&callback=capturedCallback",
+      },
+      acr: [
+        {
+          requestedFeatureId: "238194",
+          responseSha256: await digest(acrPath),
+          capturedAt: "2026-11-07T08:00:02.000Z",
+          requestUrl: "https://bee-saturn.ru/backend/beemaster/acr/238194",
+        },
+      ],
+    };
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    const withManifest = { ...options, manifestPath };
+    expect(
+      (await inspectSaturnCaptureFiles(withManifest)).provenance,
+    ).toMatchObject({
+      status: "SELF_REPORTED_METADATA_HASH_BOUND",
+      reportedCaptureSpanMs: 2000,
+    });
+    await writeFile(
+      acrPath,
+      JSON.stringify({ id: 1586314, apiKey: "altered" }),
+    );
+    await expect(inspectSaturnCaptureFiles(withManifest)).rejects.toThrow();
+    await writeFile(acrPath, JSON.stringify({ id: 1586314, apiKey: "hidden" }));
     const link = join(dir, "symlink.jsonp");
     await symlink(polygonPath, link);
     await expect(

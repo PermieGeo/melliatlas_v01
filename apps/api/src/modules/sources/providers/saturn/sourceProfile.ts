@@ -17,6 +17,11 @@ export const SATURN_VIEWPORT_URL =
   "https://bee-saturn.ru/backend/beemaster/query";
 export const SATURN_DISTRICT_URL =
   "https://bee-saturn.ru/backend/beemaster/district/55";
+// Observed capture endpoints are not registered for automatic retrieval.
+export const SATURN_CAPTURE_POLYGON_URL =
+  "https://bee-saturn.ru/backend/beemaster/geojson-polygons";
+export const SATURN_CAPTURE_ACR_URL_PREFIX =
+  "https://bee-saturn.ru/backend/beemaster/acr/";
 export const SATURN_CONFIGURED_ENDPOINTS: ReadonlySet<string> = new Set([
   SATURN_LEGACY_TREATMENT_URL,
   SATURN_VIEWPORT_URL,
