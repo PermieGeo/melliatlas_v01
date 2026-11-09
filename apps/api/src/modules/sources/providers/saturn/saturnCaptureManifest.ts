@@ -4,6 +4,7 @@ import {
   SATURN_CAPTURE_ACR_URL_PREFIX,
   SATURN_CAPTURE_POLYGON_URL,
 } from "./sourceProfile.js";
+import { validateSaturnViewportQuery } from "./saturnViewportQuery.js";
 
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const featureIdSchema = z.string().regex(/^[1-9][0-9]{0,19}$/);
@@ -58,8 +59,55 @@ export type SaturnCaptureManifestReport = {
   reportedCaptureSpanMs: number;
   polygonZoom: number;
   polygonBboxParameterPresent: true;
+  polygonBboxRelation: "identical" | "overlapping" | "disjoint";
   limitations: readonly string[];
 };
+
+type Bbox = { west: number; south: number; east: number; north: number };
+
+/** Parse the observed west,south,east,north request bounds, not polygon geometry. */
+function parsePolygonRequestBbox(value: string): Bbox {
+  const values = value.split(",");
+  if (
+    values.length !== 4 ||
+    values.some((item) => !/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(item))
+  ) {
+    throw new Error("Invalid Saturn polygon bbox parameter");
+  }
+  const [west, south, east, north] = values.map(Number);
+  if (
+    ![west, south, east, north].every(Number.isFinite) ||
+    west < -180 ||
+    east > 180 ||
+    south < -90 ||
+    north > 90 ||
+    west >= east ||
+    south >= north
+  ) {
+    throw new Error("Invalid Saturn polygon bbox coordinates");
+  }
+  return { west, south, east, north };
+}
+
+function bboxRelation(
+  a: Bbox,
+  b: Bbox,
+): SaturnCaptureManifestReport["polygonBboxRelation"] {
+  if (
+    a.west === b.west &&
+    a.south === b.south &&
+    a.east === b.east &&
+    a.north === b.north
+  ) {
+    return "identical";
+  }
+  return a.west < b.east &&
+    b.west < a.east &&
+    a.south < b.north &&
+    b.south < a.north
+    ? "overlapping"
+    : "disjoint";
+}
 
 function expectedSourceUrl(value: string, expectedUrl: string): URL {
   const url = new URL(value);
@@ -85,6 +133,7 @@ function oneParameter(url: URL, key: string): string {
 /**
  * Bind manually recorded capture metadata to exact local body bytes.
  * Source host, endpoint, callback and subject must match the observed profile.
+ * Compare numeric requested viewports without asserting feature correspondence.
  * Matching hashes do not authenticate the browser, server, time or legal rights.
  *
  * @throws Error for malformed, inconsistent or incorrectly bound metadata.
@@ -92,10 +141,11 @@ function oneParameter(url: URL, key: string): string {
 export function verifySaturnCaptureManifest(
   input: unknown,
   hashes: SaturnCaptureFileHashes,
-  subject: string,
+  queryRequest: unknown,
   callback: string,
 ): SaturnCaptureManifestReport {
   const manifest = manifestSchema.parse(input);
+  const query = validateSaturnViewportQuery(queryRequest);
   if (
     hashes.queryRequestSha256 !== manifest.query.requestSha256 ||
     hashes.queryResponseSha256 !== manifest.query.responseSha256 ||
@@ -131,12 +181,18 @@ export function verifySaturnCaptureManifest(
     SATURN_CAPTURE_POLYGON_URL,
   );
   if (
-    oneParameter(url, "subject") !== subject ||
+    oneParameter(url, "subject") !== query.filter.subject ||
     oneParameter(url, "callback") !== callback
   ) {
     throw new Error("Polygon request identity does not match query context");
   }
-  oneParameter(url, "bbox");
+  const polygonBbox = parsePolygonRequestBbox(oneParameter(url, "bbox"));
+  const queryBbox = {
+    west: query.filter.leftTop.longitude,
+    south: query.filter.rightDown.latitude,
+    east: query.filter.rightDown.longitude,
+    north: query.filter.leftTop.latitude,
+  };
   const zoomText = oneParameter(url, "zoom");
   const polygonZoom = Number(zoomText);
   if (!/^\d+$/.test(zoomText) || !Number.isSafeInteger(polygonZoom)) {
@@ -153,9 +209,10 @@ export function verifySaturnCaptureManifest(
     reportedCaptureSpanMs: Math.max(...times) - Math.min(...times),
     polygonZoom,
     polygonBboxParameterPresent: true,
+    polygonBboxRelation: bboxRelation(queryBbox, polygonBbox),
     limitations: [
       "Manifest timestamps and request URLs are operator-supplied, not authenticated.",
-      "Polygon bbox contents and equivalence to the query viewport are unverified.",
+      "Requested viewport overlap does not prove polygon coverage or feature identity.",
       "Body digests prove local file binding only, not a cross-endpoint join.",
     ],
   };

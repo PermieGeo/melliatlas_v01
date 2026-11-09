@@ -176,7 +176,7 @@ Save a separate `manifest.json` with this schema. Replace each example digest wi
   "polygons": {
     "responseSha256": "<polygons-response-sha256>",
     "capturedAt": "2026-11-07T08:00:01.000Z",
-    "requestUrl": "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=<original-bbox>&zoom=13&subject=55&callback=capturedCallback"
+    "requestUrl": "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=32,54,33,55&zoom=13&subject=55&callback=capturedCallback"
   },
   "acr": [
     {
@@ -189,6 +189,6 @@ Save a separate `manifest.json` with this schema. Replace each example digest wi
 }
 ```
 
-The dates above are illustrative, not actual capture evidence. Each `--acr` entry must appear exactly once in `acr`; use `"acr": []` when no ACR file is supplied. Run the original CLI command with `--manifest /path/to/manifest.json` appended. The manifest must be a regular local file no larger than 64 KiB. A hash mismatch, unknown endpoint, inconsistent `subject`/`callback` or wrong ACR requested ID causes a nonzero exit without printing raw input. Without a manifest, `provenance.status` is `NOT_PROVIDED`; on successful **self-reported** metadata binding it becomes `SELF_REPORTED_METADATA_HASH_BOUND`.
+The dates and bounding rectangle above are illustrative, not actual capture evidence. Replace the entire polygon URL with the captured request URL; `bbox` must contain exactly four finite decimal coordinates in `west,south,east,north` order, with increasing longitude and latitude and valid global ranges. Each `--acr` entry must appear exactly once in `acr`; use `"acr": []` when no ACR file is supplied. Run the original CLI command with `--manifest /path/to/manifest.json` appended. The manifest must be a regular local file no larger than 64 KiB. A hash mismatch, malformed rectangle, unknown endpoint, inconsistent `subject`/`callback` or wrong ACR requested ID causes a nonzero exit without printing raw input. Without a manifest, `provenance.status` is `NOT_PROVIDED`; on successful **self-reported** metadata binding it becomes `SELF_REPORTED_METADATA_HASH_BOUND`.
 
-The tool checks the presence, not the syntax or spatial meaning, of the polygon `bbox`. It cannot establish that the operator's URL/timestamp metadata is truthful, that the captures came from one stable portal state, or that a matching ID refers to the same treatment. The primary report stays `ID_ONLY_UNVERIFIED` in both modes.
+The tool validates the numeric polygon `bbox` and compares its **requested rectangle** with the captured `/query` rectangle, returning `polygonBboxRelation: identical | overlapping | disjoint` without exposing either rectangle. Even identical rectangles do not establish that the operator's URL/timestamp metadata is truthful, that the captures came from one stable portal state, that all features are present, or that a matching ID refers to the same treatment. The primary report stays `ID_ONLY_UNVERIFIED` in both modes.

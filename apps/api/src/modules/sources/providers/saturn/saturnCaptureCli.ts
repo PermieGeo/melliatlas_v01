@@ -174,7 +174,7 @@ export async function inspectSaturnCaptureFiles(
             sha256: acrResponses[index].sha256,
           })),
         },
-        report.selection.subject,
+        queryRequest.value,
         options.callback,
       )
     : { status: "NOT_PROVIDED" as const };
