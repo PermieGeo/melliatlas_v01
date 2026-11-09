@@ -258,7 +258,7 @@ describe("local Saturn capture CLI arguments and bounded files", () => {
         responseSha256: await digest(polygonPath),
         capturedAt: "2026-11-07T08:00:01.000Z",
         requestUrl:
-          "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=opaque&zoom=13&subject=55&callback=capturedCallback",
+          "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=32,54,33,55&zoom=13&subject=55&callback=capturedCallback",
       },
       acr: [
         {
@@ -276,6 +276,7 @@ describe("local Saturn capture CLI arguments and bounded files", () => {
     ).toMatchObject({
       status: "SELF_REPORTED_METADATA_HASH_BOUND",
       reportedCaptureSpanMs: 2000,
+      polygonBboxRelation: "identical",
     });
     await writeFile(
       acrPath,

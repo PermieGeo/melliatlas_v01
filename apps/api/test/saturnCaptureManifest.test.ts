@@ -4,14 +4,23 @@ import {
   verifySaturnCaptureManifest,
   type SaturnCaptureFileHashes,
 } from "../src/modules/sources/providers/saturn/saturnCaptureManifest.js";
+import { buildSaturnViewportQuery } from "../src/modules/sources/providers/saturn/saturnViewportQuery.js";
 
 const hash = (value: string): string => value.repeat(64);
 const queryCapturedAt = "2026-11-07T08:00:00.000Z";
 const polygonCapturedAt = "2026-11-07T08:00:01.250Z";
 const acrCapturedAt = "2026-11-07T08:00:02.000Z";
 const polygonUrl =
-  "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=opaque-value&zoom=13&subject=55&callback=capturedCallback";
+  "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=32,54,33,55&zoom=13&subject=55&callback=capturedCallback";
 const acrUrl = "https://bee-saturn.ru/backend/beemaster/acr/238194";
+const queryRequest = buildSaturnViewportQuery({
+  districts: [{ id: 1477, name: "Test district", latitude: 55, longitude: 32 }],
+  districtId: 1477,
+  bbox: { west: 32, south: 54, east: 33, north: 55 },
+  fromDate: "2026-08-01",
+  toDate: "2026-11-30",
+  pageNumber: 0,
+});
 
 function sampleManifest(): Record<string, unknown> {
   return {
@@ -51,7 +60,7 @@ function verify(
   return verifySaturnCaptureManifest(
     manifest,
     hashes,
-    "55",
+    queryRequest,
     "capturedCallback",
   );
 }
@@ -64,10 +73,45 @@ describe("offline Saturn capture manifest integrity", () => {
       reportedCaptureSpanMs: 2000,
       polygonZoom: 13,
       polygonBboxParameterPresent: true,
+      polygonBboxRelation: "identical",
     });
     expect(report.limitations.join(" ")).toMatch(/not authenticated/);
-    expect(report.limitations.join(" ")).toMatch(/bbox contents/);
-    expect(JSON.stringify(report)).not.toContain("opaque-value");
+    expect(report.limitations.join(" ")).toMatch(
+      /does not prove polygon coverage/,
+    );
+    expect(JSON.stringify(report)).not.toContain("32,54,33,55");
+  });
+
+  it("reports overlap and disjoint rectangles without claiming matching features", () => {
+    for (const [bbox, expected] of [
+      ["32.5,54.5,33.5,55.5", "overlapping"],
+      ["34,56,35,57", "disjoint"],
+    ] as const) {
+      const manifest = sampleManifest();
+      const polygons = manifest.polygons as Record<string, unknown>;
+      polygons.requestUrl = polygonUrl.replace("32,54,33,55", bbox);
+      expect(verify(manifest).polygonBboxRelation).toBe(expected);
+    }
+  });
+
+  it("rejects malformed, degenerate and out-of-range polygon request rectangles", () => {
+    for (const bbox of [
+      "opaque-value",
+      "32,54,32,55",
+      "33,54,32,55",
+      "32,55,33,54",
+      "32,54,200,55",
+      "32,54,33,95",
+      "32,54,33",
+      "32,54,33,55,56",
+      "32,54,Infinity,55",
+      "32,54,33,%2055",
+    ]) {
+      const manifest = sampleManifest();
+      const polygons = manifest.polygons as Record<string, unknown>;
+      polygons.requestUrl = polygonUrl.replace("32,54,33,55", bbox);
+      expect(() => verify(manifest)).toThrow();
+    }
   });
 
   it("refuses altered request, polygon and ACR bytes", () => {
@@ -119,7 +163,7 @@ describe("offline Saturn capture manifest integrity", () => {
       polygonUrl.replace("bee-saturn.ru", "example.org"),
       polygonUrl.replace("subject=55", "subject=77"),
       polygonUrl.replace("capturedCallback", "anotherCallback"),
-      polygonUrl.replace("bbox=opaque-value&", ""),
+      polygonUrl.replace("bbox=32,54,33,55&", ""),
       polygonUrl.replace("zoom=13", "zoom=wrong"),
     ]) {
       expect(() =>
