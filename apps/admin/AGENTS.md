@@ -1,10 +1,11 @@
-# Administrator Frontend Rules
+# Operator Web Engineering Guidance
 
-Extends [repository rules](../../AGENTS.md).
+Extends [root engineering guidance](../../AGENTS.md). This is the separate **React/TypeScript** operator application.
 
-- All operator settings, ingestion requests, pending evidence and review actions belong to `apps/admin`; never import them into `apps/web`.
-- This local-only frontend is **not** an authentication boundary. Never expose the operator API or admin frontend beyond loopback without server-side administrator authentication.
-- Persisted configuration edits must never silently trigger external collection. Distinguish configuration, collection and record verification in the UI.
-- Keep user-visible text in message catalogs and provide independent source error, loading, partial and empty states.
-- Browser network requests use `@melliatlas/contracts` schemas when available and the backend API; no direct third-party calls, database connections or stored access keys.
-- Treat pending geometry as an explicitly labelled preview, not public data or a pesticide risk determination.
+- Keep source configuration, explicit collection, pending-evidence preview, review decisions and diagnostics within `apps/admin`; do not share operator UI or privileged API calls with `apps/web`.
+- Organize components and state by operator task. Keep `src/App.tsx` a composition point; use existing API-client boundaries and `@melliatlas/contracts` rather than duplicating schemas or embedding provider parsing in components.
+- Saving a source configuration must not silently start collection. Distinguish configured, running, partial, failed and reviewed states and display trustworthy persisted progress.
+- The current loopback/origin restrictions are **not production authentication**. Do not expose operator actions to remote users without real server-side identity and authorization.
+- Fetch from the backend, not directly from Saturn or PostGIS. Never bundle access keys or raw protected source documents into the client.
+- Label uncertain and pending geometry as unverified; keep source attribution and avoid risk claims. Localize all authored UI text via existing RU/EN catalogs.
+- Use component/browser tests for operator-only access, explicit actions, async failures, stale responses, keyboard interaction and responsive screens.

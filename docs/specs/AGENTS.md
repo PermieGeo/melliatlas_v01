@@ -1,15 +1,12 @@
-# SDD Rules
+# Specification Authoring Guidance
 
-Extends [root AGENTS.md](../../AGENTS.md).
+Extends [root engineering guidance](../../AGENTS.md). [Specification index](README.md) owns the current structure and lifecycle.
 
-- Normative umbrella: [spec-umbrella-melliatlas.md](active/spec-umbrella-melliatlas.md). Selected child: `active/subspecs/<name>.md`; advisory plan: `active/subspecs/<name>-implementation-plan.md`. The child and plan MUST link each other.
-- `STATE.json` is the developer-controlled processing checkpoint. In `SINGLE` mode, exactly one workstream may be active. The selected child stage and umbrella `current_focus` MUST match.
-- Allowed phases: `DESIGN`, `READY_FOR_IMPLEMENTATION`, `READY_FOR_REVIEW`, `AWAITING_DEVELOPER_DECISION`, `BLOCKED`, `PAUSED`, `ON_HOLD`.
-- Write specifications in English only. The umbrella MUST use readable, detailed human prose, concrete journeys, clear current/planned distinctions and short paragraphs. Sub-specs MUST remain concise normative contracts with observable outcomes and failure/boundary evidence. Avoid filler.
-- State source permissions, endpoints, third-party claims and scientific accuracy as verified or provisional. Never invent access or real observations.
-- A plan MUST distinguish verified existing files from proposed files. Give ordered bounded implementation steps, migrations/retry/restart paths, deterministic tests and completion gates.
-- Draft future sub-specs only when selected; refresh the selected plan against actual sources before implementation.
-- Feature IDs are stable semantic `DOMAIN.CAPABILITY` names in [FEATURES](../FEATURES.md). Stage IDs (`SRC-01`) identify delivery workstreams; requirement IDs (`SRC-R01`) and test scenarios (`SRC-T01`) belong to sub-specs. A feature MAY span many stages/specs/requirements. Never derive feature names from spec numbering.
-- Maintain [feature-cross-ref.yaml](feature-cross-ref.yaml): feature -> stages, specs, requirements, actual code and tests. Leave planned code/test arrays empty; indexed production owners MUST carry `// Feature IDs: ...` markers and follow module `contract.md`.
-- Archive the complete child/plan pair under `archive/subspecs/` only after explicit developer acceptance. Keep stage metadata and links coherent.
-- Run `python3 tools/specs/validate_state.py` after any SDD change; report actual results, never infer acceptance.
+- Write **normative specifications** as observable behavior: purpose, actors and journeys, scope/non-goals, requirements, failure/boundary cases and verifiable acceptance evidence. Avoid implementation recipes disguised as requirements.
+- Maintain a separate, linked **advisory implementation plan** for each new or materially changed sub-spec. Plans identify verified existing owners versus proposed files, ordered steps, dependencies, compatibility/migrations, recovery and independent tests. Keep plans useful, not ceremonially exhaustive.
+- The umbrella describes the product and distinguishes **implemented, experimental and planned** capabilities. A selected sub-spec remains focused on its current workstream; avoid unrelated future detail.
+- Keep feature identifiers, stage identifiers, requirement identifiers and test scenarios distinct. Preserve existing IDs and update [feature cross-references](feature-cross-ref.yaml) only when ownership or coverage actually changes.
+- Link to authoritative architecture, contracts, tests and evidence rather than duplicating long code descriptions or historical implementation logs. Confirm that cited file paths, endpoints and behaviors exist.
+- Label third-party access permissions, API semantics, geographic/scientific claims and untested assumptions as verified or provisional. Never substitute a generated example for field evidence.
+- `STATE.json` tracks developer-selected work and acceptance; passing tests or completing a document does not itself advance that state. Keep the current spec, linked plan and index internally consistent.
+- All specifications and plans are in English, with clear prose and concise, independently testable requirements.
