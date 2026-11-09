@@ -1,9 +1,10 @@
-# Browser Verification Rules
+# Browser and Integration Test Guidance
 
-Extends [root AGENTS.md](../AGENTS.md) and [TESTS.md](../docs/TESTS.md).
+Extends [root engineering guidance](../AGENTS.md) and [TESTS](../docs/TESTS.md). Keep detailed commands and test inventories in the latter document.
 
-- Playwright scenarios MUST assert user-visible behavior, not incidental CSS classes or screenshots alone. Use the actual map UI for selection/navigation; API stubs are permitted only at network boundaries.
-- Cover both configured desktop and mobile projects. Test success, empty, invalid, offline, error, retry, stale response cancellation, source links and keyboard/touch interaction as those behaviors are implemented.
-- Distinguish browser-only tests with intercepted API fixtures from full-stack/database tests. Do not call a stubbed test proof of successful source ingestion.
-- Use deterministic fixtures, controlled clocks and bounded waits. Never rely on real external providers, credentials or fixed sleeps.
-- When a scenario fails, preserve the independently derived expectation until the implementation is fixed or the spec is shown to contradict it. Never skip, relax, silently retry-to-green or replace a meaningful assertion merely to obtain PASS.
+- Assert user-visible and persisted behavior, not incidental implementation structure or CSS class names. Derive expectations from requirements, contracts or a reproduced defect.
+- Cover relevant happy paths, invalid inputs, boundaries, errors, retries, stale-result handling and accessibility. Test actual navigation and interactions where those are part of the requirement.
+- Use deterministic fixtures and clocks; stub true external boundaries, never the behavior being tested. Avoid dependence on live providers, private credentials or arbitrary waits.
+- Distinguish browser tests with mocked API responses from full-stack/database tests; neither substitutes for the other when a contract crosses both layers.
+- Never suppress a legitimate failure, skip a valid scenario or loosen an assertion just to obtain a green result. If the expectation is wrong, explain it using independent specification evidence and preserve the regression intent.
+- Exercise relevant desktop/mobile viewports, keyboard/touch behavior and async feedback without hard-coded pixel sizes unless the requirement or a real regression demands them.

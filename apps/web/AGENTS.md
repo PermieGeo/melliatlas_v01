@@ -1,15 +1,12 @@
-# Frontend Rules
+# Beekeeper Web Engineering Guidance
 
-Extends [root AGENTS.md](../../AGENTS.md).
+Extends [root engineering guidance](../../AGENTS.md). This application uses **React, TypeScript, Vite, Tailwind and Leaflet**.
 
-- Prefer feature-oriented UI modules. Each reusable feature module MUST keep a `contract.md` defining props/public hooks, owned state, allowed dependencies, invariants and accessibility behavior.
-- `src/App.tsx` is the UI composition root. Business decisions and HTTP decoding belong in owning modules, not copied into multiple components.
-- Browser data access lives behind `src/api/` and shared `@melliatlas/contracts` schemas; never import `apps/api` source or connect to PostgreSQL directly.
-- Keep map-first UX on mobile and desktop: touch-sized controls, no horizontal overflow, accessible keyboard paths, responsive details and cancellable requests.
-- Only `GET /api/v1/notices` returns map treatment records for beekeepers. Never call `/api/v1/operator/*` or bundle admin controls into this app. The separate local-only explicit pilot action `/api/v1/map/saturn-viewport/next` may request exactly one bounded map-index page with server-side gating; it must never run on map movement or be represented as a polygon layer.
-- Render only server-provided source-attributed data. Pending structured treatment polygons may appear with a prominent unverified label; never represent them as independently reviewed or as a pesticide-risk verdict. Loading, empty, stale, restricted and error states differ; every external finding shows source and timestamp.
-- Never imply forecast weather proves pesticide risk, flowering state, official spraying or satellite observations.
-- Do not send precise private apiary coordinates to third parties, analytics, map URLs or error trackers.
-- Keep provider attribution on map layers. Verify external map tile/data usage restrictions before production launch.
-- Use component and Playwright desktop/mobile tests for success, empty, failure, retry, source links, selection changes and accessibility. Stub only external boundaries, not the logic being tested. Verify real FE/BE integration separately from browser-only fixtures.
-- All documentation and comments are English; localized interface strings are allowed. See [USAGE](../../docs/USAGE.md) and [TESTS](../../docs/TESTS.md).
+- Organize UI by user capability. Keep `src/App.tsx` as a composition root; separate presentation, domain-oriented state/hooks, and API decoding when their responsibilities differ. Avoid duplicating business rules across components.
+- Access the backend only through `src/api/` and validated `@melliatlas/contracts` schemas. Do not import backend internals, access PostGIS, call third-party treatment providers directly or include administrator functionality.
+- Treatment observations come from the validated map API. The local Saturn viewport pilot may request **one** explicitly selected index page per click, never automatically on pan/zoom or as part of reading cached data. Display index centers separately from verified treatment geometry.
+- Represent pending, verified, stale, empty and unavailable evidence distinctly. Show source attribution and timestamps; never turn a weather forecast, map marker or missing record into a pesticide safety verdict.
+- Keep map use practical on mobile and desktop: accessible controls and focus order, touch targets, responsive layout, understandable loading/errors, and cleanup of obsolete asynchronous results after selection changes.
+- All authored UI text must use the existing localized message catalogs and locale-aware formatting. Preserve source quotations as evidence, not translated application copy.
+- Never leak future private apiary coordinates to third-party maps, telemetry or URLs.
+- Cover relevant interactions, selection changes, failures and accessibility with component and desktop/mobile Playwright tests; distinguish stubbed UI evidence from real API integration.
