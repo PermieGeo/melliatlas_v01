@@ -126,6 +126,18 @@ describe("offline Saturn capture inspection", () => {
         listedInPolygons: true,
       },
     ]);
+    expect(report.acrDetailEvidence).toEqual([
+      {
+        requestedFeatureId: "238194",
+        evidence: {
+          responseId: "1586314",
+          reportedPlanInterval: "missing",
+          reportedProductCount: null,
+          reportedUpdatedProductCount: null,
+          publishingTimestampPresent: false,
+        },
+      },
+    ]);
     expect(JSON.stringify(report)).not.toMatch(
       /Do not include source name|private source field|privateValue|never output|centerX|coordinates/,
     );
@@ -163,7 +175,40 @@ describe("offline Saturn capture inspection", () => {
     });
     expect(report.findings.idMatchCandidates).toEqual([]);
     expect(report.findings.acrObservations).toEqual([]);
+    expect(report.acrDetailEvidence).toEqual([]);
     expect(report.counts.acrResponses).toBe(0);
+  });
+
+  it("reports detail structure without claiming treatment or exposing the raw ACR body", () => {
+    const report = inspectSaturnCaptureBodies({
+      ...captures(),
+      acrCaptures: [
+        {
+          requestedFeatureId: "238194",
+          response: {
+            id: 1586314,
+            name: "Never expose this ACR company",
+            startPlanDate: "2026-10-28T00:00:00Z",
+            finishPlanDate: "2026-10-30T00:00:00Z",
+            patAllList: [
+              { id: 12, activeSubstance: "Never expose this pesticide" },
+            ],
+            patUpdateAllList: [],
+            datePublishing: 1792648956,
+          },
+        },
+      ],
+    });
+    expect(report.acrDetailEvidence[0].evidence).toMatchObject({
+      reportedPlanInterval: "ordered",
+      reportedProductCount: 1,
+      reportedUpdatedProductCount: 0,
+      publishingTimestampPresent: true,
+    });
+    expect(report.status).toBe("ID_ONLY_UNVERIFIED");
+    expect(JSON.stringify(report)).not.toMatch(
+      /Never expose|activeSubstance|2026-10/,
+    );
   });
 });
 

@@ -1,5 +1,9 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import {
+  inspectSaturnAcrEvidence,
+  type SaturnAcrEvidence,
+} from "./saturnAcrEvidence.js";
+import {
   compareSaturnCapturedIdentities,
   type SaturnAcrIdentityCapture,
   type SaturnIdentityComparison,
@@ -39,6 +43,10 @@ export type SaturnCaptureInspection = {
     acrResponses: number;
   };
   findings: SaturnIdentityComparison;
+  acrDetailEvidence: Array<{
+    requestedFeatureId: string;
+    evidence: SaturnAcrEvidence;
+  }>;
   limitations: readonly string[];
 };
 
@@ -86,8 +94,13 @@ export function inspectSaturnCaptureBodies(
       acrResponses: acrCaptures.length,
     },
     findings,
+    acrDetailEvidence: acrCaptures.map(({ requestedFeatureId, response }) => ({
+      requestedFeatureId,
+      evidence: inspectSaturnAcrEvidence(response),
+    })),
     limitations: [
       "Matching feature IDs are investigative candidates, not verified joins.",
+      "ACR date and product counts describe a captured body, not a confirmed treatment.",
       "Capture provenance, timestamps, zoom and viewport equivalence are unverified.",
       "UpdateMap dates are not established treatment or application dates.",
       "One query page and one polygon viewport do not establish district coverage.",
