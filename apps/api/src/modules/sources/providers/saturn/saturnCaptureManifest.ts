@@ -4,7 +4,7 @@ import {
   SATURN_CAPTURE_ACR_URL_PREFIX,
   SATURN_CAPTURE_POLYGON_URL,
 } from "./sourceProfile.js";
-import { validateSaturnViewportQuery } from "./saturnViewportQuery.js";
+import { validateSaturnCapturedViewportQuery } from "./saturnViewportQuery.js";
 
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const featureIdSchema = z.string().regex(/^[1-9][0-9]{0,19}$/);
@@ -145,7 +145,7 @@ export function verifySaturnCaptureManifest(
   callback: string,
 ): SaturnCaptureManifestReport {
   const manifest = manifestSchema.parse(input);
-  const query = validateSaturnViewportQuery(queryRequest);
+  const query = validateSaturnCapturedViewportQuery(queryRequest);
   if (
     hashes.queryRequestSha256 !== manifest.query.requestSha256 ||
     hashes.queryResponseSha256 !== manifest.query.responseSha256 ||

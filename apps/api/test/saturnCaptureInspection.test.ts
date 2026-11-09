@@ -179,6 +179,32 @@ describe("offline Saturn capture inspection", () => {
     expect(report.counts.acrResponses).toBe(0);
   });
 
+  it("reports an undated captured request and polygon-only clicked ACR independently", () => {
+    const undatedFilter = { ...queryRequest.filter };
+    delete (undatedFilter as Partial<typeof undatedFilter>).startDateUpdateMap;
+    delete (undatedFilter as Partial<typeof undatedFilter>).endDateUpdateMap;
+    const report = inspectSaturnCaptureBodies({
+      ...captures(),
+      queryRequest: { ...queryRequest, filter: undatedFilter },
+      acrCaptures: [
+        { requestedFeatureId: "238196", response: { id: 1831436 } },
+      ],
+    });
+    expect(report.selection.updateMapFrom).toBeNull();
+    expect(report.selection.updateMapTo).toBeNull();
+    expect(report.findings.idMatchCandidates).toHaveLength(1);
+    expect(report.findings.acrObservations).toEqual([
+      {
+        requestedFeatureId: "238196",
+        responseId: "1831436",
+        responseIdMatchesRequest: false,
+        listedInIndex: false,
+        listedInPolygons: true,
+      },
+    ]);
+    expect(report.limitations.join(" ")).toContain("Absent UpdateMap filters");
+  });
+
   it("reports detail structure without claiming treatment or exposing the raw ACR body", () => {
     const report = inspectSaturnCaptureBodies({
       ...captures(),

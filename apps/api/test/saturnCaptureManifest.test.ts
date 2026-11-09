@@ -82,6 +82,23 @@ describe("offline Saturn capture manifest integrity", () => {
     expect(JSON.stringify(report)).not.toContain("32,54,33,55");
   });
 
+  it("checks bbox and identities for undated browser captures without enabling undated collection", () => {
+    const filter = { ...queryRequest.filter };
+    delete (filter as Partial<typeof filter>).startDateUpdateMap;
+    delete (filter as Partial<typeof filter>).endDateUpdateMap;
+    expect(
+      verifySaturnCaptureManifest(
+        sampleManifest(),
+        matchingHashes,
+        { ...queryRequest, filter },
+        "capturedCallback",
+      ),
+    ).toMatchObject({
+      status: "SELF_REPORTED_METADATA_HASH_BOUND",
+      polygonBboxRelation: "identical",
+    });
+  });
+
   it("reports overlap and disjoint rectangles without claiming matching features", () => {
     for (const [bbox, expected] of [
       ["32.5,54.5,33.5,55.5", "overlapping"],
