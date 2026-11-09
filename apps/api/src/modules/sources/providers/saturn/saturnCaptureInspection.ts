@@ -10,8 +10,8 @@ import {
 } from "./saturnEvidenceLinks.js";
 import { parseSaturnPolygonJsonp } from "./saturnMapEvidence.js";
 import {
-  parseSaturnViewportPage,
-  validateSaturnViewportQuery,
+  parseSaturnCapturedViewportPage,
+  validateSaturnCapturedViewportQuery,
 } from "./saturnViewportQuery.js";
 
 export type SaturnCaptureBodies = {
@@ -27,8 +27,8 @@ export type SaturnCaptureInspection = {
   selection: {
     subject: string;
     districtId: string;
-    updateMapFrom: string;
-    updateMapTo: string;
+    updateMapFrom: string | null;
+    updateMapTo: string | null;
     pageNumber: number;
     totalPages: number;
     totalElements: number;
@@ -60,8 +60,8 @@ export type SaturnCaptureInspection = {
 export function inspectSaturnCaptureBodies(
   captures: SaturnCaptureBodies,
 ): SaturnCaptureInspection {
-  const request = validateSaturnViewportQuery(captures.queryRequest);
-  const page = parseSaturnViewportPage(captures.queryResponse, request);
+  const request = validateSaturnCapturedViewportQuery(captures.queryRequest);
+  const page = parseSaturnCapturedViewportPage(captures.queryResponse, request);
   const polygons = parseSaturnPolygonJsonp(
     captures.polygonJsonp,
     captures.callback,
@@ -78,8 +78,14 @@ export function inspectSaturnCaptureBodies(
     selection: {
       subject: request.filter.subject,
       districtId: request.filter.district,
-      updateMapFrom: request.filter.startDateUpdateMap,
-      updateMapTo: request.filter.endDateUpdateMap,
+      updateMapFrom:
+        "startDateUpdateMap" in request.filter
+          ? request.filter.startDateUpdateMap
+          : null,
+      updateMapTo:
+        "endDateUpdateMap" in request.filter
+          ? request.filter.endDateUpdateMap
+          : null,
       pageNumber: page.pageNumber,
       totalPages: page.totalPages,
       totalElements: page.totalElements,
@@ -103,6 +109,7 @@ export function inspectSaturnCaptureBodies(
       "ACR date and product counts describe a captured body, not a confirmed treatment.",
       "Capture provenance, timestamps, zoom and viewport equivalence are unverified.",
       "UpdateMap dates are not established treatment or application dates.",
+      "Absent UpdateMap filters do not establish a bounded historical selection.",
       "One query page and one polygon viewport do not establish district coverage.",
       "Source permissions and redistribution rights require separate verification.",
     ],

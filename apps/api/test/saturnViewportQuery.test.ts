@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   buildSaturnViewportQuery,
+  parseSaturnCapturedViewportPage,
   parseSaturnViewportPage,
+  validateSaturnCapturedViewportQuery,
+  validateSaturnViewportQuery,
 } from "../src/modules/sources/providers/saturn/saturnViewportQuery.js";
 
 const fixture = (name: string): unknown =>
@@ -131,6 +134,53 @@ describe("observed Saturn district/time viewport query (offline)", () => {
     ).toBe(true);
     expect(page.entries[0]).not.toHaveProperty("geometry");
     expect(page.entries[0]).not.toHaveProperty("planDate");
+  });
+
+  it("accepts a real browser capture shape without UpdateMap dates only for offline inspection", () => {
+    const undatedFilter = { ...request.filter };
+    delete (undatedFilter as Partial<typeof undatedFilter>).startDateUpdateMap;
+    delete (undatedFilter as Partial<typeof undatedFilter>).endDateUpdateMap;
+    const capturedRequest = { ...request, filter: undatedFilter };
+    expect(validateSaturnCapturedViewportQuery(capturedRequest)).toEqual(
+      capturedRequest,
+    );
+    expect(
+      parseSaturnCapturedViewportPage(observedResponse, capturedRequest)
+        .entries,
+    ).toHaveLength(10);
+    expect(() => validateSaturnViewportQuery(capturedRequest)).toThrow();
+    expect(() =>
+      parseSaturnViewportPage(observedResponse, capturedRequest),
+    ).toThrow();
+  });
+
+  it("rejects partial date filters, unexpected fields and invalid undated rectangles", () => {
+    const partialFilter = { ...request.filter };
+    delete (partialFilter as Partial<typeof partialFilter>).endDateUpdateMap;
+    expect(() =>
+      validateSaturnCapturedViewportQuery({
+        ...request,
+        filter: partialFilter,
+      }),
+    ).toThrow();
+
+    const undatedFilter = { ...partialFilter };
+    delete (undatedFilter as Partial<typeof undatedFilter>).startDateUpdateMap;
+    expect(() =>
+      validateSaturnCapturedViewportQuery({
+        ...request,
+        filter: { ...undatedFilter, unknownFilter: "not allowed" },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateSaturnCapturedViewportQuery({
+        ...request,
+        filter: {
+          ...undatedFilter,
+          rightDown: { ...undatedFilter.rightDown, longitude: 30 },
+        },
+      }),
+    ).toThrow();
   });
 
   it("derives only a bounded next page and stops at a synthetic terminal page", () => {

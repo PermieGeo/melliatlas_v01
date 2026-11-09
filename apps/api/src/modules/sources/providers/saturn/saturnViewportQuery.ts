@@ -39,6 +39,12 @@ const requestSchema = z
     pageSize: z.literal(SATURN_VIEWPORT_PAGE_SIZE),
   })
   .strict();
+const undatedCaptureRequestSchema = requestSchema.extend({
+  filter: viewportFilterSchema.omit({
+    startDateUpdateMap: true,
+    endDateUpdateMap: true,
+  }),
+});
 const summarySchema = z
   .object({
     id: z.number().int().positive().safe(),
@@ -69,6 +75,8 @@ const pageSchema = z
   .passthrough();
 
 export type SaturnViewportQuery = z.infer<typeof requestSchema>;
+export type SaturnCapturedViewportQuery =
+  SaturnViewportQuery | z.infer<typeof undatedCaptureRequestSchema>;
 export type SaturnViewportPage = {
   pageNumber: number;
   totalPages: number;
@@ -154,9 +162,8 @@ export function validateSaturnViewportQuery(
 ): SaturnViewportQuery {
   const request = requestSchema.parse(input);
   const { filter } = request;
+  validateViewportBounds(filter);
   if (
-    filter.leftTop.longitude >= filter.rightDown.longitude ||
-    filter.leftTop.latitude <= filter.rightDown.latitude ||
     filter.startDateUpdateMap > filter.endDateUpdateMap ||
     !Number.isFinite(Date.parse(filter.startDateUpdateMap)) ||
     !Number.isFinite(Date.parse(filter.endDateUpdateMap)) ||
@@ -169,6 +176,33 @@ export function validateSaturnViewportQuery(
   return request;
 }
 
+function validateViewportBounds(filter: {
+  leftTop: { longitude: number; latitude: number };
+  rightDown: { longitude: number; latitude: number };
+}): void {
+  if (
+    filter.leftTop.longitude >= filter.rightDown.longitude ||
+    filter.leftTop.latitude <= filter.rightDown.latitude
+  ) {
+    throw new Error("Invalid Saturn viewport selection");
+  }
+}
+
+/**
+ * Accept only the two browser-observed capture shapes: both UpdateMap dates
+ * present, or both absent. Production collection still requires dated queries.
+ */
+export function validateSaturnCapturedViewportQuery(
+  input: unknown,
+): SaturnCapturedViewportQuery {
+  const undated = undatedCaptureRequestSchema.safeParse(input);
+  if (undated.success) {
+    validateViewportBounds(undated.data.filter);
+    return undated.data;
+  }
+  return validateSaturnViewportQuery(input);
+}
+
 /**
  * Validate one browser-observed map-index page for the exact selected viewport.
  * `nextPage === null` is a page boundary, not proof of district-history coverage.
@@ -179,9 +213,25 @@ export function parseSaturnViewportPage(
   request: SaturnViewportQuery,
 ): SaturnViewportPage {
   const validatedRequest = validateSaturnViewportQuery(request);
+  return parseSaturnPageBody(body, validatedRequest.pageNumber);
+}
+
+/** Parse a local browser capture without changing the live collection contract. */
+export function parseSaturnCapturedViewportPage(
+  body: unknown,
+  request: SaturnCapturedViewportQuery,
+): SaturnViewportPage {
+  const validatedRequest = validateSaturnCapturedViewportQuery(request);
+  return parseSaturnPageBody(body, validatedRequest.pageNumber);
+}
+
+function parseSaturnPageBody(
+  body: unknown,
+  requestedPageNumber: number,
+): SaturnViewportPage {
   const page = pageSchema.parse(body);
   if (
-    page.number !== validatedRequest.pageNumber ||
+    page.number !== requestedPageNumber ||
     page.pageable.pageNumber !== page.number ||
     page.numberOfElements !== page.content.length ||
     page.empty !== (page.content.length === 0) ||
