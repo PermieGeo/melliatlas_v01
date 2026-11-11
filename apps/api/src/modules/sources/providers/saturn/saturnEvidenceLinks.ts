@@ -19,6 +19,12 @@ enum SaturnIdentityRelation {
   IdMatchOnly = "id_match_only",
 }
 
+enum SaturnAcrPlanRelation {
+  MatchesIndexPlan = "matches_index_plan",
+  ConflictsWithIndexPlan = "conflicts_with_index_plan",
+  NotInIndex = "not_in_index",
+}
+
 export type SaturnAcrIdentityCapture = {
   requestedFeatureId: string;
   response: unknown;
@@ -39,6 +45,8 @@ export type SaturnIdentityComparison = {
     requestedFeatureId: string;
     responseId: string;
     responseIdMatchesRequest: boolean;
+    /** The ACR body ID may name the shared plan, not the requested field. */
+    planRelation: `${SaturnAcrPlanRelation}`;
     listedInIndex: boolean;
     listedInPolygons: boolean;
   }>;
@@ -49,6 +57,9 @@ export type SaturnIdentityComparison = {
  * A matching `Feature.id` in two captures is only an investigative candidate:
  * viewport/zoom, capture time, provider identity and publication rights may
  * differ. An `/acr/{id}` response ID is a separate identity from its URL ID.
+ * Compare that body ID with the indexed plan ID, not with the field ID, while
+ * keeping both consistent and conflicting cases unverified until capture
+ * provenance, treatment data and geometry are independently reconciled.
  * No geometry is persisted, published, or associated with a treatment here.
  *
  * @throws Error if an input contains duplicated, unbounded or malformed IDs.
@@ -125,10 +136,18 @@ export function compareSaturnCapturedIdentities(
     const responseId = String(
       minimalAcrIdentitySchema.parse(capture.response).id,
     );
+    const indexedPlanId = indexById.get(requestedFeatureId);
+    const planRelation =
+      indexedPlanId === undefined
+        ? SaturnAcrPlanRelation.NotInIndex
+        : responseId === indexedPlanId
+          ? SaturnAcrPlanRelation.MatchesIndexPlan
+          : SaturnAcrPlanRelation.ConflictsWithIndexPlan;
     return {
       requestedFeatureId,
       responseId,
       responseIdMatchesRequest: responseId === requestedFeatureId,
+      planRelation,
       listedInIndex: indexById.has(requestedFeatureId),
       listedInPolygons: polygonById.has(requestedFeatureId),
     };
