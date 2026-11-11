@@ -2,7 +2,11 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { SaturnPolygonBatch } from "./saturnMapEvidence.js";
-import { SATURN_MAX_VIEWPORT_ELEMENTS } from "./sourceProfile.js";
+import {
+  SATURN_MAX_ACR_CAPTURE_FILES,
+  SATURN_MAX_POLYGON_FEATURES,
+  SATURN_MAX_VIEWPORT_ELEMENTS,
+} from "./sourceProfile.js";
 import type { SaturnViewportPage } from "./saturnViewportQuery.js";
 
 const providerIdSchema = z.string().regex(/^[1-9][0-9]{0,19}$/);
@@ -10,8 +14,10 @@ const digestSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const minimalAcrIdentitySchema = z.object({
   id: z.number().int().positive().safe(),
 });
-const MAX_POLYGON_EVIDENCE = 2_000;
-const MAX_ACR_OBSERVATIONS = 100;
+
+enum SaturnIdentityRelation {
+  IdMatchOnly = "id_match_only",
+}
 
 export type SaturnAcrIdentityCapture = {
   requestedFeatureId: string;
@@ -24,7 +30,7 @@ export type SaturnIdentityComparison = {
     featureId: string;
     planId: string;
     geometrySha256: string;
-    relation: "id_match_only";
+    relation: `${SaturnIdentityRelation.IdMatchOnly}`;
   }>;
   indexWithoutPolygonIds: string[];
   polygonWithoutIndexIds: string[];
@@ -54,8 +60,8 @@ export function compareSaturnCapturedIdentities(
 ): SaturnIdentityComparison {
   if (
     indexEntries.length > SATURN_MAX_VIEWPORT_ELEMENTS ||
-    polygonBatch.polygons.length > MAX_POLYGON_EVIDENCE ||
-    acrCaptures.length > MAX_ACR_OBSERVATIONS
+    polygonBatch.polygons.length > SATURN_MAX_POLYGON_FEATURES ||
+    acrCaptures.length > SATURN_MAX_ACR_CAPTURE_FILES
   ) {
     throw new Error("Saturn identity comparison exceeds offline limits");
   }
@@ -101,7 +107,7 @@ export function compareSaturnCapturedIdentities(
             featureId,
             planId,
             geometrySha256,
-            relation: "id_match_only" as const,
+            relation: SaturnIdentityRelation.IdMatchOnly,
           },
         ]
       : [];

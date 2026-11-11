@@ -6,23 +6,29 @@ import {
   type SaturnDistrictPointsResponse,
   type SaturnStoredFieldsResponse,
 } from "@melliatlas/contracts";
+import {
+  SATURN_DISTRICT_PREVIEW_LIMIT,
+  SATURN_INDEX_PREVIEW_LIMIT,
+  SATURN_SOURCE_ID,
+} from "./sourceProfile.js";
 
 /** Read-only previews of already saved field centers; no upstream requests or treatment assertions. */
 export class SaturnStoredIndex {
   constructor(private readonly db: Pick<Pool, "query">) {}
 
+  /** Combine saved filter snapshots by provider district; do not infer coverage. */
   async districtPoints(
     districtId: number,
   ): Promise<SaturnDistrictPointsResponse> {
     if (!Number.isSafeInteger(districtId) || districtId < 1)
       throw new Error("Invalid Saturn district ID");
-    const args = [districtId];
+    const args = [SATURN_SOURCE_ID, districtId];
     const [count, result] = await Promise.all([
       this.db.query<{ count: string }>(
         `SELECT COUNT(DISTINCT f.feature_id)::text AS count
          FROM source_viewport_index_features f
          JOIN source_viewport_index_progress v USING (source_id, source_revision, request_hash)
-         WHERE f.source_id='treatment-feed' AND v.district_provider_id=$1`,
+         WHERE f.source_id=$1 AND v.district_provider_id=$2`,
         args,
       ),
       this.db.query<{
@@ -35,9 +41,9 @@ export class SaturnStoredIndex {
            ST_X(f.center) AS center_x, ST_Y(f.center) AS center_y
          FROM source_viewport_index_features f
          JOIN source_viewport_index_progress v USING (source_id, source_revision, request_hash)
-         WHERE f.source_id='treatment-feed' AND v.district_provider_id=$1
-         ORDER BY f.feature_id, v.updated_at DESC LIMIT 500`,
-        args,
+         WHERE f.source_id=$1 AND v.district_provider_id=$2
+         ORDER BY f.feature_id, v.updated_at DESC LIMIT $3`,
+        [...args, SATURN_DISTRICT_PREVIEW_LIMIT],
       ),
     ]);
     return saturnDistrictPointsResponseSchema.parse({
@@ -51,6 +57,7 @@ export class SaturnStoredIndex {
     });
   }
 
+  /** Inspect one saved request filter, not live treatment geometry or details. */
   async requestFields(
     requestHash: string,
   ): Promise<SaturnStoredFieldsResponse> {
@@ -66,9 +73,9 @@ export class SaturnStoredIndex {
          ST_X(f.center) AS center_x, ST_Y(f.center) AS center_y
        FROM source_viewport_index_features f
        JOIN source_viewport_index_progress v USING (source_id, source_revision, request_hash)
-       WHERE f.source_id='treatment-feed' AND v.request_hash=$1
-       ORDER BY f.page_number, f.feature_id LIMIT 100`,
-      [requestHash],
+       WHERE f.source_id=$1 AND v.request_hash=$2
+       ORDER BY f.page_number, f.feature_id LIMIT $3`,
+      [SATURN_SOURCE_ID, requestHash, SATURN_INDEX_PREVIEW_LIMIT],
     );
     return saturnStoredFieldsResponseSchema.parse({
       centers: result.rows.map((row) => ({

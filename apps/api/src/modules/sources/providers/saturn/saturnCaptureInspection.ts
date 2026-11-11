@@ -9,6 +9,7 @@ import {
   type SaturnIdentityComparison,
 } from "./saturnEvidenceLinks.js";
 import { parseSaturnPolygonJsonp } from "./saturnMapEvidence.js";
+import { SaturnCaptureStatus } from "./sourceProfile.js";
 import {
   parseSaturnCapturedViewportPage,
   validateSaturnCapturedViewportQuery,
@@ -23,7 +24,7 @@ export type SaturnCaptureBodies = {
 };
 
 export type SaturnCaptureInspection = {
-  status: "ID_ONLY_UNVERIFIED";
+  status: `${SaturnCaptureStatus.IdentityOnly}`;
   selection: {
     subject: string;
     districtId: string;
@@ -74,7 +75,7 @@ export function inspectSaturnCaptureBodies(
   );
 
   return {
-    status: "ID_ONLY_UNVERIFIED",
+    status: SaturnCaptureStatus.IdentityOnly,
     selection: {
       subject: request.filter.subject,
       districtId: request.filter.district,

@@ -12,12 +12,16 @@ import {
   verifySaturnCaptureManifest,
   type SaturnCaptureManifestReport,
 } from "./saturnCaptureManifest.js";
+import {
+  SATURN_MAX_ACR_CAPTURE_FILES,
+  SATURN_POLYGON_JSONP_MAX_BYTES,
+  SaturnCaptureStatus,
+} from "./sourceProfile.js";
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_RESPONSE_BYTES = 1024 * 1024;
-const MAX_POLYGON_BYTES = 8 * 1024 * 1024;
+const MAX_POLYGON_BYTES = SATURN_POLYGON_JSONP_MAX_BYTES;
 const MAX_ACR_BYTES = 256 * 1024;
-const MAX_ACR_FILES = 100;
 const MAX_MANIFEST_BYTES = 64 * 1024;
 
 export type SaturnCaptureCliOptions = {
@@ -30,7 +34,9 @@ export type SaturnCaptureCliOptions = {
 };
 
 export type SaturnCaptureFileReport = SaturnCaptureInspection & {
-  provenance: SaturnCaptureManifestReport | { status: "NOT_PROVIDED" };
+  provenance:
+    | SaturnCaptureManifestReport
+    | { status: `${SaturnCaptureStatus.NoManifest}` };
 };
 
 type BoundedFile = { text: string; sha256: string };
@@ -59,7 +65,7 @@ export function parseSaturnCaptureCliArgs(
         !requestedFeatureId ||
         !/^[1-9][0-9]{0,19}$/.test(requestedFeatureId) ||
         !path ||
-        acrFiles.length >= MAX_ACR_FILES
+        acrFiles.length >= SATURN_MAX_ACR_CAPTURE_FILES
       ) {
         throw new Error("Invalid --acr argument");
       }
@@ -131,7 +137,11 @@ async function readJsonCapture(
   return { value: JSON.parse(capture.text) as unknown, sha256: capture.sha256 };
 }
 
-/** Load independently captured local bodies; never retrieve remote URLs. */
+/**
+ * Load independently captured local bodies; never retrieve remote URLs.
+ * File hashes bind optional operator metadata to bytes; offline inspection
+ * deliberately cannot promote matching IDs into verified map/treatment joins.
+ */
 export async function inspectSaturnCaptureFiles(
   options: SaturnCaptureCliOptions,
 ): Promise<SaturnCaptureFileReport> {
@@ -162,7 +172,7 @@ export async function inspectSaturnCaptureFiles(
     })),
   };
   const report = inspectSaturnCaptureBodies(captures);
-  const provenance = manifest
+  const provenance: SaturnCaptureFileReport["provenance"] = manifest
     ? verifySaturnCaptureManifest(
         manifest.value,
         {
@@ -177,7 +187,7 @@ export async function inspectSaturnCaptureFiles(
         queryRequest.value,
         options.callback,
       )
-    : { status: "NOT_PROVIDED" as const };
+    : { status: SaturnCaptureStatus.NoManifest };
   return { ...report, provenance };
 }
 

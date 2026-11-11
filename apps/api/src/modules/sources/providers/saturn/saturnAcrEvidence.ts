@@ -1,5 +1,13 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { z } from "zod";
+import { SATURN_MAX_ACR_PRODUCTS } from "./sourceProfile.js";
+
+enum SaturnReportedPlanInterval {
+  Missing = "missing",
+  Partial = "partial",
+  Ordered = "ordered",
+  Reversed = "reversed",
+}
 
 const utcTimestampSchema = z
   .string()
@@ -24,16 +32,19 @@ const acrEvidenceSchema = z
     id: z.number().int().positive().safe(),
     startPlanDate: utcTimestampSchema.nullish(),
     finishPlanDate: utcTimestampSchema.nullish(),
-    patAllList: z.array(productSchema).max(500).nullish(),
+    patAllList: z.array(productSchema).max(SATURN_MAX_ACR_PRODUCTS).nullish(),
     // Updated product entries have not been observed with nonempty content.
-    patUpdateAllList: z.array(z.unknown()).max(500).nullish(),
+    patUpdateAllList: z
+      .array(z.unknown())
+      .max(SATURN_MAX_ACR_PRODUCTS)
+      .nullish(),
     datePublishing: z.number().int().nonnegative().safe().nullish(),
   })
   .passthrough();
 
 export type SaturnAcrEvidence = {
   responseId: string;
-  reportedPlanInterval: "missing" | "partial" | "ordered" | "reversed";
+  reportedPlanInterval: `${SaturnReportedPlanInterval}`;
   reportedProductCount: number | null;
   reportedUpdatedProductCount: number | null;
   publishingTimestampPresent: boolean;
@@ -44,22 +55,26 @@ export type SaturnAcrEvidence = {
  * The result deliberately omits names, chemicals, dosage, coordinates and dates.
  * Neither a valid response nor an ID overlap establishes a treatment or polygon join.
  */
+function reportedPlanInterval(
+  start: string | null | undefined,
+  finish: string | null | undefined,
+): SaturnReportedPlanInterval {
+  if (!start && !finish) return SaturnReportedPlanInterval.Missing;
+  if (!start || !finish) return SaturnReportedPlanInterval.Partial;
+  return Date.parse(start) <= Date.parse(finish)
+    ? SaturnReportedPlanInterval.Ordered
+    : SaturnReportedPlanInterval.Reversed;
+}
+
 export function inspectSaturnAcrEvidence(input: unknown): SaturnAcrEvidence {
   const detail = acrEvidenceSchema.parse(input);
-  const start = detail.startPlanDate;
-  const finish = detail.finishPlanDate;
-  const reportedPlanInterval =
-    !start && !finish
-      ? "missing"
-      : !start || !finish
-        ? "partial"
-        : Date.parse(start) <= Date.parse(finish)
-          ? "ordered"
-          : "reversed";
 
   return {
     responseId: String(detail.id),
-    reportedPlanInterval,
+    reportedPlanInterval: reportedPlanInterval(
+      detail.startPlanDate,
+      detail.finishPlanDate,
+    ),
     reportedProductCount: detail.patAllList?.length ?? null,
     reportedUpdatedProductCount: detail.patUpdateAllList?.length ?? null,
     publishingTimestampPresent: detail.datePublishing != null,

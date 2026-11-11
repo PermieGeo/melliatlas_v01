@@ -6,7 +6,11 @@ import {
 } from "../../httpFetcher.js";
 import type { SaturnProviderPort } from "./SaturnProvider.js";
 import { SATURN_JSON_PROFILE_ID } from "./requestProfile.js";
-import { SATURN_VIEWPORT_URL, saturnJsonSource } from "./sourceProfile.js";
+import {
+  SATURN_VIEWPORT_PATH,
+  SATURN_VIEWPORT_URL,
+  saturnJsonSource,
+} from "./sourceProfile.js";
 import type { SaturnViewportQuery } from "./saturnViewportQuery.js";
 
 type FetchPort = Pick<RestrictedSourceFetcher, "fetch">;
@@ -30,7 +34,7 @@ export class SaturnViewportPageFetcher {
     const request = this.provider.pageAt(firstPageRequest, pageNumber);
     try {
       const response = await this.fetcher.fetch(
-        saturnJsonSource(providerName, "/backend/beemaster/query"),
+        saturnJsonSource(providerName, SATURN_VIEWPORT_PATH),
         {
           url: SATURN_VIEWPORT_URL,
           method: "POST",

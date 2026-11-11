@@ -35,8 +35,15 @@ import { SaturnStoredIndex } from "./saturnStoredIndex.js";
 import {
   SATURN_SOURCE_ID,
   SATURN_CONFIGURED_ENDPOINTS,
+  SATURN_INDEX_PREVIEW_LIMIT,
   SATURN_MAX_VIEWPORT_PAGES,
   SATURN_VERIFIED_FALLBACK_DISTRICT_ID,
+  SaturnRequestAction,
+  SaturnRequestInitiator,
+  SaturnRequestOutcome,
+  SaturnSourceKind,
+  SaturnSourceLifecycle,
+  SaturnViewportState,
 } from "./sourceProfile.js";
 import { SaturnProvider, type SaturnProviderPort } from "./SaturnProvider.js";
 import { SaturnViewportPageFetcher } from "./saturnViewportPageFetcher.js";
@@ -107,6 +114,11 @@ export class SaturnViewportCollectionService {
     this.stored = dependencies.stored ?? new SaturnStoredIndex(pool);
   }
 
+  /**
+   * Resolve one immutable listing identity from the selected provider revision,
+   * exact bbox/district/UpdateMap filter, and approved source configuration.
+   * District center membership does not prove district boundary coverage.
+   */
   private async key(
     selection: ViewportCollectionSelection,
   ): Promise<{ key: ViewportIndexKey; name: string }> {
@@ -123,8 +135,8 @@ export class SaturnViewportCollectionService {
       .safeParse(source?.api_request_config);
     if (
       !source ||
-      source.kind !== "treatment" ||
-      source.lifecycle !== "configured" ||
+      source.kind !== SaturnSourceKind.Treatment ||
+      source.lifecycle !== SaturnSourceLifecycle.Configured ||
       !SATURN_CONFIGURED_ENDPOINTS.has(source.url) ||
       !config.success ||
       config.data.endpoint !== source.url
@@ -160,7 +172,7 @@ export class SaturnViewportCollectionService {
     return this.directory.list();
   }
   refreshDistricts(
-    initiator: "web" | "admin" = "admin",
+    initiator: `${SaturnRequestInitiator}` = SaturnRequestInitiator.Admin,
   ): Promise<SaturnDistrictCatalogResponse> {
     return this.directory.refresh(initiator);
   }
@@ -177,22 +189,37 @@ export class SaturnViewportCollectionService {
     return listViewportCacheHistory(this.pool);
   }
 
+  /** Read a persisted filter checkpoint and a bounded sample without upstream I/O. */
   async status(
     selection: ViewportCollectionSelection,
   ): Promise<ViewportCollectionResult> {
     const { key } = await this.key(selection);
     const progress = await this.index.getStatus(key);
+    return this.snapshot(key, progress);
+  }
+
+  private async snapshot(
+    key: ViewportIndexKey,
+    progress: ViewportCollectionResult["progress"],
+  ): Promise<ViewportCollectionResult> {
     return {
       enabled: this.enabled,
       progress,
-      cachedCenters: progress ? await this.index.listFeatures(key, 100) : [],
+      cachedCenters: progress
+        ? await this.index.listFeatures(key, SATURN_INDEX_PREVIEW_LIMIT)
+        : [],
     };
   }
 
-  /** A cache hit and each attempted external call are auditable without storing user identity. */
+  /**
+   * Explicitly fetch at most one next map-index page. A completed filter returns
+   * cached evidence; a new page first passes the shared audit/throttle gate,
+   * then source validation, then an atomic page/checkpoint database commit.
+   * This never retrieves treatment detail or performs a district-wide scan.
+   */
   async fetchNext(
     selection: ViewportCollectionSelection,
-    initiator: "web" | "admin" = "admin",
+    initiator: `${SaturnRequestInitiator}` = SaturnRequestInitiator.Admin,
   ): Promise<ViewportCollectionResult> {
     if (!this.enabled) {
       throw new ApiFailure(
@@ -215,7 +242,7 @@ export class SaturnViewportCollectionService {
     >({
       sourceId: SATURN_SOURCE_ID,
       attempt: {
-        action: "viewport_page",
+        action: SaturnRequestAction.ViewportPage,
         initiator,
         districtId: selection.districtId,
         requestHash,
@@ -224,14 +251,10 @@ export class SaturnViewportCollectionService {
       gate: this.gate,
       journal: this.journal,
       preflight: async () => {
-        if (previous?.state === "viewport_index_complete") {
+        if (previous?.state === SaturnViewportState.Complete) {
           return {
             kind: "cache_hit" as const,
-            value: {
-              enabled: true,
-              progress: previous,
-              cachedCenters: await this.index.listFeatures(key, 100),
-            },
+            value: await this.snapshot(key, previous),
           };
         }
         if (previous && !previous.sourceRevisionCurrent) {
@@ -261,11 +284,7 @@ export class SaturnViewportCollectionService {
           captured.body,
         );
         return {
-          value: {
-            enabled: true,
-            progress,
-            cachedCenters: await this.index.listFeatures(key, 100),
-          },
+          value: await this.snapshot(key, progress),
           receivedCount: captured.receivedCount,
         };
       },
@@ -275,7 +294,10 @@ export class SaturnViewportCollectionService {
         return {
           error,
           code,
-          outcome: code === "SOURCE_THROTTLED" ? "throttled" : "failed",
+          outcome:
+            code === "SOURCE_THROTTLED"
+              ? SaturnRequestOutcome.Throttled
+              : SaturnRequestOutcome.Failed,
         };
       },
     });
