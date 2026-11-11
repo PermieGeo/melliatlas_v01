@@ -2,15 +2,30 @@
 import { z } from "zod";
 import { parseSaturnDistrictCatalog } from "./saturnMapEvidence.js";
 import {
+  SATURN_MAX_INDEX_FIELD_NAME_LENGTH,
+  SATURN_MAX_LATITUDE,
+  SATURN_MAX_LONGITUDE,
   SATURN_MAX_VIEWPORT_PAGES,
+  SATURN_MIN_LATITUDE,
+  SATURN_MIN_INDEX_FIELD_NAME_LENGTH,
+  SATURN_MIN_LONGITUDE,
   SATURN_SUBJECT_CODE,
   SATURN_VIEWPORT_PAGE_SIZE,
 } from "./sourceProfile.js";
 
+/** Viewport corners and map-index centers use WGS84 longitude/latitude degrees. */
 const positionSchema = z
   .object({
-    longitude: z.number().finite().min(-180).max(180),
-    latitude: z.number().finite().min(-90).max(90),
+    longitude: z
+      .number()
+      .finite()
+      .min(SATURN_MIN_LONGITUDE)
+      .max(SATURN_MAX_LONGITUDE),
+    latitude: z
+      .number()
+      .finite()
+      .min(SATURN_MIN_LATITUDE)
+      .max(SATURN_MAX_LATITUDE),
   })
   .strict();
 const timestampSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
@@ -49,9 +64,20 @@ const summarySchema = z
   .object({
     id: z.number().int().positive().safe(),
     planId: z.number().int().positive().safe(),
-    name: z.string().min(1).max(512),
-    centerX: z.number().finite().min(-180).max(180),
-    centerY: z.number().finite().min(-90).max(90),
+    name: z
+      .string()
+      .min(SATURN_MIN_INDEX_FIELD_NAME_LENGTH)
+      .max(SATURN_MAX_INDEX_FIELD_NAME_LENGTH),
+    centerX: z
+      .number()
+      .finite()
+      .min(SATURN_MIN_LONGITUDE)
+      .max(SATURN_MAX_LONGITUDE),
+    centerY: z
+      .number()
+      .finite()
+      .min(SATURN_MIN_LATITUDE)
+      .max(SATURN_MAX_LATITUDE),
   })
   .passthrough();
 const pageSchema = z

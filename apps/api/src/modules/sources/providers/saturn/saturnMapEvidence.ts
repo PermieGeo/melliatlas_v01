@@ -3,10 +3,20 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   SATURN_MAX_DISTRICT_CATALOG_ENTRIES,
+  SATURN_MAX_DISTRICT_NAME_LENGTH,
+  SATURN_MAX_GEOMETRY_POSITIONS,
+  SATURN_MAX_LATITUDE,
+  SATURN_MAX_LONGITUDE,
   SATURN_MAX_POLYGON_FEATURES,
-  SATURN_MAX_POLYGON_RING_POINTS,
-  SATURN_MAX_POLYGON_RINGS,
-  SATURN_MAX_POLYGON_TOTAL_POINTS,
+  SATURN_MAX_POLYGONS_PER_MULTIPOLYGON,
+  SATURN_MAX_RING_POSITIONS,
+  SATURN_MAX_RINGS_PER_POLYGON,
+  SATURN_MIN_DISTRICT_NAME_LENGTH,
+  SATURN_MIN_LATITUDE,
+  SATURN_MIN_LINEAR_RING_POSITIONS,
+  SATURN_MIN_LONGITUDE,
+  SATURN_MIN_MULTIPOLYGON_POLYGONS,
+  SATURN_MIN_POLYGON_RINGS,
   SATURN_POLYGON_JSONP_MAX_BYTES,
 } from "./sourceProfile.js";
 
@@ -19,34 +29,64 @@ enum SaturnMapElementType {
   MultiPolygon = "MultiPolygon",
 }
 
-const MIN_CLOSED_RING_POINTS = 4;
 const MAX_JSONP_CALLBACK_LENGTH = 128;
 
 const districtSchema = z.object({
   id: z.number().int().positive(),
-  name: z.string().trim().min(1).max(250),
-  latitude: z.number().finite().min(-90).max(90),
-  longitude: z.number().finite().min(-180).max(180),
+  name: z
+    .string()
+    .trim()
+    .min(SATURN_MIN_DISTRICT_NAME_LENGTH)
+    .max(SATURN_MAX_DISTRICT_NAME_LENGTH),
+  latitude: z
+    .number()
+    .finite()
+    .min(SATURN_MIN_LATITUDE)
+    .max(SATURN_MAX_LATITUDE),
+  longitude: z
+    .number()
+    .finite()
+    .min(SATURN_MIN_LONGITUDE)
+    .max(SATURN_MAX_LONGITUDE),
 });
 
+/** GeoJSON positions use [longitude, latitude], never [latitude, longitude]. */
 const coordinateSchema = z.tuple([
-  z.number().finite().min(-180).max(180),
-  z.number().finite().min(-90).max(90),
+  z.number().finite().min(SATURN_MIN_LONGITUDE).max(SATURN_MAX_LONGITUDE),
+  z.number().finite().min(SATURN_MIN_LATITUDE).max(SATURN_MAX_LATITUDE),
 ]);
+
+/**
+ * The fourth minimum position closes a triangular ring by repeating its first
+ * coordinate. Zod checks length; requireClosedRings checks actual closure.
+ * Maximum positions are local memory/CPU guards, not GeoJSON or Saturn limits.
+ */
 const ringSchema = z
   .array(coordinateSchema)
-  .min(MIN_CLOSED_RING_POINTS)
-  .max(SATURN_MAX_POLYGON_RING_POINTS);
+  .min(SATURN_MIN_LINEAR_RING_POSITIONS)
+  .max(SATURN_MAX_RING_POSITIONS);
+
+/** Polygon: first ring is the exterior; remaining rings represent holes. */
 const polygonSchema = z.object({
   type: z.literal(SaturnMapElementType.Polygon),
-  coordinates: z.array(ringSchema).min(1).max(SATURN_MAX_POLYGON_RINGS),
+  coordinates: z
+    .array(ringSchema)
+    .min(SATURN_MIN_POLYGON_RINGS)
+    .max(SATURN_MAX_RINGS_PER_POLYGON),
 });
+
+/** MultiPolygon: separate polygons, each with its own exterior and optional holes. */
 const multiPolygonSchema = z.object({
   type: z.literal(SaturnMapElementType.MultiPolygon),
   coordinates: z
-    .array(z.array(ringSchema).min(1).max(SATURN_MAX_POLYGON_RINGS))
-    .min(1)
-    .max(SATURN_MAX_POLYGON_RINGS),
+    .array(
+      z
+        .array(ringSchema)
+        .min(SATURN_MIN_POLYGON_RINGS)
+        .max(SATURN_MAX_RINGS_PER_POLYGON),
+    )
+    .min(SATURN_MIN_MULTIPOLYGON_POLYGONS)
+    .max(SATURN_MAX_POLYGONS_PER_MULTIPOLYGON),
 });
 const geometrySchema = z.discriminatedUnion("type", [
   polygonSchema,
@@ -103,11 +143,13 @@ function ringsOf(geometry: SaturnPolygonGeometry): number[][][][] {
 }
 
 function requireClosedRings(geometry: SaturnPolygonGeometry): void {
-  let vertices = 0;
+  // Shape validation is not topological validation: self-intersections,
+  // ring winding and spatial correspondence remain unverified.
+  let positions = 0;
   for (const polygon of ringsOf(geometry)) {
     for (const ring of polygon) {
-      vertices += ring.length;
-      if (vertices > SATURN_MAX_POLYGON_TOTAL_POINTS)
+      positions += ring.length;
+      if (positions > SATURN_MAX_GEOMETRY_POSITIONS)
         throw new Error("Too many polygon coordinates");
       const first = ring[0];
       const last = ring[ring.length - 1];

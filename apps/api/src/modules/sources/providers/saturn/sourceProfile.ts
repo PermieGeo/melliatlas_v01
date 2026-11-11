@@ -28,11 +28,32 @@ export const SATURN_JSON_REQUEST_TIMEOUT_MS = 8_000;
 export const SATURN_JSON_PARSER_VERSION = "saturn-viewport-index-v1";
 export const SATURN_JSON_CONTENT_TYPE = "application/json";
 export const SATURN_WGS84_SRID = 4326;
+
+/** GeoJSON uses WGS84 positions ordered [longitude, latitude], in degrees. */
+export const SATURN_MIN_LONGITUDE = -180;
+export const SATURN_MAX_LONGITUDE = 180;
+export const SATURN_MIN_LATITUDE = -90;
+export const SATURN_MAX_LATITUDE = 90;
+/** A GeoJSON linear ring has at least four positions, including its closing position. */
+export const SATURN_MIN_LINEAR_RING_POSITIONS = 4;
+export const SATURN_MIN_POLYGON_RINGS = 1;
+export const SATURN_MIN_MULTIPOLYGON_POLYGONS = 1;
+
+/**
+ * Local validation and resource budgets, not documented Saturn provider maxima.
+ * Existing values are preserved until representative authorized capture sizes
+ * and operational limits can be established independently.
+ */
 export const SATURN_MAX_DISTRICT_CATALOG_ENTRIES = 256;
+export const SATURN_MIN_DISTRICT_NAME_LENGTH = 1;
+export const SATURN_MAX_DISTRICT_NAME_LENGTH = 250;
+export const SATURN_MIN_INDEX_FIELD_NAME_LENGTH = 1;
+export const SATURN_MAX_INDEX_FIELD_NAME_LENGTH = 512;
 export const SATURN_MAX_POLYGON_FEATURES = 2_000;
-export const SATURN_MAX_POLYGON_RING_POINTS = 20_000;
-export const SATURN_MAX_POLYGON_TOTAL_POINTS = 50_000;
-export const SATURN_MAX_POLYGON_RINGS = 100;
+export const SATURN_MAX_RING_POSITIONS = 20_000;
+export const SATURN_MAX_GEOMETRY_POSITIONS = 50_000;
+export const SATURN_MAX_RINGS_PER_POLYGON = 100;
+export const SATURN_MAX_POLYGONS_PER_MULTIPOLYGON = 100;
 export const SATURN_POLYGON_JSONP_MAX_BYTES = 8 * 1024 * 1024;
 export const SATURN_MAX_ACR_CAPTURE_FILES = 100;
 export const SATURN_MAX_ACR_PRODUCTS = 500;
