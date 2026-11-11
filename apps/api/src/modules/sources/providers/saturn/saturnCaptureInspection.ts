@@ -107,6 +107,7 @@ export function inspectSaturnCaptureBodies(
     })),
     limitations: [
       "Matching feature IDs are investigative candidates, not verified joins.",
+      "Three-endpoint candidates require matching field and plan IDs but do not establish a spatial or treatment association.",
       "ACR date and product counts describe a captured body, not a confirmed treatment.",
       "Capture provenance, timestamps, zoom and viewport equivalence are unverified.",
       "UpdateMap dates are not established treatment or application dates.",

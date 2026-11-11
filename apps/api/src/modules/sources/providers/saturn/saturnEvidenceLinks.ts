@@ -17,6 +17,7 @@ const minimalAcrIdentitySchema = z.object({
 
 enum SaturnIdentityRelation {
   IdMatchOnly = "id_match_only",
+  IdAndPlanMatchOnly = "id_and_plan_match_candidate_only",
 }
 
 enum SaturnAcrPlanRelation {
@@ -37,6 +38,13 @@ export type SaturnIdentityComparison = {
     planId: string;
     geometrySha256: string;
     relation: `${SaturnIdentityRelation.IdMatchOnly}`;
+  }>;
+  /** Three matching identifiers are still only a candidate across captures. */
+  threeEndpointCandidates: Array<{
+    featureId: string;
+    planId: string;
+    geometrySha256: string;
+    relation: `${SaturnIdentityRelation.IdAndPlanMatchOnly}`;
   }>;
   indexWithoutPolygonIds: string[];
   polygonWithoutIndexIds: string[];
@@ -110,7 +118,9 @@ export function compareSaturnCapturedIdentities(
     ]);
   }
 
-  const idMatchCandidates = [...indexById].flatMap(([featureId, planId]) => {
+  const idMatchCandidates: SaturnIdentityComparison["idMatchCandidates"] = [
+    ...indexById,
+  ].flatMap(([featureId, planId]) => {
     const geometrySha256 = polygonById.get(featureId);
     return geometrySha256
       ? [
@@ -153,8 +163,27 @@ export function compareSaturnCapturedIdentities(
     };
   });
 
+  const acrPlanMatches = new Set(
+    acrObservations
+      .filter(
+        (capture) =>
+          capture.planRelation === SaturnAcrPlanRelation.MatchesIndexPlan,
+      )
+      .map((capture) => capture.requestedFeatureId),
+  );
+  const threeEndpointCandidates: SaturnIdentityComparison["threeEndpointCandidates"] =
+    idMatchCandidates
+      .filter((candidate) => acrPlanMatches.has(candidate.featureId))
+      .map(({ featureId, planId, geometrySha256 }) => ({
+        featureId,
+        planId,
+        geometrySha256,
+        relation: SaturnIdentityRelation.IdAndPlanMatchOnly,
+      }));
+
   return {
     idMatchCandidates,
+    threeEndpointCandidates,
     indexWithoutPolygonIds: [...indexById.keys()].filter(
       (id) => !polygonById.has(id),
     ),
