@@ -93,6 +93,78 @@ describe("Provider request configuration", () => {
     });
   });
 
+  it("keeps the selected region and district/date filters together for a direct full-treatment page", () => {
+    const settings = {
+      method: "POST" as const,
+      regionParameter: "subject",
+      regionContainer: "beekeperSearchFilter",
+      regionCode: 55,
+      parameters: {
+        pageNumber: 0,
+        pageSize: 40,
+        sortColumn: "datePublishing",
+        sortDirection: "desc",
+        beekeperSearchFilter: {
+          district: 1472,
+          startDateUpdateMap: "2026-07-01T00:00:00.000Z",
+          endDateUpdateMap: "2026-07-31T23:59:59.999Z",
+        },
+      },
+    };
+    const result = buildProviderRequest(
+      "https://bee-saturn.ru/backend/beemaster/planapplybees",
+      settings,
+    );
+    expect(JSON.parse(result.body!)).toEqual({
+      pageNumber: 0,
+      pageSize: 40,
+      sortColumn: "datePublishing",
+      sortDirection: "desc",
+      beekeperSearchFilter: {
+        subject: 55,
+        district: 1472,
+        startDateUpdateMap: "2026-07-01T00:00:00.000Z",
+        endDateUpdateMap: "2026-07-31T23:59:59.999Z",
+      },
+    });
+    expect(settings.parameters.beekeperSearchFilter).not.toHaveProperty(
+      "subject",
+    );
+  });
+
+  it("reuses nested filtering with a different configured provider region", () => {
+    const output = buildProviderRequest("https://example.org/plans", {
+      method: "POST",
+      regionParameter: "subject",
+      regionContainer: "beekeperSearchFilter",
+      regionCode: 16,
+      parameters: { beekeperSearchFilter: { district: 88 } },
+    });
+    expect(JSON.parse(output.body!)).toEqual({
+      beekeperSearchFilter: { subject: 16, district: 88 },
+    });
+  });
+
+  it("rejects region override and malformed nested filter containers", () => {
+    const base = {
+      ...request,
+      regionContainer: "beekeperSearchFilter",
+    };
+    for (const invalid of [
+      { subject: 999, district: 1472 },
+      null,
+      [1472],
+      "district=1472",
+    ]) {
+      expect(() =>
+        buildProviderRequest("https://example.org/plans", {
+          ...base,
+          parameters: { beekeperSearchFilter: invalid },
+        }),
+      ).toThrow();
+    }
+  });
+
   it("rejects JSON parameter pollution and nested payloads exceeding safe limits", () => {
     expect(() =>
       buildProviderRequest("https://example.org/plans", {

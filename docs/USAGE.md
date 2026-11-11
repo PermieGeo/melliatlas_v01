@@ -31,6 +31,8 @@ The experimental **Load district data** panel may show blue Saturn **center poin
 3. In **Map and analysis**, inspect sourced polygon previews. Review **Sources** and **Record review** before independently verifying or rejecting candidates; a source-reported pesticide hazard class is not a scientific safety verdict.
 4. Use **Help** for localized field explanations and the distinction between cache, index, source document and reviewed notice.
 
+For **full polygon-bearing Saturn records**, use the configured `/planapplybees` treatment-feed through this operator-controlled one-page action. To select its provider district and date range, see [Direct Saturn treatment pages](CONFIGURATION.md#direct-saturn-treatment-pages). The Web `/query` layer remains a separate center-only map index; the HAR inspector below is optional research, **not** a prerequisite for direct treatment ingestion. Neither a saved page nor a displayed polygon establishes a completed treatment or full district coverage.
+
 You can initialize the candidate treatment-feed preset after migrations:
 
 ```bash
@@ -55,7 +57,7 @@ Only after reviewing external source access conditions, start the backend with `
 
 Admin → **Data collection** exposes saved viewport queries, per-page history and a sanitized request log. Completion of an index request establishes neither full district coverage nor treatment dates or pesticide safety. Disable the flag to stop future live pilot requests without removing stored index evidence.
 
-### Offline browser Network evidence (research only)
+### Optional HAR diagnostics for the map index (research only)
 
 With appropriate source access permission, inspect one public map field through a short, normal browser session. In Chrome DevTools **Network**, clear earlier requests, keep the relevant request bodies and export **HAR with content** after the matching viewport `/query`, polygon `/geojson-polygons` and clicked `/acr/{fieldId}` responses have completed. For the current Yartsevo research candidate, the previously observed field ID is `2038836`. Keep the original HAR **local and private**: it can contain cookies, authorization headers, unrelated requests, farm names and precise field data. Do not commit it, upload it to a third party or place it in public test fixtures.
 

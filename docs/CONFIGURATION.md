@@ -26,6 +26,26 @@ pnpm provider:seed:saturn
 
 The preset comes from `apps/api/config/providers/fgis-saturn.json`. Re-running the seed preserves customized settings; `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace` intentionally replaces them and clears associated credentials/cursors. Neither command contacts Saturn. The preset is not an authorization to automate retrieval or republish source data; see the [source evidence register](source-register.md).
 
+### Direct Saturn treatment pages
+
+The existing explicit operator collection reads **full treatment records and GeoJSON** from the configured `/backend/beemaster/planapplybees` endpoint. It is separate from the local `/query` map-center index. In the **Configuration** form, keep the preset `method: POST`, `regionContainer: beekeperSearchFilter`, and `regionParameter: subject`. To scope a _diagnostic_ full-treatment page to a provider-listed district and period, add the following to the **Parameters** JSON alongside `pageNumber`, `pageSize`, `sortColumn`, and `sortDirection`:
+
+```json
+{
+  "pageNumber": 0,
+  "pageSize": 40,
+  "sortColumn": "datePublishing",
+  "sortDirection": "desc",
+  "beekeperSearchFilter": {
+    "district": 1472,
+    "startDateUpdateMap": "2026-07-01T00:00:00.000Z",
+    "endDateUpdateMap": "2026-07-31T23:59:59.999Z"
+  }
+}
+```
+
+The ID and dates above are **illustrative captured-source values**, not an automatic regional default. Enter the provider's own verified district ID for the configured region and an intentional time window. **Do not put `subject` into this JSON:** `regionCode` is validated separately and inserted into the nested filter by the backend; an override is rejected. Saving updates the source revision and resets its page cursor; it does not download records. Each subsequent explicit operator action requests at most one page (maximum 100 records), under the existing source-wide throttle and access restrictions. The offline archive suggests application-period overlap semantics, but actual upstream filtering, rights and district completeness remain unverified; see [source evidence](source-register.md). No automatic district collector is enabled.
+
 The optional persisted provider API key is not sent by the current treatment adapter. Do not place long-lived keys in committed presets. The local operator interface uses loopback/origin restrictions **without production-grade authentication**; do not expose it to an untrusted network.
 
 ## Saturn viewport pilot
