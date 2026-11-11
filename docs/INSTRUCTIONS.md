@@ -4,7 +4,7 @@
 
 1. Use [INSTALLATION](INSTALLATION.md) to prepare dependencies and PostgreSQL.
 2. Check the selected [SDD checkpoint](specs/STATE.json) and current [sub-specification](specs/README.md).
-3. Identify the owning module in [ARCHITECTURE](ARCHITECTURE.md). Read its `contract.md` and nearest `AGENTS.md` before changing it.
+3. Identify the owning module in [MODULES](MODULES.md). Read its `contract.md` and nearest `AGENTS.md` before changing it.
 4. Implement a small, independently testable slice. Extend the owning module contract only if its published boundary changes.
 5. Run the applicable checks from [TESTS](TESTS.md), run formatting before read-only checks, and update only the documentation that owns changed behavior.
 6. Present test evidence and outstanding limitations to the developer. Developer acceptance is required before changing the SDD stage or archiving its sub-spec/plan pair.
@@ -50,7 +50,8 @@ After a failed `CHK`, resume instead of applying the same ZIP again.
 - `apps/web`: read-only notice/weather map and a separately gated, explicit local Saturn viewport-index pilot; future private apiaries and alerts.
 - `apps/admin`: separate local operator UI for sources, bounded ingestion and review. Never expose operator routes without server-side authentication.
 - `packages/contracts`: single source of truth for public Zod HTTP schemas.
-- `docs/ARCHITECTURE.md`: architecture decisions and module boundaries (no separate ADR index).
+- `docs/ARCHITECTURE.md`: system-level decisions and invariants (no separate ADR index).
+- `docs/MODULES.md`: current module ownership and public boundaries.
 - Each module `contract.md`: public API, owned data, dependencies and invariants.
 - `docs/FEATURES.md`: durable feature identifiers and shipped/planned status.
 

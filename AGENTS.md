@@ -4,7 +4,7 @@ These rules apply across the monorepo. A nearer `AGENTS.md` adds component-speci
 
 ## Orientation and source of truth
 
-- Start with [README](README.md) for the repository map, [ARCHITECTURE](docs/ARCHITECTURE.md) for module boundaries, and the relevant existing `contract.md` for a module's public behavior. [FEATURES](docs/FEATURES.md) and the [active specifications](docs/specs/README.md) describe product scope; [QUALITY](docs/QUALITY.md) and [TESTS](docs/TESTS.md) own verification conventions.
+- Read the [README](README.md) first for product context and the distinction between the current orchestration scaffold and its intended direction. Use [ARCHITECTURE](docs/ARCHITECTURE.md) for system-wide rules, [MODULES](docs/MODULES.md) for concrete ownership, and the relevant `contract.md` for cross-module interfaces. [FEATURES](docs/FEATURES.md) and the [active specifications](docs/specs/README.md) describe scope; [TESTS](docs/TESTS.md) owns verification.
 - Existing code, schemas and tests establish implemented behavior; active specifications establish intended behavior. Resolve discrepancies explicitly. Do not describe planned behavior as already delivered.
 
 ## Clean code and modularity

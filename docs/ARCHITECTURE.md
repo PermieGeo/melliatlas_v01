@@ -2,20 +2,9 @@
 
 MelliAtlas is an evidence-first GIS for beekeepers. Its runtime is a **modular monolith** in one pnpm repository: two separately built React/Leaflet applications, one Node.js/Express API, shared Zod wire contracts and PostgreSQL/PostGIS. See the two diagrams in the [root README](../README.md) for module boundaries and evidence flow.
 
-## Runtime ownership
+## Module boundaries
 
-| Module                             | Responsibility                                                                          | Public boundary                                    |
-| ---------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `apps/web`                         | Responsive beekeeper map, source-backed notices, weather and local viewport-index pilot | Browser `/api/v1` client                           |
-| `apps/admin`                       | Loopback operator configuration, bounded collection, review and diagnostics             | Browser `/api/v1/operator/*` client                |
-| `apps/api/src/app.ts`, `server.ts` | HTTP routing, security headers, error mapping, dependency composition                   | Versioned HTTP responses                           |
-| `apps/api/src/modules/core`        | Typed provider registry and sequential, code-defined DAG scaffold                       | `core/index.ts`; no public graph endpoint          |
-| `apps/api/src/modules/weather`     | Fixed-source Open-Meteo inspection                                                      | `OpenMeteoAdapter.inspect`                         |
-| `apps/api/src/modules/sources`     | Source policy, ingestion, evidence, PostGIS notice projection and provider ports        | Source services/ports; Saturn submodule `index.ts` |
-| `apps/api/src/db`                  | Pool, public catalog SQL and immutable migration runner                                 | Narrow database/repository API                     |
-| `packages/contracts`               | Shared Zod request/response contracts                                                   | `src/index.ts`                                     |
-
-Each owner publishes only cross-module contracts in its `contract.md`. Other modules should not import provider-private parsers or repository implementation details. Browser applications never access source provider APIs or raw SQL.
+See [Modules](MODULES.md) for the current directory map, concrete responsibilities, public interfaces and limitations. Each owner publishes only cross-module contracts in its `contract.md`; other modules must not import provider-private parsers or repositories. Browser applications never access provider APIs or raw SQL.
 
 ## Information providers and analysis
 
@@ -43,4 +32,4 @@ Provider transport rejects unapproved destinations, unsafe redirects/addresses, 
 
 The [umbrella specification](specs/active/spec-umbrella-melliatlas.md) defines private apiaries, controlled source-reading AI with citations, land-cover/phenology evidence, monitored areas and mobile maturity. User-discussed multi-source migration suggestions (candidate points and dates) and a date/region-based community hazard board are promising **design directions**, not implemented or normative requirements. Add testable specifications and a linked plan before treating them as product contracts.
 
-See [Implementation](IMPLEMENTATION.md) for concrete current classes, [Features](FEATURES.md) for feature IDs, and [Roadmap](ROADMAP.md) for delivery order.
+See [Modules](MODULES.md) for current code ownership, [Features](FEATURES.md) for capability status, and the [active specifications](specs/README.md) for delivery scope and order.

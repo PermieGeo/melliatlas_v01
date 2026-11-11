@@ -9,4 +9,4 @@
 - Live access is disabled by default; explicit fetch requires reviewed source access and server enablement. Cached reads and invalid requests never contact Saturn. Loopback/origin restrictions are not production authentication.
 - Other modules use `index.ts` rather than internal parsers/repos. The existing legacy treatment-feed parser remains in the parent source module. Shared geographic schema constants in `sourceProfile.ts` are currently reused by that parser; changes must preserve both validation contracts.
 
-Feature trace: `SOURCES.DOCUMENT_HISTORY` and `SRC-R33`–`SRC-R35`. Internal protocol research belongs in [Implementation](../../../../../../../docs/IMPLEMENTATION.md), not in this cross-module contract.
+Feature trace: `SOURCES.DOCUMENT_HISTORY` and `SRC-R33`–`SRC-R35`. Protocol evidence and open access questions belong in the [source register](../../../../../../../docs/source-register.md), not in this cross-module contract.

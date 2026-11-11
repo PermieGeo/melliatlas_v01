@@ -47,23 +47,27 @@ flowchart TB
 
 Frontend applications do not import backend implementations. Source access, credentials, policy and persistence stay on the server. The admin interface is **localhost-only**, not protected by production-grade authentication.
 
-## How evidence moves
+## Agent-oriented evidence processing
+
+The **orchestrator in `core`** is the intended coordination point: it selects source capabilities, runs bounded analysis steps and returns evidence with attribution. Today it is only a sequential DAG scaffold with a provider registry; weather inspection and cached Saturn-index status are connected, while LLM execution and relocation recommendations are not. The diagram distinguishes **implemented paths (solid)** from **planned integrations (dashed)**.
 
 ```mermaid
 flowchart TD
-    User["Beekeeper or operator action"] --> Choice{"Requested workflow"}
-    Choice -->|Weather inspection| Weather["Core → Open-Meteo adapter"]
-    Choice -->|Map / cache read| Stored["PostGIS-backed evidence and index"]
-    Choice -->|Explicit collection| Ingest["Restricted source adapter"]
-    Weather --> Response["Source-attributed validated result"]
-    Stored --> Response
-    Ingest --> Check["Validate, audit, throttle and persist"]
-    Check --> Stored
-    Response --> Map["Map, review status and uncertainty"]
-    Future["Future: multi-source analysis + cited suggestions"] -. "separately specified" .-> Map
+    Request["Beekeeper / operator request"] --> Orchestrator["core · agent orchestrator / analysis DAG"]
+    Weather["Open-Meteo · forecast"] --> Orchestrator
+    Saturn["Saturn · cached index status"] --> Orchestrator
+    FutureSources["Future · notices, phenology, community reports"] -.-> Orchestrator
+    Orchestrator --> Current["Current · attributed weather and index status"]
+    Orchestrator -.-> Analysis["Future · algorithms, statistics, ML and LLM"]
+    Analysis -.-> Candidates["Evidence-cited candidate locations and dates"]
+    Current --> UI["Map and explanatory UI"]
+    Candidates -.-> UI
+    Operator["Explicit operator collection"] --> Evidence["Restricted fetch · review · PostGIS evidence"]
+    Evidence --> UI
+    Evidence -. "future graph input" .-> Orchestrator
 ```
 
-Map navigation and normal notice reads **never start a provider download**. An operator may explicitly import a bounded treatment page; the local Saturn pilot can request a single index page when enabled. The indexed centers and source timestamps must not be interpreted as spraying, safety, or verified field coverage.
+Map navigation and ordinary notice reads **never start provider downloads**. The current treatment-polygon layer reads stored PostGIS evidence, outside the orchestration scaffold. An operator may explicitly import one bounded treatment page; the opt-in local Saturn pilot may request one map-index page. Future analysis must distinguish raw reports, verified evidence, model inference and missing coverage. Indexed centers are not proof of spraying or safety.
 
 ## Quick start
 
@@ -102,11 +106,12 @@ Database integration and browser E2E prerequisites are documented in [Tests](doc
 | Topic                                 | Documentation                                                                                                                            |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Product scope and requirements        | [Umbrella spec](docs/specs/active/spec-umbrella-melliatlas.md), [active source sub-spec](docs/specs/active/subspecs/source-ingestion.md) |
-| Architecture and actual code          | [Architecture](docs/ARCHITECTURE.md), [Implementation](docs/IMPLEMENTATION.md)                                                           |
-| Capability status and delivery        | [Features](docs/FEATURES.md), [Roadmap](docs/ROADMAP.md)                                                                                 |
+| Architecture and actual code          | [Architecture](docs/ARCHITECTURE.md), [Modules](docs/MODULES.md)                                                                         |
+| Capability status and delivery        | [Features](docs/FEATURES.md), [specification index](docs/specs/README.md)                                                                |
 | Install and use                       | [Installation](docs/INSTALLATION.md), [Usage](docs/USAGE.md)                                                                             |
 | Operations and troubleshooting        | [Configuration](docs/CONFIGURATION.md), [Diagnostics](docs/DIAGNOSTIC.md)                                                                |
-| Engineering workflow and verification | [Instructions](docs/INSTRUCTIONS.md), [Tests](docs/TESTS.md), [Quality](docs/QUALITY.md)                                                 |
+| Engineering workflow and verification | [Instructions](docs/INSTRUCTIONS.md), [Tests](docs/TESTS.md)                                                                             |
+| Source research and permissions       | [Source evidence register](docs/source-register.md)                                                                                      |
 | Repository rules                      | [AGENTS.md](AGENTS.md)                                                                                                                   |
 
 External source behavior, licensing, permissions, and scientific interpretation require independent validation. A manual, non-persisting Saturn connectivity diagnostic is available at `node scripts/check-saturn-api.mjs`; it neither certifies access rights nor establishes current provider availability.

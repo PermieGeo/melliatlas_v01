@@ -1,6 +1,6 @@
 # MelliAtlas Feature Catalog
 
-Feature IDs denote durable capabilities, **not** proof of completeness. The [cross-reference](specs/feature-cross-ref.yaml) indexes annotated implementation/test files, linked stages and requirements. Current code behavior is summarized in [Implementation](IMPLEMENTATION.md); intended behavior is governed by the [active specifications](specs/README.md).
+Feature IDs denote durable capabilities, **not** proof of completeness. The [cross-reference](specs/feature-cross-ref.yaml) indexes annotated implementation/test files, linked stages and requirements. Current module ownership is summarized in [Modules](MODULES.md); intended behavior is governed by the [active specifications](specs/README.md).
 
 | Feature ID                       | State                 | Current boundary / outstanding work                                                                                                                                                                      |
 | -------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

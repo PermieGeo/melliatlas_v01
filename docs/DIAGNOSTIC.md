@@ -1,26 +1,51 @@
-# Diagnostics
+# Diagnostics and Troubleshooting
 
-Check the observed error, request ID and local service state before changing code. The API emits a `requestId` and `X-Request-ID`; never log credentials or exact private apiary locations.
+Start with the failing command, HTTP status, API `requestId` / `X-Request-ID`, the affected service and the time of failure. Do not print credentials, unredacted provider payloads or private apiary locations. For installation prerequisites, see [Installation](INSTALLATION.md).
 
-| Symptom                                             | Check                                                                                 | Action                                                                                                                                                                                      |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API fails to start / readiness 503                  | `apps/api/.env`, `docker compose ps`, database logs, `/health/ready`                  | Correct `DATABASE_URL`, start PostGIS and apply pending migrations.                                                                                                                         |
-| Port conflict                                       | 3001 API, 5173 beekeeper, 5174 admin, 5433 PostgreSQL                                 | Free the port or correct the documented local configuration.                                                                                                                                |
-| Weather unavailable                                 | `/api/v1/locations/inspect` and Open-Meteo connectivity                               | Verify provider access and timeout; do not fabricate fallback values.                                                                                                                       |
-| Invalid coordinates                                 | Latitude [-90, 90], longitude [-180, 180]                                             | Correct request; API returns typed 400.                                                                                                                                                     |
-| Public sources/notices unavailable                  | `/api/v1/sources`, `/api/v1/notices`, API readiness and browser proxy                 | Start backend and check the response code/body. An empty map does not prove safety.                                                                                                         |
-| Migration failure                                   | `pnpm db:migrate`, `schema_migrations` checksums                                      | Restore connectivity or investigate historical drift; never edit applied SQL migrations.                                                                                                    |
-| Admin 403                                           | Browser request `Origin` and loopback                                                 | Open the **administrator** UI on `http://127.0.0.1:5174`, not the beekeeper UI (5173). Local origin checks are not authentication.                                                          |
-| Admin 503 or 409                                    | API readiness and current provider settings revision                                  | Migrate/start PostGIS; for 409 reload the latest revision before saving.                                                                                                                    |
-| Provider page rejected as `INVALID_SOURCE_RESPONSE` | Redacted API diagnostic, original provider shape, `node scripts/check-saturn-api.mjs` | Investigate exact schema issue; preserve null optional claims as unknown. Do not publish invalid geometry.                                                                                  |
-| No map data after configuring provider              | Operator `/provider/status`, explicit sync result and candidate review state          | **Saving configuration does not download pages**; invoke manual bounded collection. Pending structured polygons may be public with an unverified label; rejected/text-only records are not. |
-| Saturn fetch disabled or throttled                  | `SATURN_VIEWPORT_LIVE_ENABLED`, source ID, directory, request log, `SOURCE_THROTTLED` | Review source permissions, exact district/date filter and the source-wide cooldown. Cached status is read-only; there is no automatic district scanner.                                     |
-| Playwright cannot start                             | Chromium installation, Vite ports, PostGIS fixture setup                              | Follow [Tests](TESTS.md) prerequisites; never depend on live Saturn for CI.                                                                                                                 |
+## Installation and startup
 
-## `apatch` format/check recovery
+| Symptom                                              | Verify                                                              | Recovery                                                                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm: command not found` / unsupported Node version | `node --version`, `npm --version`, `pnpm --version`                 | Select Node.js 22 (`nvm use 22` where available), install the pinned pnpm 11.25.0 in the active shell                            |
+| Docker daemon unavailable                            | `docker info`, `docker compose version`                             | Start Docker Desktop, Colima or the Linux engine; on WSL enable Ubuntu integration                                               |
+| PostGIS unhealthy                                    | `docker compose ps`, `docker compose logs --tail=80 db`             | Resolve container/port errors and wait for healthy state before migrations                                                       |
+| Database rejects the password                        | Local `DATABASE_URL`, original Compose database initialization      | Match credentials in the **existing** persistent volume; changing Compose environment does not reset an existing user's password |
+| `API startup failed` / readiness 503                 | `apps/api/.env`, `DATABASE_URL`, `pnpm db:migrate`, `/health/ready` | Confirm the host database port is **5433** and apply pending migrations; do not edit applied migration checksums                 |
+| Vite proxy `ECONNREFUSED 127.0.0.1:3001`             | API terminal, `/health/live`                                        | Restart the failed API; do not start an extra API alongside `pnpm dev`                                                           |
+| Port conflict on 3001/5173/5174/5433                 | Existing dev processes and host port listeners                      | Stop the conflicting process; Playwright requires free frontend ports                                                            |
 
-`sh ./run-tests.sh` is read-only. Run `pnpm format` **before** `CHK` when `pnpm format:check` fails; review changes before continuing. Python bytecode is excluded from tracked sources; the test runner uses `python3 -B`. If a ZIP has already been applied and `CHK` fails, **resume `apatch opSeq=CHK,STS` without reapplying `APL`**. Use the documented `followup=true` option only for a new repair ZIP on an unfinished feature branch.
+To isolate backend startup, stop the root `pnpm dev` command first and then run `pnpm --dir apps/api dev`. Never run both copies simultaneously.
 
-For a bug report, include failing command, redacted environment, response status/error code and request ID, exact steps, expected versus actual result and relevant isolated test outcome. For external data, record source identity, retrieval time and safe error metadata—never private payloads or secret-bearing URLs.
+### Blocked pnpm dependency builds
 
-See [Configuration](CONFIGURATION.md), [Usage](USAGE.md) and [Tests](TESTS.md).
+The pinned `pnpm` version may reject an unexpected installation script. If `esbuild` is explicitly reported as blocked, verify the local `pnpm-workspace.yaml` approval before changing it. If approval is genuinely missing:
+
+```bash
+pnpm approve-builds esbuild
+pnpm rebuild esbuild
+pnpm install --frozen-lockfile
+```
+
+In an interactive approval menu, **Space** selects a package and **Enter** confirms. Enter alone can record a rejection. The repository already tracks `allowBuilds` approval for `esbuild`; do not approve other dependencies indiscriminately or overwrite the workspace configuration without review.
+
+## Application and source diagnostics
+
+| Symptom                                      | Check                                                                | Interpretation or action                                                                             |
+| -------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Weather/tiles unavailable                    | Browser Network, Open-Meteo/OSM connectivity and timeout             | Show the real error; never synthesize observations                                                   |
+| Invalid coordinates                          | WGS84: latitude −90…90, longitude −180…180                           | Correct request; invalid inputs yield a typed error                                                  |
+| Empty map or missing notices                 | Backend readiness, `GET /api/v1/notices`, local source evidence      | A clean empty view is **not** evidence of no treatments or safety                                    |
+| Admin 403                                    | Browser `Origin`, loopback address                                   | Use local Admin port **5174**. Origin checks are not production authentication                       |
+| Admin 503 or settings 409                    | API/database health, configuration revision                          | Apply migrations or reload current settings before editing again                                     |
+| `INVALID_SOURCE_RESPONSE`                    | Redacted parser issue paths, upstream envelope and source settings   | Investigate provider format without logging records; invalid geometry stays non-public text evidence |
+| Nothing appears after configuring a provider | Explicit ingestion status and review state                           | **Saving settings does not fetch**; start a bounded manual collection separately                     |
+| Saturn disabled / `SOURCE_THROTTLED`         | `SATURN_VIEWPORT_LIVE_ENABLED`, local request audit, shared cooldown | Verify source rights, enable only intentional local fetching, then wait for the rate-limited slot    |
+| Playwright cannot start                      | Chromium installation and Vite ports                                 | `pnpm exec playwright install chromium`; stop `pnpm dev` before `pnpm e2e`                           |
+
+Saturn index centers and cached district names do not establish treatment geometry, complete district coverage or safe application dates. For source identity and unresolved external contracts, consult the [evidence register](source-register.md). For offline capture inspection, `pnpm --dir apps/api evidence:saturn -- --help` lists accepted flags; it does not contact Saturn. A standalone manual connectivity probe is `node scripts/check-saturn-api.mjs` and must not be mistaken for authorization to collect data.
+
+## Formatting and `apatch` recovery
+
+`sh ./run-format.sh` **modifies files**; `sh ./run-tests.sh` is the canonical read-only check. If `pnpm format:check` fails, format and inspect the working tree before running `CHK` again. When `apatch` already applied a ZIP and `CHK` fails, resume with `apatch opSeq=CHK,STS` after fixing the issue; **do not reapply `APL`**. `followup=true` is only for a repair ZIP on an unfinished feature branch.
+
+When reporting a defect, include steps, expected/actual result, failing command, sanitized status/code and request ID, and the focused test result. Distinguish a blocked environment from a product failure. See [Tests](TESTS.md) for Playwright traces and verification criteria.

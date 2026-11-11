@@ -46,7 +46,7 @@ The bootstrap and subsequent source-ingestion increments include a React/Leaflet
 
 It does **not** yet collect municipal announcements, publish notice geometries, store private apiaries, estimate flowering, send alerts or call an AI provider. There are no legitimate substitutes for those missing integrations. UI states for future functionality must remain clearly identified as future work.
 
-See [Features](../../FEATURES.md) for durable capability names, [Implementation](../../IMPLEMENTATION.md) for the actual code, and [Tests](../../TESTS.md) for verification limits.
+See [Features](../../FEATURES.md) for durable capability names, [Modules](../../MODULES.md) for current code ownership, and [Tests](../../TESTS.md) for verification limits.
 
 ## Application separation and delivery principles
 
@@ -206,7 +206,7 @@ Important conventions:
 - Functional modules use explicit public contracts and avoid circular dependencies or duplicated business rules.
 - Source text and LLM responses are untrusted; private apiary coordinates and credentials stay protected.
 
-See [Architecture](../../ARCHITECTURE.md) and [module implementation](../../IMPLEMENTATION.md) for technical detail, rather than repeating it here.
+See [Architecture](../../ARCHITECTURE.md) and [Modules](../../MODULES.md) for technical detail, rather than repeating it here.
 
 ## 7. A practical order of work
 

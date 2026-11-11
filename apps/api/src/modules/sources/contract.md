@@ -8,4 +8,4 @@
 - **Isolation:** source-specific HTTP request shapes and their interpretation belong to adapters. Existing regional cursor/scan code is **not wired into server startup**; its persisted state is not proof of refreshed district coverage.
 - **Non-claims:** a downloaded page, cached center, provider date field or complete viewport index is not an independently verified treatment, legal reuse right, hazard verdict or district-wide coverage.
 
-Add a provider through its own validated adapter and documented access decision. Do not bypass server-side restricted retrieval or introduce background polling from UI reads. See [Implementation](../../../../../docs/IMPLEMENTATION.md) for internal workflows.
+Add a provider through its own validated adapter and documented access decision. Do not bypass server-side restricted retrieval or introduce background polling from UI reads. See [Modules](../../../../../docs/MODULES.md) for current ownership and workflows.
