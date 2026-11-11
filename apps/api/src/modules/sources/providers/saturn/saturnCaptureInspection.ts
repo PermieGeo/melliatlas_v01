@@ -108,6 +108,7 @@ export function inspectSaturnCaptureBodies(
     limitations: [
       "Matching feature IDs are investigative candidates, not verified joins.",
       "Three-endpoint candidates require matching field and plan IDs but do not establish a spatial or treatment association.",
+      "Matching ACR and index centers within the local tolerance do not authenticate capture time or polygon identity.",
       "An indexed center outside matched polygon bounds is a spatial contradiction to investigate; a center inside those bounds does not prove polygon membership or field identity.",
       "ACR date and product counts describe a captured body, not a confirmed treatment.",
       "Capture provenance, timestamps, zoom and viewport equivalence are unverified.",
