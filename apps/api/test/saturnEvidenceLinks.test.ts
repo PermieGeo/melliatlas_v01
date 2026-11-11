@@ -104,6 +104,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         requestedFeatureId: "238194",
         responseId: "1586314",
         responseIdMatchesRequest: false,
+        planRelation: "conflicts_with_index_plan",
         listedInIndex: true,
         listedInPolygons: true,
       },
@@ -111,6 +112,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         requestedFeatureId: "238195",
         responseId: "238195",
         responseIdMatchesRequest: true,
+        planRelation: "conflicts_with_index_plan",
         listedInIndex: true,
         listedInPolygons: false,
       },
@@ -118,11 +120,49 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         requestedFeatureId: "777777",
         responseId: "99",
         responseIdMatchesRequest: false,
+        planRelation: "not_in_index",
         listedInIndex: false,
         listedInPolygons: false,
       },
     ]);
     expect(result.acrObservations[0]).not.toHaveProperty("privateData");
+  });
+
+  it("recognizes a shared ACR plan ID without conflating its distinct field IDs", () => {
+    // Observed field/plan ID relationships paired with synthetic polygon fixtures.
+    const result = compareSaturnCapturedIdentities(
+      [indexEntry("1273662", "1716288"), indexEntry("1273663", "1716288")],
+      polygons([polygon("1273662"), polygon("1273663", otherGeometry)]),
+      [
+        { requestedFeatureId: "1273662", response: { id: 1716288 } },
+        { requestedFeatureId: "1273663", response: { id: 1716288 } },
+      ],
+    );
+    expect(result.acrObservations).toEqual([
+      expect.objectContaining({
+        requestedFeatureId: "1273662",
+        responseId: "1716288",
+        responseIdMatchesRequest: false,
+        planRelation: "matches_index_plan",
+        listedInPolygons: true,
+      }),
+      expect.objectContaining({
+        requestedFeatureId: "1273663",
+        responseId: "1716288",
+        responseIdMatchesRequest: false,
+        planRelation: "matches_index_plan",
+        listedInPolygons: true,
+      }),
+    ]);
+    expect(result.idMatchCandidates.map((item) => item.featureId)).toEqual([
+      "1273662",
+      "1273663",
+    ]);
+    expect(
+      result.idMatchCandidates.every(
+        (item) => item.relation === "id_match_only",
+      ),
+    ).toBe(true);
   });
 
   it("returns no implied linkage when captures have no overlapping IDs", () => {
