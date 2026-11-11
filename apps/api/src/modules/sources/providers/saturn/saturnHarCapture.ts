@@ -40,6 +40,14 @@ export type SaturnHarInspection = SaturnCaptureInspection & {
   provenance: SaturnCaptureManifestReport;
 };
 
+type HarEndpointCounts = { matching: number; readable: number };
+
+export type SaturnHarInventory = {
+  status: "CANDIDATE_TRIO" | "AMBIGUOUS" | "INCOMPLETE" | "UNREADABLE";
+  endpoints: Record<HarEndpoint, HarEndpointCounts>;
+  limitations: string[];
+};
+
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error("Invalid HAR entry structure");
@@ -143,6 +151,58 @@ function readEntry(value: unknown, endpoint: HarEndpoint): HarEntry {
 
 function digest(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+/** Preview only fixed endpoint counts and body readability, never HAR payloads. */
+export function inventorySaturnHarCapture(
+  input: unknown,
+  requestedFeatureId: string,
+): SaturnHarInventory {
+  featureIdSchema.parse(requestedFeatureId);
+  const entries = harSchema.parse(input).log.entries;
+  const endpoints: SaturnHarInventory["endpoints"] = {
+    query: { matching: 0, readable: 0 },
+    polygons: { matching: 0, readable: 0 },
+    acr: { matching: 0, readable: 0 },
+  };
+  for (const entry of entries) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const request = (entry as Record<string, unknown>).request;
+    if (typeof request !== "object" || request === null) continue;
+    const endpoint = classify(
+      (request as Record<string, unknown>).url,
+      requestedFeatureId,
+    );
+    if (!endpoint) continue;
+    endpoints[endpoint].matching++;
+    try {
+      const readable = readEntry(entry, endpoint);
+      if (endpoint !== "query" || readable.requestText !== undefined) {
+        endpoints[endpoint].readable++;
+      }
+    } catch {
+      // Only aggregate readiness; malformed payloads and secrets stay private.
+    }
+  }
+  const totals = Object.values(endpoints);
+  const status: SaturnHarInventory["status"] = totals.some(
+    ({ matching }) => matching > 1,
+  )
+    ? "AMBIGUOUS"
+    : totals.some(({ matching }) => matching === 0)
+      ? "INCOMPLETE"
+      : totals.some(({ readable }) => readable === 0)
+        ? "UNREADABLE"
+        : "CANDIDATE_TRIO";
+  return {
+    status,
+    endpoints,
+    limitations: [
+      "Only exact known endpoint paths are counted; the requested ACR field ID is never printed.",
+      "Readable means a bounded successful HTTP body is available, not that its JSON, filter context or geometry association is valid.",
+      "A HAR export is self-reported and cannot establish source permission or authenticity.",
+    ],
+  };
 }
 
 /**

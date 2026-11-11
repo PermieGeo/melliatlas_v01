@@ -25,15 +25,15 @@ The script is **read-only** with respect to repository source. If formatting fai
 
 ## Focused checks
 
-| Command                                                                       | Coverage                                                                 |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `pnpm --dir apps/api test`                                                    | Backend unit tests, parsers and transport boundaries (stubbed providers) |
-| `pnpm --dir apps/api exec vitest run test/saturnHarCapture.test.ts`           | Bounded offline HAR import, ambiguous/malformed evidence and secrecy     |
-| `pnpm --dir apps/api test:db`                                                 | Isolated real-PostGIS migration, persistence and restart cases           |
-| `pnpm --dir apps/web test`                                                    | Beekeeper components and HTTP decoding                                   |
-| `pnpm --dir apps/admin test`                                                  | Operator components and local workflows                                  |
-| `python3 -B tools/specs/validate_state.py`                                    | SDD checkpoint, paths and feature cross-reference                        |
-| `node --test scripts/check-saturn-api.test.mjs scripts/help-content.test.mjs` | Offline source diagnostic and localized help fixtures                    |
+| Command                                                                       | Coverage                                                                   |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `pnpm --dir apps/api test`                                                    | Backend unit tests, parsers and transport boundaries (stubbed providers)   |
+| `pnpm --dir apps/api exec vitest run test/saturnHarCapture.test.ts`           | Bounded offline HAR preview/import, missing/ambiguous evidence and secrecy |
+| `pnpm --dir apps/api test:db`                                                 | Isolated real-PostGIS migration, persistence and restart cases             |
+| `pnpm --dir apps/web test`                                                    | Beekeeper components and HTTP decoding                                     |
+| `pnpm --dir apps/admin test`                                                  | Operator components and local workflows                                    |
+| `python3 -B tools/specs/validate_state.py`                                    | SDD checkpoint, paths and feature cross-reference                          |
+| `node --test scripts/check-saturn-api.test.mjs scripts/help-content.test.mjs` | Offline source diagnostic and localized help fixtures                      |
 
 Focused checks are useful for diagnosis but do **not** replace the canonical runner when full verification is required. Real PostGIS integration tests must use a disposable local database/schema. A green test suite cannot verify upstream API permissions, live availability, source completeness or scientific hazard judgments.
 
