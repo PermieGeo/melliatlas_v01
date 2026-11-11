@@ -1,4 +1,4 @@
-// Feature IDs: NOTICES.EXTRACTION, NOTICES.MAP_OVERLAY
+// Feature IDs: NOTICES.EXTRACTION, NOTICES.MAP_OVERLAY, NOTICES.SPATIAL_PRECISION
 import { describe, expect, it } from "vitest";
 import { safePlanGeometry } from "../src/modules/sources/treatmentIngestion.js";
 

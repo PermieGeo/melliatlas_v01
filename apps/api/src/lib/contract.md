@@ -1,11 +1,7 @@
-# API Error Contract
+# Shared API Error Contract
 
-**Owner:** `apps/api/src/lib/`. **Status:** implemented.
+**Owner:** `apps/api/src/lib/`. **Public API:** `ApiFailure` and `UpstreamUnavailable` from `errors.ts`.
 
-- **Responsibility:** Transport-neutral typed errors for expected API/provider failures.
-- **Public entry points:** `ApiFailure` and `UpstreamUnavailable` from [errors.ts](errors.ts).
-- **Owned data:** None.
-- **Dependencies:** Built-in runtime only.
-- **Forbidden:** HTTP route registration, provider network requests, database access, raw upstream stack traces in user responses.
-- **Invariants:** Known failures retain HTTP status and stable error code; the HTTP composition root maps errors to shared `apiErrorSchema` with a request ID.
-- **Extension:** Add domain-specific errors inside the domain module; publish a common error type here only if multiple modules share its semantics.
+- Expected failures carry stable error codes and HTTP status; the API composition root maps them to the shared error schema and request ID.
+- Domain-specific errors remain with their owning modules unless multiple modules need the same semantics.
+- No provider requests, database access, or raw upstream details belong in this module.

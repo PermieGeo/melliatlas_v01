@@ -51,9 +51,9 @@ The probe prints status and aggregate geometry counts without reproducing person
 | `PUT /api/v1/operator/provider`                    | Revision-checked provider settings, no fetch                                                             |
 | `GET /api/v1/operator/provider/status`             | Ingestion status and counts                                                                              |
 | `POST /api/v1/operator/provider/sync`              | Fetch one bounded provider page when a region scan is not active                                         |
-| `GET /api/v1/operator/provider/region-scan`        | Read regional scan state/progress                                                                        |
-| `POST /api/v1/operator/provider/region-scan/start` | Start or resume a region-wide scan                                                                       |
-| `POST /api/v1/operator/provider/region-scan/pause` | Pause an active scan                                                                                     |
+| `GET /api/v1/operator/provider/region-scan`        | Legacy regional scan status route (worker not wired)                                                     |
+| `POST /api/v1/operator/provider/region-scan/start` | Legacy start route; no active regional worker in current server composition                              |
+| `POST /api/v1/operator/provider/region-scan/pause` | Legacy pause route; no active regional worker in current server composition                              |
 | `GET /api/v1/operator/notices/map-preview`         | Pending and verified admin preview                                                                       |
 | `GET /api/v1/operator/notices`                     | Pending review queue                                                                                     |
 | `POST /api/v1/operator/notices/:id/review`         | Evidence-backed review decision                                                                          |
@@ -122,7 +122,7 @@ Run `node --test scripts/help-content.test.mjs` for a dependency-free structure
 and locale-parity check, followed by the canonical `./run-tests.sh` and browser
 E2E suites. The dev servers serve JSON from their app's `public/` directory.
 
-### Local viewport index collection from the beekeeper map (Yartsevo pilot)
+### Local Saturn viewport index collection from the beekeeper map
 
 After reviewing third-party automated-access terms, enable bounded collection in local development by starting the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true pnpm dev`. Open `http://127.0.0.1:5173`, select Yartsevo District or a district from an explicitly refreshed persisted provider directory in **Load district data**, zoom to the requested fields, choose an `UpdateMap` period, then click **Fetch up to 10 more records**. The map immediately re-centers on district selection, but moving/zooming it never starts an upstream request. **Check cache** reads a saved checkpoint without upstream traffic. One **Fetch up to 10 more records** click retrieves at most one source page; wait at least 20 seconds before another attempt. Progress survives restarts via PostGIS migration 014. The selected viewport must be at most 1° × 1° and within the configured pilot coordinates.
 
@@ -130,7 +130,7 @@ This pilot stores map-index entries with field centers, not complete treatment n
 
 ## Inspecting the Saturn pilot cache
 
-The beekeeper map's Yartsevo selector requests at most one page of ten field **index** records per explicit fetch. The page is a pagination batch, not a map tile or a field polygon. A debounced read-only lookup checks the exact selected filter automatically; `Check cache` repeats that local database read explicitly. Neither operation contacts Saturn. The map shows up to 100 blue center-point markers. Blue points are not spraying events or a safety signal; treatment polygons remain a separate notice layer. Exact bounding coordinates, dates (at most 124 days) and source revision identify the checkpoint, so moving the map or changing the period creates a different request. An invalid year-wide range gives a correction button; loading a whole year is not yet supported as one request.
+The beekeeper map's district selector (persisted provider directory, with Yartsevo fallback) requests at most one page of ten field **index** records per explicit fetch. The page is a pagination batch, not a map tile or a field polygon. A debounced read-only lookup checks the exact selected filter automatically; `Check cache` repeats that local database read explicitly. Neither operation contacts Saturn. The map shows up to 100 blue center-point markers. Blue points are not spraying events or a safety signal; treatment polygons remain a separate notice layer. Exact bounding coordinates, dates (at most 124 days) and source revision identify the checkpoint, so moving the map or changing the period creates a different request. An invalid year-wide range gives a correction button; loading a whole year is not yet supported as one request.
 
 In local Admin → Data collection, `Saved PostgreSQL map-index cache` shows the 20 most recently updated viewport queries and the last five page receipts per query, including data fetched from the beekeeper map. `Refresh history` is database-only. The history records committed page times, counts and filter identifiers, but not which browser initiated them. A complete page sequence is not complete district coverage or an archived treatment history. Live collection remains opt-in and restricted to the locally configured pilot.
 

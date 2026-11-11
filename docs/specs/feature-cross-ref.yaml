@@ -13,6 +13,7 @@ features:
       - apps/api/src/app.ts
       - apps/api/src/modules/sources/contracts.ts
       - apps/api/src/modules/sources/municipalSourceRegistry.ts
+      - apps/admin/src/api/client.ts
     test_paths:
       - apps/api/test/app.test.ts
       - apps/api/test/sourcePolicy.test.ts
@@ -44,6 +45,7 @@ features:
       - apps/api/test/app.test.ts
       - apps/api/integration/providerConfigurationMigration.test.ts
       - apps/admin/src/App.test.tsx
+      - apps/api/integration/treatmentAccessMigration.test.ts
   - id: SOURCES.DOCUMENT_HISTORY
     stage_ids:
       - SRC-01
@@ -105,6 +107,12 @@ features:
       - apps/admin/src/components/SaturnRequestLogPanel.tsx
       - apps/admin/src/components/StoredViewportFieldsPanel.tsx
       - apps/admin/src/cacheHistoryMessages.ts
+      - apps/api/src/app.ts
+      - apps/api/src/server.ts
+      - apps/api/src/modules/sources/demoFixtures.ts
+      - apps/api/src/modules/sources/demoSeed.ts
+      - apps/api/src/modules/sources/providerRequestThrottle.ts
+      - apps/api/src/modules/sources/providers/saturn/saturnAcrEvidence.ts
     test_paths:
       - apps/api/test/regionalScanState.test.ts
       - apps/api/integration/regionalCollection.test.ts
@@ -133,6 +141,10 @@ features:
       - apps/admin/src/App.test.tsx
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
+      - apps/api/integration/manualTreatmentMigration.test.ts
+      - apps/api/integration/providerRequestThrottle.test.ts
+      - apps/api/test/saturnAcrEvidence.test.ts
+      - tests/demo/demo-data.spec.ts
   - id: SOURCES.SAFE_FETCH
     stage_ids:
       - SRC-01
@@ -172,6 +184,7 @@ features:
     test_paths:
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/test/treatmentIngestion.test.ts
+      - apps/api/test/beekeeperPlanPage.test.ts
   - id: NOTICES.SPATIAL_PRECISION
     stage_ids:
       - SRC-01
@@ -183,9 +196,13 @@ features:
       - SRC-R07
     code_paths:
       - apps/api/src/modules/sources/treatmentIngestion.ts
+      - apps/api/src/modules/sources/treatmentMapProjection.ts
+      - apps/web/src/components/TreatmentDetailsPanel.tsx
     test_paths:
       - apps/api/test/treatmentIngestion.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
+      - apps/api/test/treatmentMapProjection.test.ts
+      - apps/api/integration/treatmentMapProjection.test.ts
   - id: NOTICES.MAP_OVERLAY
     stage_ids:
       - SRC-01
@@ -204,12 +221,22 @@ features:
       - apps/web/src/components/MapCanvas.tsx
       - apps/web/src/api/client.ts
       - packages/contracts/src/index.ts
+      - apps/admin/src/api/client.ts
+      - apps/admin/src/components/MapAnalysisPanel.tsx
+      - apps/web/src/components/TreatmentDetailsPanel.tsx
+      - apps/api/src/modules/sources/demoFixtures.ts
+      - apps/api/src/modules/sources/demoSeed.ts
     test_paths:
       - apps/api/test/app.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
       - apps/web/src/api/client.test.ts
       - apps/api/integration/regionalCollection.test.ts
       - tests/e2e/map.spec.ts
+      - apps/admin/src/App.test.tsx
+      - apps/api/integration/treatmentMapProjection.test.ts
+      - apps/api/test/treatmentIngestion.test.ts
+      - apps/api/test/treatmentMapProjection.test.ts
+      - tests/demo/demo-data.spec.ts
   - id: WEATHER.POINT_FORECAST
     stage_ids:
       - SRC-01

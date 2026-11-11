@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.PROVIDER_CONFIGURATION, SOURCES.DOCUMENT_HISTORY, NOTICES.MAP_OVERLAY
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import App from "./App";

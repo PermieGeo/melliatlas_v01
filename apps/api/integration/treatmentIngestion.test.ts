@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.DOCUMENT_HISTORY, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.DOCUMENT_HISTORY, NOTICES.MAP_OVERLAY, NOTICES.SPATIAL_PRECISION
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";

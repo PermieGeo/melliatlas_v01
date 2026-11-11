@@ -1,3 +1,4 @@
+// Feature IDs: WEATHER.POINT_FORECAST
 import { describe, expect, it, vi } from "vitest";
 import { OpenMeteoAdapter } from "../src/modules/weather/openMeteo.js";
 

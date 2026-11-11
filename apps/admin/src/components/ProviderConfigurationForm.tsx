@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.PROVIDER_CONFIGURATION
 import type {
   ProviderConfiguration,
   ProviderConfigurationEdit,

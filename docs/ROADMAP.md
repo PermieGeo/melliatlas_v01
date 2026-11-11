@@ -1,30 +1,24 @@
-# MelliAtlas Delivery Roadmap
+# MelliAtlas Roadmap
 
-| Order          | Feature                                                                                                            | Intended evidence                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| **1 — SRC-01** | Configurable structured treatment provider first, then approved municipal ingestion and live evidence map overlays | Authenticated Provider settings, verified access, cited source links, geometry precision, failure/retry tests |
-| 2 — BEE-01     | Private apiary records and proximity queries                                                                       | Authenticated ownership, no exact-coordinate exposure, spatial tests                                          |
-| 3 — AGENT-01   | Configurable source-reading AI agent                                                                               | Strict extraction schemas, cited tool evidence, injection defenses, human review                              |
-| 4 — SAT-01     | Sentinel-2 and phenology research path                                                                             | Licensed access, time-series storage, independently validated field observations                              |
-| 5 — ALERT-01   | User-controlled monitored areas and notices                                                                        | Deduplicated alerts, time windows, privacy and delivery receipts                                              |
-| 6 — MOBILE-01  | Touch-polished PWA and optional mobile shell                                                                       | Mobile E2E, offline boundaries, opt-in geolocation                                                            |
+This is a delivery overview, not a claim of completion or an approval to implement an unselected feature. The [umbrella spec](specs/active/spec-umbrella-melliatlas.md), current [source-ingestion sub-spec](specs/active/subspecs/source-ingestion.md), and [SDD state](specs/STATE.json) govern requirements and checkpoints.
 
-## Out-of-sequence documentation maintenance (before SRC-01 / S3)
+| Sequence | Stage       | Outcome                                                                                           | Current status                        |
+| -------- | ----------- | ------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 1        | `SRC-01`    | Attributed source ingestion, verifiable notice geometry, transparent map coverage and uncertainty | **Selected / partial implementation** |
+| 2        | `BEE-01`    | Private apiaries with authenticated ownership and spatial proximity                               | Planned                               |
+| 3        | `AGENT-01`  | Bounded source-reading LLM assistant, reviewable extraction and cited explanation                 | Planned; internal DAG scaffold only   |
+| 4        | `SAT-01`    | Licensed land-cover and flowering/phenology evidence with field validation                        | Planned                               |
+| 5        | `ALERT-01`  | User-controlled area monitoring, deduplicated notices and private delivery                        | Planned                               |
+| 6        | `MOBILE-01` | Accessible mobile-first workflows and possible optional shell                                     | Planned                               |
 
-Review and correct the local installation, configuration, usage, verification and troubleshooting guidance against the implemented `SRC-01 / S2` code. This maintenance increment does **not** complete a normative source-ingestion requirement, authorize provider access or change the developer-controlled SDD checkpoint. The next product work remains external-access/contract verification followed by the durable structured-provider adapter.
+## Current `SRC-01 / S3c` boundary
 
-This is a _sequence of prospective scopes_, not a set of pre-approved or completed child specifications. Only the selected `SRC-01` has a current normative sub-spec and implementation plan. Its first source-backed weather-map slice is implemented as the repository's bootstrap capability; the remaining `SRC-01` work is planned.
+The legacy whole-region S3b scanner exists in source code but is not started. S3c district-cache tables and read-only status exist; **automated district refresh and 24-hour coverage claims remain gated** by provider contract and access verification.
 
-## Current source-ingestion increment
+The subsequent S3c.1 local pilot provides an explicitly enabled, bounded Saturn viewport-index fetch, persisted district directory, audited request attempts and cached field-center display. It does **not** validate polygon/ACR joins, actual treatments, provider history completeness or licensing. The next evidence milestone is independent verification of permitted provider responses, date/filter semantics and what a complete district listing really means; only then can a specified S3c.2 refresh policy be considered.
 
-`SRC-01 / S3a` adds manual, permission-reviewed source ingestion and a map layer containing individually verified polygons. The reference endpoint remains a candidate whose automation/republication rights and live response contract must be checked independently. The next planned slices are source-contract validation and durable multi-page worker/retraction handling, followed by municipal adapters and full spatial evidence acceptance.
+## Product directions requiring specifications
 
-## Agreed minimal follow-up after S3a.4
+Beyond the selected scope, the design discussion includes plug-in information providers (weather, notices, satellite/phenology, historical records and community reports), multi-executor analysis and alternative **candidate migration locations/dates**, with a regional date-based hazard-sharing board. These are neither delivered features nor currently approved normative sub-specs. Before implementation, define source rights, uncertainty, privacy, safeguards, and testable acceptance criteria.
 
-The next data stage is a conservative, restart-safe, whole-region collection for a configured source/region with full coverage accounting and off-peak scheduling. It must never fetch on beekeeper map requests. After that, private apiaries and a persisted in-app change indicator can be added using local database reads/polling, without Web Push or a separate message broker. Server-side administrator authentication is a prerequisite for remote/public admin deployment.
-
-## S3b regional collection increment
-
-The selected treatment source can now be scanned region-wide using persisted page progress and a single in-process worker. An explicit UTC hour enables daily off-peak scheduling; otherwise the administrator starts the scan. The public map queries stored polygons by visible bbox. The backend retains raw provider evidence and prefers the latest seen record per upstream ID, but absence of an upstream record is **not** yet interpreted as a confirmed retraction. Remaining priorities: verify provider-specific region coverage, independently test a complete permitted real scan, then add `BEE-01` private apiaries and persisted in-app change indicators.
-
-- **Current S3c rollout:** Database migration 011 and district freshness/status are implemented; the legacy whole-region worker is not started. The district refresh action remains unavailable until the provider district and period request keys, IDs and use terms are verified with real evidence. Never treat one-page diagnostics as district freshness.
+Remote administrator access requires real identity/authorization controls; a separate frontend or localhost-origin check alone is not sufficient.

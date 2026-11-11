@@ -1,3 +1,4 @@
+// Feature IDs: NOTICES.MAP_OVERLAY, WEATHER.POINT_FORECAST
 import { afterEach, expect, it, vi } from "vitest";
 import {
   ApiRequestError,

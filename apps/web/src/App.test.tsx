@@ -1,3 +1,4 @@
+// Feature IDs: MAP.POINT_SELECTION, WEATHER.POINT_FORECAST
 import {
   cleanup,
   fireEvent,

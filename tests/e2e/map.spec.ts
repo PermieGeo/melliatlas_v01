@@ -1,4 +1,4 @@
-// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST
+// Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
 import { expect, test } from "@playwright/test";
 
 const forecast = (lat: number, lon: number) => ({

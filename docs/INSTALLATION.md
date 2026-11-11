@@ -255,7 +255,7 @@ Both should return HTTP 200 when the API and database are available. In PowerShe
 - Stop the development servers with **Ctrl+C** in the `pnpm dev` terminal.
 - Stop only the database container with `docker compose stop db`. This preserves its volume.
 - To restart later: open the repository root, select Node.js 22 if using NVM, run `docker compose up -d db`, then `pnpm dev`.
-- After receiving a repository update, run `pnpm install --frozen-lockfile` if `pnpm-lock.yaml` or dependencies changed, and `pnpm db:migrate` if a new SQL migration was introduced (the current source history includes migrations `001` through `006`).
+- After receiving a repository update, run `pnpm install --frozen-lockfile` if `pnpm-lock.yaml` or dependencies changed, and `pnpm db:migrate` if a new SQL migration was introduced (the current source history includes migrations `001` through `015`).
 - Do **not** use `docker compose down -v` during routine shutdown: the `-v` option removes the database volume and its data.
 
 `pnpm install`, environment-file creation, and migrations are not required on every normal restart. Never re-copy `.env.example` over an existing `.env` merely to restart.
