@@ -8,4 +8,4 @@
 - **Boundaries:** source evidence, review decisions, Saturn indexes, audits and other domain writes are owned by their respective source modules. PostgreSQL credentials and query objects are never exposed to clients.
 - **Extension:** use a new numbered migration and a narrow capability-owned repository interface. Local demo-seeding commands may target only their explicit disposable demo databases.
 
-Migration history and schema details are maintained in `apps/api/migrations/` and [Implementation](../../../../docs/IMPLEMENTATION.md), not duplicated here.
+Migration history and schema details are maintained in `apps/api/migrations/`; current ownership is summarized in [Modules](../../../../docs/MODULES.md), not duplicated here.

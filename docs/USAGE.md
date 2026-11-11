@@ -1,194 +1,71 @@
-# Using MelliAtlas
+# Using MelliAtlas Locally
 
-## Beekeeper map (`http://127.0.0.1:5173`)
+For first-time platform setup, versions and database configuration, see [Installation](INSTALLATION.md). Run these commands from the repository root.
 
-Start PostgreSQL, run the migrations and `pnpm dev` as described in [Installation](INSTALLATION.md). Open the beekeeper frontend and use the map directly: select a point for attributed Open-Meteo forecast information, choose a view radius, toggle the treatment layer and refresh the visible map extent. Select a treatment polygon to open a persistent details panel to the right of the map; polygons do not open popups or move the map. Open **Help** in the header for a detailed workflow, troubleshooting notes, source-quality caveats and a labelled fictional demo walkthrough. Help content is fetched from separate localized files rather than embedded in the UI. The radius currently draws a visual circle; it does not run a spatial risk assessment.
-
-Treatment polygons come **only from** `GET /api/v1/notices`, the PostGIS-backed source-attributed layer. Technically valid structured plans may be shown with `pending` review status and an explicit unverified warning; operator-verified plans have a separate label. Rejected, unlocated and unstructured pending claims are hidden. If the map is empty, it does **not** prove treatments are absent. Map initialization, refresh and panning read only PostGIS through `GET /api/v1/notices?bbox=west,south,east,north`. Each request returns at most 200 records, so a broad viewport may contain more plans than are currently displayed. It never requests data from the external provider. The interface has RU/EN localization for its current primary messages; original provider names and source evidence are not translated.
-
-## Local administrator (`http://127.0.0.1:5174`)
-
-The admin interface has six independent sections. **Map and analysis** is the initial view and displays the preview map separately from diagnostic data collection; a compact summary below it counts only records returned by the preview endpoint, not actual treatment events or historical coverage. Small question-mark controls beside technical fields open contextual, localized RU/EN explanations by click or keyboard. Clicking a help control does not save settings or contact Saturn:
-
-- **Help:** loads a detailed local operator guide about reviewing fields, provider configuration, diagnostic paging, troubleshooting and planned district caching. Example identifiers are fictional.
-- **Data collection:** displays persisted status; operators may explicitly request the **next bounded source page** via `POST /api/v1/operator/provider/sync`. This manual per-page action is labelled **Development-only** in the UI; it will be replaced by selecting a district and refreshing a shared cache with a 24-hour TTL after the upstream district/date filters are verified. The legacy region-wide scan is disabled. Upstream requests use a source-wide database throttle with at least 20 seconds between reserved starts. Page progress is not district coverage.
-- **Map and analysis:** shows preview polygons with dashed unreviewed boundaries, a persistent details sidebar and a bounded three-number summary below the map. It is not historical analytics or a pesticide safety assessment.
-- **Sources:** reads the source catalog, including metadata and terms-review status.
-- **Configuration:** reads and saves the provider endpoint, request method, region filter and JSON parameters with an optimistic revision check. Saving settings **never** fetches records.
-- **Record review:** reads pending candidates; an operator can verify/reject individual candidates with a name and meaningful evidence note. Valid structured geometry can already appear as unverified; a review decision changes the public status to verified or removes rejected entries.
-
-The backend retains its bounded one-page diagnostic fetch. Legacy whole-region scheduled collection is disabled and its history remains in the database. The operator can inspect district cache status at `/api/v1/operator/provider/district-cache`. District freshness is 24 hours after a fully completed listing, but the live district refresh action is intentionally disabled until source-specific district IDs, payload keys and access terms are verified. A manual page is never treated as a complete district listing.
-
-### Security boundary
-
-`apps/admin` and the Node.js API are bound to loopback for local development. Operator routes accept the local admin browser origin (port 5174) and reject the beekeeper browser origin (port 5173). **This is not authentication:** direct local requests have no administrator identity. Do not expose the admin frontend or `/api/v1/operator/*` through a public reverse proxy; add server-side authentication and authorization first. The separate frontend is not a security boundary on its own.
-
-### Initialize the treatment source
+## Start and stop
 
 ```bash
-pnpm db:migrate
+docker compose up -d db
+pnpm db:migrate # First start or after new migrations
+pnpm dev
+```
+
+| Interface            | Address                              | Purpose                                      |
+| -------------------- | ------------------------------------ | -------------------------------------------- |
+| Beekeeper map        | `http://127.0.0.1:5173`              | Weather, map and stored treatment evidence   |
+| Local administration | `http://127.0.0.1:5174`              | Source setup, explicit collection and review |
+| API readiness        | `http://127.0.0.1:3001/health/ready` | Reports backend/database availability        |
+
+Stop app servers with `Ctrl+C`; `docker compose stop db` stops the database without deleting its volume. Do not use `docker compose down -v` for routine shutdown.
+
+## Beekeeper map
+
+Select a location and viewing radius to inspect attributed Open-Meteo conditions. Toggle the treatment layer and select a polygon for source, dates, preparations and review status. The radius is a visual aid, **not** a safety calculation. `pending` source polygons are explicitly unverified; missing polygons are not evidence that no treatments occurred. Map movement reads local evidence only and never downloads a provider page. The **Help** view provides RU/EN guidance.
+
+The experimental **Load district data** panel may show blue Saturn **center points** from a local index. These are neither treatment polygons nor proof of application. See the opt-in workflow below.
+
+## Local operator workflow
+
+1. In **Configuration**, inspect or edit the treatment source and save its versioned settings. Saving does **not** retrieve records.
+2. In **Data collection**, explicitly request the next bounded treatment page and inspect run status. A page is not complete district coverage.
+3. In **Map and analysis**, inspect sourced polygon previews. Review **Sources** and **Record review** before independently verifying or rejecting candidates; a source-reported pesticide hazard class is not a scientific safety verdict.
+4. Use **Help** for localized field explanations and the distinction between cache, index, source document and reviewed notice.
+
+You can initialize the candidate treatment-feed preset after migrations:
+
+```bash
 pnpm provider:seed:saturn
 ```
 
-The preset in `apps/api/config/providers/fgis-saturn.json` is a local configuration seed, not a live download. Repeat runs preserve operator customizations by default. Use `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace` only when intentionally replacing those settings; replacement can reset credentials and prior source state. The reference provider does not require an API key.
+Re-running preserves customized provider settings. The preset does not call Saturn. Operator routes are restricted to **localhost**, not authenticated for public deployment. See [Configuration](CONFIGURATION.md).
 
-For a bounded live probe without changing the database, run:
+## Optional Saturn viewport pilot
 
-```bash
-node scripts/check-saturn-api.mjs
-```
+Only after reviewing external source access conditions, start the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true` in its environment. In the local Web map, select a Saturn district, zoom to a viewport no larger than **1° × 1°**, choose an `UpdateMap` period of at most **124 days** and explicitly click **Fetch up to 10 more records**. The district directory can also be refreshed by an explicit click. A request shares the backend's **20-second** minimum source-wide interval; wait before another action. Cache checks and map panning do not contact Saturn.
 
-The probe prints status and aggregate geometry counts without reproducing personal records. VPN/provider network restrictions can affect connectivity. This check does not guarantee license/republication rights or that the entire region has been loaded.
+Admin → **Data collection** exposes saved viewport queries, per-page history and a sanitized request log. Completion of an index request establishes neither full district coverage nor treatment dates or pesticide safety. Disable the flag to stop future live pilot requests without removing stored index evidence.
 
-### API summary
-
-| Method/path                                        | Responsibility                                                                                           |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/notices`                              | Public source-attributed valid polygon layer (verified and structured pending), optional geographic bbox |
-| `GET /api/v1/locations/inspect`                    | Attributed forecast for one WGS84 point                                                                  |
-| `GET /api/v1/sources`                              | Public source-catalog metadata                                                                           |
-| `GET /api/v1/operator/provider`                    | Local administrator settings                                                                             |
-| `PUT /api/v1/operator/provider`                    | Revision-checked provider settings, no fetch                                                             |
-| `GET /api/v1/operator/provider/status`             | Ingestion status and counts                                                                              |
-| `POST /api/v1/operator/provider/sync`              | Fetch one bounded provider page when a region scan is not active                                         |
-| `GET /api/v1/operator/provider/region-scan`        | Legacy regional scan status route (worker not wired)                                                     |
-| `POST /api/v1/operator/provider/region-scan/start` | Legacy start route; no active regional worker in current server composition                              |
-| `POST /api/v1/operator/provider/region-scan/pause` | Legacy pause route; no active regional worker in current server composition                              |
-| `GET /api/v1/operator/notices/map-preview`         | Pending and verified admin preview                                                                       |
-| `GET /api/v1/operator/notices`                     | Pending review queue                                                                                     |
-| `POST /api/v1/operator/notices/:id/review`         | Evidence-backed review decision                                                                          |
-
-All external provider requests originate on the backend and apply HTTPS destination, DNS/IP, timeout, payload and rate-limit restrictions. Source geometry must pass technical validation before public display; optional operator review remains separately auditable. Neither a pending plan nor an operator-reviewed plan establishes a scientific pesticide safety verdict. Public reuse permissions must be checked before internet deployment.
-
-## Explore the interface with synthetic demo evidence
-
-The demonstration is isolated from real data. Start the local Docker database,
-then from the repository root run:
+## Explore a fictional data set
 
 ```bash
 pnpm demo:prepare
 pnpm demo:dev
 ```
 
-Visit `http://127.0.0.1:5173` (beekeeper map) and
-`http://127.0.0.1:5174` (administrator). The map initially contains fictional
-fields around the default Smolensk map center. Select a field to inspect its
-fictional dates, products and parcel labels. In Admin, review pending examples,
-inspect the source catalog and compare verified/pending styles. **All seeded
-records are synthetic**, including records with a simulated `verified` status.
-The amber notice identifies the demo dataset. Source URLs use `.invalid` and
-will not resolve. The demo does not fetch Saturn or assert that pesticide
-applications took place.
+The demo uses an isolated local `melliatlas_demo` database with synthetic fields and even simulated review states. It does not fetch Saturn or modify the normal database. Stop the demo server before returning to `pnpm dev`. Never use the ordinary provider import against the demo connection. The separate full-stack browser demo check is `pnpm e2e:demo` (see [Tests](TESTS.md)).
 
-For full-stack browser verification, stop the dev servers and run:
+## Project maintenance commands
 
-```bash
-pnpm e2e:demo
-```
+| Command                                    | Use                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------ |
+| `sh ./run-format.sh` or `pnpm format`      | Apply Prettier formatting; **changes source files**                      |
+| `pnpm format:check`                        | Validate formatting without editing                                      |
+| `pnpm typecheck`                           | Check strict TypeScript across packages                                  |
+| `pnpm test`                                | Run API/Web/Admin unit and component tests                               |
+| `pnpm build`                               | Build API and both frontends                                             |
+| `python3 -B tools/specs/validate_state.py` | Verify SDD checkpoint, links and feature cross-references                |
+| `sh ./run-tests.sh`                        | Run the canonical **read-only** checks, including PostGIS and Playwright |
 
-The demo commands derive the connection from a local `DATABASE_URL` (or
-`apps/api/.env`), but use `melliatlas_demo` for visual exploration and the
-separate `melliatlas_demo_e2e` for repeatable browser tests. These databases
-never share user-edited demo observations. A remote host or production mode is
-refused, and the seed independently validates the actual database name. **Do not run the ordinary provider seed or manual import
-against the demo connection.** To return to existing real/local records, stop
-the demo server and run `pnpm dev` as usual. The normal database is untouched.
+Formatting belongs **before** the read-only checks. The canonical runner requires the local database, Node.js/pnpm, Python 3 and Playwright Chromium; a missing prerequisite is a failure, not a skipped test. Exact setup and result interpretation are in [Tests](TESTS.md). Do not weaken valid assertions to obtain a green result.
 
-## Editing built-in user help
-
-The user-facing guide is **not hardcoded in React or `i18n.ts`**. Each Vite app serves its
-own versioned, UTF-8 static JSON documents:
-
-- `apps/web/public/help/ru.json` and `apps/web/public/help/en.json` — beekeeper guide.
-- `apps/admin/public/help/ru.json` and `apps/admin/public/help/en.json` — operator guide.
-
-`HelpPage` fetches `help/<locale>.json` only after the Help view opens. The browser
-uses the app's own `BASE_URL`; requests never contact Saturn or operator routes.
-Files are copied to each Vite build's static assets, so changes require a new
-frontend build/deployment in production, but no React source or API changes.
-The UI uses `helpDocumentSchema` from `packages/contracts/src/helpContent.ts`
-to validate `version`, `locale`, section IDs, paragraphs, steps and warnings.
-All content is treated as plain text, never raw HTML or executable Markdown.
-
-To edit a guide, update the appropriate JSON file and its translation. Preserve
-matching section identifiers across RU and EN. The example must remain clearly
-labelled as fictional; never insert private apiary coordinates or unverified
-live safety claims. Keep short shell labels, loading and retry/error messages in
-`apps/web/src/i18n.ts` and `apps/admin/src/i18n.ts`. If a guide cannot be fetched,
-is malformed or has a mismatching locale, the Help view shows a localized error
-and Retry action. It does not silently substitute another language.
-
-Run `node --test scripts/help-content.test.mjs` for a dependency-free structure
-and locale-parity check, followed by the canonical `./run-tests.sh` and browser
-E2E suites. The dev servers serve JSON from their app's `public/` directory.
-
-### Local Saturn viewport index collection from the beekeeper map
-
-After reviewing third-party automated-access terms, enable bounded collection in local development by starting the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true pnpm dev`. Open `http://127.0.0.1:5173`, select Yartsevo District or a district from an explicitly refreshed persisted provider directory in **Load district data**, zoom to the requested fields, choose an `UpdateMap` period, then click **Fetch up to 10 more records**. The map immediately re-centers on district selection, but moving/zooming it never starts an upstream request. **Check cache** reads a saved checkpoint without upstream traffic. One **Fetch up to 10 more records** click retrieves at most one source page; wait at least 20 seconds before another attempt. Progress survives restarts via PostGIS migration 014. The selected viewport must be at most 1° × 1° and within the configured pilot coordinates.
-
-This pilot stores map-index entries with field centers, not complete treatment notices, cadastral polygons, pesticide details, actual application evidence or completed district coverage. Therefore these entries do not automatically appear as treatment polygons on the beekeeper map. A local origin and loopback connection are required; do not publish this source-triggering endpoint until authenticated public access and abuse controls have been designed. In Admin (`http://127.0.0.1:5174`), **Data collection** now provides the same three-step instructions with advanced diagnostic controls.
-
-## Inspecting the Saturn pilot cache
-
-The beekeeper map's district selector (persisted provider directory, with Yartsevo fallback) requests at most one page of ten field **index** records per explicit fetch. The page is a pagination batch, not a map tile or a field polygon. A debounced read-only lookup checks the exact selected filter automatically; `Check cache` repeats that local database read explicitly. Neither operation contacts Saturn. The map shows up to 100 blue center-point markers. Blue points are not spraying events or a safety signal; treatment polygons remain a separate notice layer. Exact bounding coordinates, dates (at most 124 days) and source revision identify the checkpoint, so moving the map or changing the period creates a different request. An invalid year-wide range gives a correction button; loading a whole year is not yet supported as one request.
-
-In local Admin → Data collection, `Saved PostgreSQL map-index cache` shows the 20 most recently updated viewport queries and the last five page receipts per query, including data fetched from the beekeeper map. `Refresh history` is database-only. The history records committed page times, counts and filter identifiers, but not which browser initiated them. A complete page sequence is not complete district coverage or an archived treatment history. Live collection remains opt-in and restricted to the locally configured pilot.
-
-### Choosing a Smolensk district and inspecting downloads
-
-On the local Web map, click **Fetch all districts from Saturn** once (only after authorized provider access has been enabled on the backend). The district list is persisted and reused on subsequent visits. Choose a district, zoom to a viewport at most 1° × 1°, choose an `UpdateMap` window of at most 124 days and explicitly fetch the next batch (up to 10 index entries). A page is a segment of the provider listing, not a geographic tile. The Web map shows blue cached field centers across all previously saved filters for the selected district, independent of the current exact viewport/dates. A count of zero is not evidence that no applications occurred. Treatments, chemicals and polygon boundaries are **not** retrieved by this workflow.
-
-In local Admin → Data Collection, inspect **Saved PostgreSQL map-index cache**, expand a saved district/period entry to see stored field IDs and centers, and use **Saturn request log** to see the most recent explicit attempts and sanitized errors. No bbox selection is required to inspect those records. Legacy importer and manual viewport coordinate controls are advanced diagnostics. If a query is still in progress, the exact-key page checkpoint persists for later explicit continuation; the UI does not silently issue additional requests.
-
-### Inspecting previously captured Saturn bodies offline
-
-When separately authorized browser Network captures are available, save the **direct response/request bodies** as local files. Do not save cookies, tokens, HAR archives or browser headers in the inputs. Required: the JSON body of one `POST /backend/beemaster/query` request; its corresponding single-page JSON response; the raw JSONP text from one `/backend/beemaster/geojson-polygons` response; and the exact callback name used in that polygon request. Optionally save direct JSON bodies of `/backend/beemaster/acr/{id}` responses, keeping the requested URL feature ID separately from the response's own `id`.
-
-From the repository root, after installing dependencies:
-
-```bash
-pnpm --dir apps/api evidence:saturn -- \
-  --query-request /path/to/query-request.json \
-  --query-response /path/to/query-response.json \
-  --polygons /path/to/polygons.jsonp \
-  --callback capturedCallback \
-  --acr 238194 /path/to/acr-238194.json
-```
-
-`--acr <requestedFeatureId> <file>` may be repeated up to 100 times or omitted. The command is **offline**: it makes no provider HTTP requests, database writes or file output. The browser may omit both `startDateUpdateMap` and `endDateUpdateMap` when the user has not selected that filter. The inspector accepts either both dates or neither and reports `null` bounds for an undated capture; accepting this observation does **not** relax the date requirement of live viewport collection. It prints a JSON report to stdout with `ID_ONLY_UNVERIFIED` status, counts, captured query filter dates (if any), candidate common IDs, missing IDs, exact geometry digests, and mismatched ACR URL/body IDs. Optional `acrDetailEvidence` summarizes whether captured ACR plan dates are missing, partial, ordered or reversed; reports the counts of original and updated product-list entries (or `null` if absent); and indicates whether a publication timestamp was supplied. A valid structure is **not** proof that a planned treatment occurred or that the ACR body belongs to a map polygon. It does not print provider names, chemical names, dosage, raw plan dates, arbitrary response fields, polygon coordinates or input file paths on validation failure. Inputs are capped at 64 KiB (request), 1 MiB (page), 8 MiB (JSONP) and 256 KiB per ACR body; symlink inputs are refused. Redirect stdout only to an approved secure location if a saved report is needed, since identifiers and filter metadata can still be sensitive.
-
-An ID match does **not** establish a verified cross-endpoint record join. Capture origin, time, zoom, viewport correspondence, completeness, `UpdateMap` semantics, access and redistribution rights remain separate evidence gates. A single page does not establish district coverage.
-
-#### Optional capture-integrity manifest
-
-For a captured set that should remain reproducible, manually record UTC timestamps and the sanitized polygon/ACR **request URLs** from the same browser Network session. Calculate SHA-256 for the exact saved files (on macOS: `shasum -a 256 query-request.json query-response.json polygons.jsonp acr-238194.json`). Do not invent timestamps or reformat files after hashing. Use the complete provider response body, not a HAR wrapper, and keep secrets/cookies out of the manifest.
-
-Save a separate `manifest.json` with this schema. Replace each example digest with the corresponding **64 lowercase hexadecimal characters** produced by hashing the named file, and copy the actual polygon URL including its original `bbox`, `zoom`, `subject` and `callback` query parameters:
-
-```json
-{
-  "schemaVersion": 1,
-  "query": {
-    "requestSha256": "<query-request-sha256>",
-    "responseSha256": "<query-response-sha256>",
-    "capturedAt": "2026-11-07T08:00:00.000Z"
-  },
-  "polygons": {
-    "responseSha256": "<polygons-response-sha256>",
-    "capturedAt": "2026-11-07T08:00:01.000Z",
-    "requestUrl": "https://bee-saturn.ru/backend/beemaster/geojson-polygons?bbox=32,54,33,55&zoom=13&subject=55&callback=capturedCallback"
-  },
-  "acr": [
-    {
-      "requestedFeatureId": "238194",
-      "responseSha256": "<acr-response-sha256>",
-      "capturedAt": "2026-11-07T08:00:02.000Z",
-      "requestUrl": "https://bee-saturn.ru/backend/beemaster/acr/238194"
-    }
-  ]
-}
-```
-
-The dates and bounding rectangle above are illustrative, not actual capture evidence. Replace the entire polygon URL with the captured request URL; `bbox` must contain exactly four finite decimal coordinates in `west,south,east,north` order, with increasing longitude and latitude and valid global ranges. Each `--acr` entry must appear exactly once in `acr`; use `"acr": []` when no ACR file is supplied. Run the original CLI command with `--manifest /path/to/manifest.json` appended. The manifest must be a regular local file no larger than 64 KiB. A hash mismatch, malformed rectangle, unknown endpoint, inconsistent `subject`/`callback` or wrong ACR requested ID causes a nonzero exit without printing raw input. Without a manifest, `provenance.status` is `NOT_PROVIDED`; on successful **self-reported** metadata binding it becomes `SELF_REPORTED_METADATA_HASH_BOUND`.
-
-The tool validates the numeric polygon `bbox` and compares its **requested rectangle** with the captured `/query` rectangle, returning `polygonBboxRelation: identical | overlapping | disjoint` without exposing either rectangle. Even identical rectangles do not establish that the operator's URL/timestamp metadata is truthful, that the captures came from one stable portal state, that all features are present, or that a matching ID refers to the same treatment. The primary report stays `ID_ONLY_UNVERIFIED` in both modes.
+For troubleshooting, see [Diagnostics](DIAGNOSTIC.md). Source permissions, observed Saturn contracts and unresolved evidence are tracked separately in the [source register](source-register.md).

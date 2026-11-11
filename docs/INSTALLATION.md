@@ -90,7 +90,7 @@ nvm use 22
 pnpm install --frozen-lockfile
 ```
 
-The `nvm use 22` step is needed only when using NVM. If pnpm reports blocked `esbuild` build scripts, follow [the dependency approval section](#pnpm-blocked-build-scripts) before proceeding.
+The `nvm use 22` step is needed only when using NVM. If pnpm reports blocked `esbuild` build scripts, see [dependency diagnostics](DIAGNOSTIC.md#blocked-pnpm-dependency-builds).
 
 Continue with [Database, configuration, and first launch](#database-configuration-and-first-launch).
 
@@ -231,15 +231,15 @@ pnpm provider:seed:saturn
 
 This loads `apps/api/config/providers/fgis-saturn.json`: provider name, `treatment` type, full HTTPS endpoint, `POST` request settings and **no external API key** (`api_key` is SQL `NULL`). It does not contact the provider or import treatment plans. The reference endpoint and region filter are taken from the historical prototype and are **not independently verified** for automated collection.
 
-The command is repeatable. It updates only the untouched migration placeholder; subsequent runs are no-ops, while operator-modified settings are preserved. To intentionally reset to the preset, run `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace`. This clears any saved provider key and resets the ingestion cursor and legacy approval metadata. See [Usage](USAGE.md#initialize-the-reference-provider-from-the-command-line) for details.
+The command is repeatable. It preserves operator-modified settings. To intentionally reset to the preset, use `pnpm --dir apps/api provider:seed config/providers/fgis-saturn.json --replace`; this clears associated credentials and pagination state. See [Usage](USAGE.md#local-operator-workflow).
 
-### 5. Start API and web together
+### 5. Start API and both frontends
 
 ```bash
 pnpm dev
 ```
 
-Leave this terminal running. The root script builds `@melliatlas/contracts` and launches the API and web development servers in parallel.
+Leave this terminal running. The root script builds `@melliatlas/contracts` and launches the API, beekeeper Web and local Admin development servers.
 
 Open the **Local** URL printed by Vite (normally **http://localhost:5173**) in a browser. The API listens on port 3001. Its readiness endpoints are:
 
@@ -250,7 +250,7 @@ curl -i http://127.0.0.1:3001/health/ready
 
 Both should return HTTP 200 when the API and database are available. In PowerShell, use `curl.exe` instead of `curl` if the shell maps `curl` to a different command.
 
-### 5. Stop and restart
+### 6. Stop and restart
 
 - Stop the development servers with **Ctrl+C** in the `pnpm dev` terminal.
 - Stop only the database container with `docker compose stop db`. This preserves its volume.
@@ -260,99 +260,10 @@ Both should return HTTP 200 when the API and database are available. In PowerShe
 
 `pnpm install`, environment-file creation, and migrations are not required on every normal restart. Never re-copy `.env.example` over an existing `.env` merely to restart.
 
-## pnpm blocked build scripts
+## Next steps
 
-pnpm 11 restricts dependency install scripts. During `pnpm install`, you may see:
-
-```text
-[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@...
-```
-
-If `esbuild` is the expected blocked dependency, explicitly approve it, rebuild it, and retry installation:
-
-```bash
-pnpm approve-builds esbuild
-pnpm rebuild esbuild
-pnpm install --frozen-lockfile
-```
-
-In the interactive `pnpm approve-builds` menu, **Space selects a package; Enter confirms**. Pressing Enter without selecting packages may record `esbuild: false` in `pnpm-workspace.yaml`. The named command above records approval for `esbuild` as `true` in `pnpm-workspace.yaml`. The verified project snapshot already has `allowBuilds: { esbuild: true }`; run this recovery only if your local checkout differs or installation reports blocked builds. Review any configuration change before committing it. Do not blanket-approve unknown packages.
-
-## Troubleshooting
-
-| Symptom                                    | Check                                                            | Action                                                                                   |
-| ------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `pnpm: command not found`                  | `node --version`, `npm --version`                                | Install pnpm 11.25.0 using npm in the active Node.js 22 environment                      |
-| pnpm says Node.js is too old               | `node --version`                                                 | Run `nvm use 22` or install Node.js 22 for the active shell                              |
-| Docker cannot connect                      | `docker info`                                                    | Start Docker Desktop/Colima; on WSL verify Ubuntu integration                            |
-| Database not healthy                       | `docker compose ps` and `docker compose logs --tail=80 db`       | Resolve container/port/configuration errors before migrations                            |
-| API prints `API startup failed`            | `apps/api/.env`, `DATABASE_URL`, `pnpm db:migrate`               | Confirm the file exists and the host database port is **5433**, not 5432                 |
-| Vite reports `ECONNREFUSED 127.0.0.1:3001` | API terminal output; `curl -i http://127.0.0.1:3001/health/live` | API is not listening; fix its startup error, then restart `pnpm dev`                     |
-| Database rejects credentials               | Docker initialization settings and local `DATABASE_URL`          | Align credentials with the persistent database; do not delete the volume as a shortcut   |
-| Port 3001/5173/5433 already occupied       | Host port listeners and running development terminals            | Stop the conflicting process; avoid launching duplicate API/web instances                |
-| Map tiles or weather do not appear         | Browser network panel and internet access                        | Verify access to OpenStreetMap/Open-Meteo; the app does not invent fallback observations |
-| Provider editor returns 503                | Local API readiness and migrations `003`–`009`                   | Confirm loopback API connectivity and run `pnpm db:migrate` if needed                    |
-| Provider editor returns 401                | Token supplied in the UI                                         | Enter the same token that was configured in the backend environment                      |
-| Provider save returns 409                  | Another operator or tab updated the revision                     | Reload the settings and reapply your changes                                             |
-
-To isolate an API startup error, stop the root `pnpm dev` process and run `pnpm --dir apps/api dev` in a separate terminal. Do not run both simultaneously. See [DIAGNOSTIC](DIAGNOSTIC.md) for further checks and redacted bug reports.
-
-## Verification and optional browser tests
-
-After installation, run from the repository root:
-
-```bash
-pnpm format:check
-pnpm typecheck
-pnpm test
-pnpm build
-```
-
-For Playwright browser tests, install Chromium once and keep the PostGIS database running:
-
-```bash
-pnpm exec playwright install chromium
-pnpm e2e
-```
-
-The E2E configuration starts `pnpm dev` automatically. It may reuse an existing web server outside CI; to avoid testing stale processes, stop a manually running `pnpm dev` first. The repository's specification validator additionally requires Python 3:
-
-```bash
-python3 tools/specs/validate_state.py
-```
-
-Python is **not** required to run MelliAtlas itself. See [TESTS](TESTS.md) for the complete verification matrix.
+See [Usage](USAGE.md) for beekeeper/operator workflows, demo data and maintenance commands, [Tests](TESTS.md) for Playwright and the canonical test runner, and [Diagnostics](DIAGNOSTIC.md) for installation or runtime errors. Python 3 is needed for repository validation scripts but not to run MelliAtlas itself.
 
 ## Deployment boundary
 
 These steps configure a **local development environment**, not a production deployment. The Compose file supplies only a local PostGIS database; it is not a production stack. Production hosting requires managed secrets, HTTPS, persistent backups, explicit network controls, and deployment-specific health monitoring. Do not expose private apiary coordinates or local database credentials. See [ARCHITECTURE](ARCHITECTURE.md) and [CONFIGURATION](CONFIGURATION.md) for service boundaries.
-
-### Provider plans and map layer after migration 007
-
-Apply source migrations before using operator ingestion:
-
-```bash
-cd /path/to/melliatlas
-docker compose up -d db
-pnpm db:migrate
-pnpm provider:seed:saturn
-pnpm dev
-```
-
-The seed updates a pristine candidate only; it does not initiate retrieval. On subsequent launches only `docker compose up -d db` and `pnpm dev` are needed unless new migrations were added. To change provider details, open the local source settings UI and save. One bounded page is then retrieved, and valid source geometries appear as unverified administrator previews. No operator token is required. Check live provider connectivity separately with `node scripts/check-saturn-api.mjs`.
-
-The map remains empty until an operator explicitly fetches a page and reviews candidate polygons for data quality. Configuring the URL alone does not download records or invent missing geometry.
-
-## Running the complete check suite locally
-
-After starting PostGIS, applying migrations, installing dependencies and Playwright
-Chromium, run `sh ./run-tests.sh` from the repository root. It uses
-`DATABASE_URL` from the environment or `apps/api/.env`, rejects remote database
-URLs, and runs format validation, typechecking, all unit tests, real PostGIS
-integration tests, production build and Playwright. Failed prerequisites stop
-the script instead of silently omitting tests. See [Testing](TESTS.md).
-
-For automatic execution during `apatch CHK`, configure its locally managed
-`.apatch/config.yaml` checks list to run `sh ./run-tests.sh` (verify current
-configuration before editing). The MelliAtlas patch does not edit ignored
-`apatch` runtime metadata.
