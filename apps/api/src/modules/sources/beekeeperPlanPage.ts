@@ -69,7 +69,10 @@ const pageSchema = z
   .passthrough();
 
 export type BeekeeperPlan = {
+  /** Source field/acreage record ID, never the potentially shared plan ID. */
   externalId: string | null;
+  planId: string | null;
+  isUpdated: boolean | null;
   contractorName: string | null;
   cadastralNumber: string | null;
   startAt: string | null;
@@ -125,7 +128,13 @@ function beeHazardClass(value: unknown): number | null {
     : null;
 }
 
-/** Parse a provider page as unreviewed evidence; unknown optional values remain unknown. */
+/**
+ * Parse an unreviewed Saturn treatment page without inferring missing claims.
+ * A plan may cover multiple fields: beeAcreage.id identifies the observation,
+ * while beeAcreage.planId groups related fields and must not deduplicate them.
+ * Revised dates are authoritative for isUpdated=true; missing revised values
+ * stay unknown instead of mixing two versions of the same schedule.
+ */
 export function parseBeekeeperPlanPage(input: unknown): {
   totalElements: number | null;
   plans: BeekeeperPlan[];
@@ -150,18 +159,26 @@ export function parseBeekeeperPlanPage(input: unknown): {
     plans: page.content.map((record) => {
       const acreage = objectOrNull(record.beeAcreage);
       const parsedGeometry = geometrySchema.safeParse(acreage?.geo);
+      const isUpdated =
+        typeof acreage?.isUpdated === "boolean" ? acreage.isUpdated : null;
+      const startDate =
+        isUpdated === true ? acreage?.planDateUpdate : acreage?.planDate;
+      const endDate =
+        isUpdated === true ? acreage?.planDateEndUpdate : acreage?.planDateEnd;
+      // In the supplied offline sample allPatList already contains the effective
+      // products (patIdsUpdate for revisions, patIds otherwise). Do not merge
+      // both lists or synthesize product claims from the ID strings.
       const products = Array.isArray(record.allPatList)
         ? record.allPatList
         : [];
       return {
-        externalId:
-          optionalId(acreage?.planId) ??
-          optionalId(acreage?.id) ??
-          optionalId(record.id),
+        externalId: optionalId(acreage?.id),
+        planId: optionalId(acreage?.planId),
+        isUpdated,
         contractorName: optionalText(acreage?.contractorName),
         cadastralNumber: optionalText(acreage?.cadNum),
-        startAt: unixSeconds(acreage?.planDate),
-        endAt: unixSeconds(acreage?.planDateEnd),
+        startAt: unixSeconds(startDate),
+        endAt: unixSeconds(endDate),
         geometry: parsedGeometry.success ? parsedGeometry.data : null,
         treatments: products.flatMap((rawProduct: unknown) => {
           const product = objectOrNull(rawProduct);

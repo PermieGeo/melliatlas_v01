@@ -26,6 +26,7 @@ const portalFixture = {
     {
       id: 17,
       beeAcreage: {
+        id: 71,
         planId: 17,
         contractorName: "Test grower",
         cadNum: "67:01:0000000:42",
@@ -182,6 +183,15 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     );
     const first = await service.syncOnePage();
     expect(first).toMatchObject({ received: 1, stored: 1, nextPage: 0 });
+    const storedIdentity = await pool.query<{
+      external_id: string;
+      plan_id: string;
+    }>(
+      `SELECT attributes->>'externalId' AS external_id,
+              attributes->>'planId' AS plan_id
+       FROM source_observations WHERE observation_type='treatment_plan'`,
+    );
+    expect(storedIdentity.rows).toEqual([{ external_id: "71", plan_id: "17" }]);
     expect(JSON.parse(requests[0])).toMatchObject({
       regionalFilter: { subject: 55 },
       pageNumber: 0,

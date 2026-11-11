@@ -13,6 +13,8 @@ const sourceUrl = "https://example.org/treatments";
 async function insertVersion(
   version: number,
   coordinates: number[][],
+  fieldId = "relocated-field",
+  planId: string | null = null,
 ): Promise<string> {
   const run = await pool.query<{ id: string }>(
     `INSERT INTO ingestion_runs(source_id,status,completed_at)
@@ -39,7 +41,7 @@ async function insertVersion(
     [
       doc.rows[0]!.id,
       JSON.stringify({ type: "Polygon", coordinates: [coordinates] }),
-      JSON.stringify({ externalId: "relocated-field", treatments: [] }),
+      JSON.stringify({ externalId: fieldId, planId, treatments: [] }),
     ],
   );
   return observed.rows[0]!.id;
@@ -129,5 +131,39 @@ describe("latest observation precedence before viewport filtering (PostGIS)", ()
         [33, 53, 36, 56],
       ),
     ).toEqual([]);
+  });
+
+  it("does not collapse separate field polygons sharing the same plan ID", async () => {
+    const firstId = await insertVersion(
+      3,
+      [
+        [31, 54],
+        [32, 54],
+        [32, 55],
+        [31, 54],
+      ],
+      "field-one",
+      "shared-plan",
+    );
+    const secondId = await insertVersion(
+      4,
+      [
+        [34, 54],
+        [35, 54],
+        [35, 55],
+        [34, 54],
+      ],
+      "field-two",
+      "shared-plan",
+    );
+    const visible = await listStoredMapTreatments(
+      pool,
+      "treatment-feed",
+      false,
+      [30, 53, 36, 56],
+    );
+    expect(visible.map((item) => item.id).sort()).toEqual(
+      [firstId, secondId].sort(),
+    );
   });
 });
