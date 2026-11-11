@@ -55,6 +55,16 @@ Only after reviewing external source access conditions, start the backend with `
 
 Admin → **Data collection** exposes saved viewport queries, per-page history and a sanitized request log. Completion of an index request establishes neither full district coverage nor treatment dates or pesticide safety. Disable the flag to stop future live pilot requests without removing stored index evidence.
 
+### Offline browser Network evidence (research only)
+
+With appropriate source access permission, inspect one public map field through a short, normal browser session. In Chrome DevTools **Network**, clear earlier requests, keep the relevant request bodies and export **HAR with content** after the matching viewport `/query`, polygon `/geojson-polygons` and clicked `/acr/{fieldId}` responses have completed. For the current Yartsevo research candidate, the previously observed field ID is `2038836`. Keep the original HAR **local and private**: it can contain cookies, authorization headers, unrelated requests, farm names and precise field data. Do not commit it, upload it to a third party or place it in public test fixtures.
+
+```bash
+pnpm --dir apps/api evidence:saturn -- --har /private/path/capture.har --acr-id 2038836
+```
+
+The command reads the HAR offline (maximum 32 MiB and 2,000 entries), requires **exactly one** successful response for each of the three selected endpoints, and reports only bounded, sanitized identity candidates, captured-request time span, viewport overlap and a digest of the HAR file. If the session contains multiple matching requests, it fails rather than guessing which bodies belong together; capture a shorter clean session. Missing browser-exported response content also fails closed. This mode does not extract raw files to disk or contact Saturn, and cannot authenticate HAR timestamps, geometry ownership, source permissions, application dates or district coverage. The existing direct-body CLI and optional manifest remain available for controlled captures whose request/response bodies were saved separately.
+
 ## Explore a fictional data set
 
 ```bash

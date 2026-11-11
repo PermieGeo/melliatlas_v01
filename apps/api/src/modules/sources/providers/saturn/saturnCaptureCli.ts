@@ -9,6 +9,10 @@ import {
   type SaturnCaptureInspection,
 } from "./saturnCaptureInspection.js";
 import {
+  inspectSaturnHarCapture,
+  type SaturnHarInspection,
+} from "./saturnHarCapture.js";
+import {
   verifySaturnCaptureManifest,
   type SaturnCaptureManifestReport,
 } from "./saturnCaptureManifest.js";
@@ -23,6 +27,7 @@ const MAX_RESPONSE_BYTES = 1024 * 1024;
 const MAX_POLYGON_BYTES = SATURN_POLYGON_JSONP_MAX_BYTES;
 const MAX_ACR_BYTES = 256 * 1024;
 const MAX_MANIFEST_BYTES = 64 * 1024;
+const MAX_HAR_BYTES = 32 * 1024 * 1024;
 
 export type SaturnCaptureCliOptions = {
   queryRequestPath: string;
@@ -31,6 +36,11 @@ export type SaturnCaptureCliOptions = {
   callback: string;
   acrFiles: Array<{ requestedFeatureId: string; path: string }>;
   manifestPath?: string;
+};
+
+export type SaturnHarCliOptions = {
+  harPath: string;
+  requestedFeatureId: string;
 };
 
 export type SaturnCaptureFileReport = SaturnCaptureInspection & {
@@ -45,7 +55,10 @@ type JsonCapture = { value: unknown; sha256: string };
 const usage = [
   "Offline Saturn capture inspection (no HTTP requests or database writes)",
   "Usage: pnpm --dir apps/api evidence:saturn -- --query-request <request.json> --query-response <response.json> --polygons <response.jsonp> --callback <name> [--acr <requestedFeatureId> <response.json>]... [--manifest <manifest.json>]",
-  "Input files must contain direct provider bodies, not HAR wrappers.",
+  "   or: pnpm --dir apps/api evidence:saturn -- --har <capture.har> --acr-id <requestedFeatureId>",
+  "Direct-body mode requires provider response files, not HAR wrappers.",
+  "HAR mode requires exactly one successful query, polygon and requested ACR response; export with response content from a short browser Network session.",
+  "Keep HAR private: it may contain credentials, cookies and unrelated browsing data. Never commit or upload the raw export.",
   "Output includes source IDs and hashes only; it does not verify cross-endpoint joins.",
 ].join("\n");
 
@@ -108,6 +121,35 @@ export function parseSaturnCaptureCliArgs(
       ? { manifestPath: values.get("--manifest") }
       : {}),
   };
+}
+
+/** Require one local HAR and one requested field ID without any network options. */
+export function parseSaturnHarCliArgs(
+  args: readonly string[],
+): SaturnHarCliOptions {
+  const values = new Map<string, string>();
+  for (let i = 0; i < args.length; i++) {
+    const flag = args[i];
+    if (flag === "--") continue;
+    if (!flag || !["--har", "--acr-id"].includes(flag) || values.has(flag)) {
+      throw new Error("Unknown or duplicate HAR capture argument");
+    }
+    const value = args[++i];
+    if (!value || value.startsWith("--")) {
+      throw new Error("Missing HAR capture argument");
+    }
+    values.set(flag, value);
+  }
+  const harPath = values.get("--har");
+  const requestedFeatureId = values.get("--acr-id");
+  if (
+    !harPath ||
+    !requestedFeatureId ||
+    !/^[1-9][0-9]{0,19}$/.test(requestedFeatureId)
+  ) {
+    throw new Error("Invalid or missing HAR capture argument");
+  }
+  return { harPath, requestedFeatureId };
 }
 
 /** Reject symlinks and oversized files before loading a local capture. */
@@ -191,15 +233,27 @@ export async function inspectSaturnCaptureFiles(
   return { ...report, provenance };
 }
 
+/** Inspect a bounded local HAR without extracting its raw requests to disk. */
+export async function inspectSaturnHarFile(
+  options: SaturnHarCliOptions,
+): Promise<SaturnHarInspection & { harFileSha256: string }> {
+  const capture = await readJsonCapture(options.harPath, MAX_HAR_BYTES);
+  return {
+    ...inspectSaturnHarCapture(capture.value, options.requestedFeatureId),
+    harFileSha256: capture.sha256,
+  };
+}
+
 async function main(args: readonly string[]): Promise<void> {
   if (args.length === 1 && args[0] === "--help") {
     process.stdout.write(`${usage}\n`);
     return;
   }
   try {
-    const report = await inspectSaturnCaptureFiles(
-      parseSaturnCaptureCliArgs(args),
-    );
+    const report =
+      args.includes("--har") || args.includes("--acr-id")
+        ? await inspectSaturnHarFile(parseSaturnHarCliArgs(args))
+        : await inspectSaturnCaptureFiles(parseSaturnCaptureCliArgs(args));
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } catch {
     // Keep raw provider records and local file paths out of diagnostics.
