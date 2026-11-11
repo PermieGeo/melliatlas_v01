@@ -195,6 +195,139 @@ describe("published treatment plan page parsing", () => {
     expect(page.plans).toHaveLength(1);
     expect(page.plans[0].geometry).toBeNull();
   });
+
+  it("accepts WGS84 boundary coordinates in longitude-latitude order", () => {
+    const coordinates = [
+      [-180, -90],
+      [180, -90],
+      [180, 90],
+      [-180, -90],
+    ];
+    const parsed = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            geo: { type: "Polygon", coordinates: [coordinates] },
+          },
+        },
+      ],
+    });
+    expect(parsed.plans[0].geometry).toMatchObject({
+      type: "Polygon",
+      coordinates: [coordinates],
+    });
+
+    for (const invalidCoordinate of [
+      [-180.01, -90],
+      [180.01, 90],
+      [0, -90.01],
+      [0, 90.01],
+    ]) {
+      const invalid = parseBeekeeperPlanPage({
+        content: [
+          {
+            beeAcreage: {
+              geo: {
+                type: "Polygon",
+                coordinates: [
+                  [invalidCoordinate, [32, 54], [33, 54], invalidCoordinate],
+                ],
+              },
+            },
+          },
+        ],
+      });
+      expect(invalid.plans[0].geometry).toBeNull();
+    }
+  });
+
+  it("accepts minimum polygon and multipolygon structures without claiming topological validity", () => {
+    const ring = [
+      [32, 54],
+      [33, 54],
+      [33, 55],
+      [32, 54],
+    ];
+    const valid = parseBeekeeperPlanPage({
+      content: [
+        { beeAcreage: { geo: { type: "Polygon", coordinates: [ring] } } },
+        {
+          beeAcreage: {
+            geo: { type: "MultiPolygon", coordinates: [[ring]] },
+          },
+        },
+      ],
+    });
+    expect(valid.plans[0].geometry?.type).toBe("Polygon");
+    expect(valid.plans[1].geometry?.type).toBe("MultiPolygon");
+
+    const invalid = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            geo: { type: "Polygon", coordinates: [ring.slice(0, 3)] },
+          },
+        },
+        { beeAcreage: { geo: { type: "Polygon", coordinates: [] } } },
+        { beeAcreage: { geo: { type: "MultiPolygon", coordinates: [] } } },
+        {
+          beeAcreage: {
+            geo: { type: "MultiPolygon", coordinates: [[]] },
+          },
+        },
+      ],
+    });
+    expect(invalid.plans.every((plan) => plan.geometry === null)).toBe(true);
+
+    // Closure is deliberately deferred to the PostGIS validity check in ingestion.
+    const unclosed = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            geo: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [32, 54],
+                  [33, 54],
+                  [33, 55],
+                  [32, 55],
+                ],
+              ],
+            },
+          },
+        },
+      ],
+    });
+    expect(unclosed.plans[0].geometry?.type).toBe("Polygon");
+  });
+
+  it("retains the 200-record page budget and supported Unix timestamp bounds", () => {
+    const fullPage = parseBeekeeperPlanPage({
+      content: Array.from({ length: 200 }, () => ({})),
+    });
+    expect(fullPage.plans).toHaveLength(200);
+
+    const timestamps = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            planDate: "253402300799",
+            planDateEnd: 253402300800,
+          },
+          allPatList: [
+            { patProductDangerClassBee: "3" },
+            { patProductDangerClassBee: 4 },
+          ],
+        },
+      ],
+    });
+    expect(timestamps.plans[0].startAt).toBe("9999-12-31T23:59:59.000Z");
+    expect(timestamps.plans[0].endAt).toBeNull();
+    expect(
+      timestamps.plans[0].treatments.map((item) => item.beeHazardClass),
+    ).toEqual([3, null]);
+  });
 });
 
 it("preserves page records when one provider geometry is malformed", () => {
