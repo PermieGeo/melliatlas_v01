@@ -12,6 +12,7 @@ let pool: Pool;
 let schema: string;
 
 const selection: ViewportCollectionSelection = {
+  regionCode: "55",
   districtId: 1477,
   bbox: {
     west: 32.409804730540266,
@@ -58,6 +59,7 @@ describe("Saturn viewport live collection persistence", () => {
       "003_saturn_api_configuration.sql",
       "014_saturn_viewport_index.sql",
       "015_saturn_directory_and_request_log.sql",
+      "016_saturn_registered_regions.sql",
     ]) {
       await pool.query(
         await readFile(
@@ -71,6 +73,13 @@ describe("Saturn viewport live collection persistence", () => {
        VALUES ('treatment-feed','Fixture Saturn','treatment','configured',
        'https://bee-saturn.ru/backend/beemaster/planapplybees',
        '{"endpoint":"https://bee-saturn.ru/backend/beemaster/planapplybees"}'::jsonb)`,
+    );
+    await pool.query(
+      `INSERT INTO source_saturn_regions VALUES ('55', 'Smolensk Oblast')`,
+    );
+    await pool.query(
+      `INSERT INTO source_saturn_district_catalog (source_id, source_revision, subject_code, catalog, catalog_sha256)
+       VALUES ('treatment-feed','1','55','[{"id":1477,"name":"Yartsevo","latitude":55.06,"longitude":32.68},{"id":2670,"name":"Smolensk","latitude":54.78,"longitude":32.05}]'::jsonb,repeat('a',64))`,
     );
   });
   afterAll(async () => {
@@ -95,10 +104,12 @@ describe("Saturn viewport live collection persistence", () => {
       fetcher: { fetch } as unknown as RestrictedSourceFetcher,
       gate: { reserve: vi.fn(async () => true) },
     });
-    expect((await enabled.refreshDistricts("web")).districts).toHaveLength(2);
+    expect(
+      (await enabled.refreshDistricts("55", "web")).districts,
+    ).toHaveLength(2);
     const restarted = new SaturnViewportCollectionService(pool, false);
     expect(
-      (await restarted.districts()).districts.map((item) => item.id),
+      (await restarted.districts("55")).districts.map((item) => item.id),
     ).toEqual([1477, 2670]);
     expect(
       (await restarted.status({ ...selection, districtId: 2670 })).progress,
@@ -181,7 +192,7 @@ describe("Saturn viewport live collection persistence", () => {
     );
     expect(count.rows[0]?.n).toBe(22);
     const history = await resumed.history();
-    const points = await resumed.districtPoints(1477);
+    const points = await resumed.districtPoints("55", 1477);
     expect(points.totalKnown).toBe(22);
     expect(points.centers).toHaveLength(22);
     expect(

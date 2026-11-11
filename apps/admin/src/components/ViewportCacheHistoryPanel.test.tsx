@@ -26,6 +26,7 @@ const { read, directory, fields } = vi.hoisted(() => ({
         requestHash: "b".repeat(64),
         sourceRevision: "1",
         sourceRevisionCurrent: true,
+        regionCode: "55",
         districtId: 1477,
         bbox: { west: 32.4, south: 54.9, east: 33.0, north: 55.2 },
         fromDate: "2026-08-01",

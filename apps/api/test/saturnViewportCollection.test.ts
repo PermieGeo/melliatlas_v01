@@ -20,6 +20,7 @@ import {
 } from "../src/modules/sources/providers/saturn/SaturnProvider.js";
 
 const selected: ViewportCollectionSelection = {
+  regionCode: "55",
   districtId: 1477,
   bbox: {
     west: 32.409804730540266,
@@ -53,23 +54,39 @@ const page = (n: number, total = 11) => ({
 function setup(provider?: SaturnProviderPort) {
   let status: ViewportIndexStatus | null = null;
   const query = vi.fn(async (sql: string) =>
-    sql.includes("FROM source_saturn_district_catalog")
-      ? { rows: [] }
-      : {
-          rows: [
-            {
-              registry_revision: "1",
-              name: "Fixture Saturn",
-              kind: "treatment",
-              lifecycle: "configured",
-              url: "https://bee-saturn.ru/backend/beemaster/planapplybees",
-              api_request_config: {
-                endpoint:
-                  "https://bee-saturn.ru/backend/beemaster/planapplybees",
+    sql.includes("FROM source_saturn_regions")
+      ? { rows: [{ subject_code: "55" }] }
+      : sql.includes("FROM source_saturn_district_catalog")
+        ? {
+            rows: [
+              {
+                catalog: [
+                  {
+                    id: 1477,
+                    name: "Yartsevo",
+                    latitude: 55.06,
+                    longitude: 32.68,
+                  },
+                ],
+                retrieved_at: new Date("2026-11-07T00:00:00.000Z"),
               },
-            },
-          ],
-        },
+            ],
+          }
+        : {
+            rows: [
+              {
+                registry_revision: "1",
+                name: "Fixture Saturn",
+                kind: "treatment",
+                lifecycle: "configured",
+                url: "https://bee-saturn.ru/backend/beemaster/planapplybees",
+                api_request_config: {
+                  endpoint:
+                    "https://bee-saturn.ru/backend/beemaster/planapplybees",
+                },
+              },
+            ],
+          },
   );
   const reserve = vi.fn(async () => true);
   const fetch = vi.fn(async (_source: unknown, request: { body?: string }) => ({
@@ -124,6 +141,32 @@ function setup(provider?: SaturnProviderPort) {
 }
 
 describe("explicit Saturn viewport retrieval", () => {
+  it("accepts a bounded viewport outside Smolensk only with an explicit region code", () => {
+    expect(
+      viewportCollectionSelectionSchema.safeParse({
+        ...selected,
+        regionCode: "77",
+        bbox: {
+          west: 60,
+          south: 40,
+          east: 60.3,
+          north: 40.3,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      viewportCollectionSelectionSchema.safeParse({
+        ...selected,
+        regionCode: "",
+        bbox: {
+          west: 60,
+          south: 40,
+          east: 60.3,
+          north: 40.3,
+        },
+      }).success,
+    ).toBe(false);
+  });
   it("delegates source query and response parsing through its provider port", async () => {
     const provider = new SaturnProvider();
     const firstPage = vi.spyOn(provider, "firstPage");
@@ -293,6 +336,7 @@ describe("explicit Saturn viewport retrieval", () => {
       true,
       {
         directory: {
+          includesRegion: vi.fn(async () => true),
           includes: vi.fn(async () => true),
           list: vi.fn(),
           refresh: vi.fn(),

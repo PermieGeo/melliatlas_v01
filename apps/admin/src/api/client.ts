@@ -7,12 +7,14 @@ import {
   saturnRequestLogResponseSchema,
   saturnStoredFieldsResponseSchema,
   saturnDistrictCatalogResponseSchema,
+  saturnRegionCatalogResponseSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
   type ViewportCacheHistoryResponse,
   type SaturnRequestLogResponse,
   type SaturnStoredFieldsResponse,
   type SaturnDistrictCatalogResponse,
+  type SaturnRegionCatalogResponse,
   mapTreatmentsResponseSchema,
   providerCollectionStatusSchema,
   districtCacheStatusSchema,
@@ -204,8 +206,18 @@ export async function loadStoredViewportFields(
 }
 
 /** Cached provider district names and center points. */
-export async function loadOperatorSaturnDistricts(): Promise<SaturnDistrictCatalogResponse> {
+export async function loadOperatorSaturnRegions(): Promise<SaturnRegionCatalogResponse> {
+  return saturnRegionCatalogResponseSchema.parse(
+    await operatorRequest("/api/v1/operator/provider/viewport/regions"),
+  );
+}
+
+export async function loadOperatorSaturnDistricts(
+  regionCode: string,
+): Promise<SaturnDistrictCatalogResponse> {
   return saturnDistrictCatalogResponseSchema.parse(
-    await operatorRequest("/api/v1/operator/provider/viewport/districts"),
+    await operatorRequest(
+      `/api/v1/operator/provider/viewport/districts?regionCode=${encodeURIComponent(regionCode)}`,
+    ),
   );
 }

@@ -311,6 +311,7 @@ export type { HelpDocument, HelpSection } from "./helpContent.js";
 
 export {
   viewportCollectionSelectionSchema,
+  saturnRegionCodeSchema,
   viewportCollectionResultSchema,
   viewportCacheHistoryResponseSchema,
 } from "./viewportCollection.js";
@@ -326,12 +327,14 @@ export type {
 
 export {
   saturnDistrictCatalogResponseSchema,
+  saturnRegionCatalogResponseSchema,
   saturnDistrictPointsResponseSchema,
   saturnStoredFieldsResponseSchema,
   saturnRequestLogResponseSchema,
 } from "./viewportCollection.js";
 export type {
   SaturnDistrictCatalogResponse,
+  SaturnRegionCatalogResponse,
   SaturnDistrictPointsResponse,
   SaturnStoredFieldsResponse,
   SaturnRequestLogResponse,

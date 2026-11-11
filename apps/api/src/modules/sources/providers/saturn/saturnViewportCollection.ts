@@ -7,6 +7,7 @@ import {
   type ViewportCollectionSelection,
   type ViewportCacheHistoryResponse,
   type SaturnDistrictCatalogResponse,
+  type SaturnRegionCatalogResponse,
   type SaturnDistrictPointsResponse,
   type SaturnStoredFieldsResponse,
   type SaturnRequestLogResponse,
@@ -37,7 +38,6 @@ import {
   SATURN_CONFIGURED_ENDPOINTS,
   SATURN_INDEX_PREVIEW_LIMIT,
   SATURN_MAX_VIEWPORT_PAGES,
-  SATURN_VERIFIED_FALLBACK_DISTRICT_ID,
   SaturnRequestAction,
   SaturnRequestInitiator,
   SaturnRequestOutcome,
@@ -106,7 +106,7 @@ export class SaturnViewportCollectionService {
     this.directory =
       dependencies.directory ??
       new SaturnDistrictDirectory(pool, enabled, {
-        fetcher: this.fetcher,
+        ...(dependencies.fetcher ? { fetcher: dependencies.fetcher } : {}),
         gate: this.gate,
         journal: this.journal,
         provider: this.provider,
@@ -147,10 +147,18 @@ export class SaturnViewportCollectionService {
         "Configure the Saturn provider endpoint first",
       );
     }
-    // The observed Yartsevo ID remains available before the catalog is first refreshed.
+    if (!(await this.directory.includesRegion(selection.regionCode))) {
+      throw new ApiFailure(
+        400,
+        "REGION_NOT_REGISTERED",
+        "Select a registered Saturn region",
+      );
+    }
     if (
-      selection.districtId !== SATURN_VERIFIED_FALLBACK_DISTRICT_ID &&
-      !(await this.directory.includes(selection.districtId))
+      !(await this.directory.includes(
+        selection.regionCode,
+        selection.districtId,
+      ))
     ) {
       throw new ApiFailure(
         400,
@@ -168,16 +176,29 @@ export class SaturnViewportCollectionService {
     };
   }
 
-  districts(): Promise<SaturnDistrictCatalogResponse> {
-    return this.directory.list();
+  regions(): Promise<SaturnRegionCatalogResponse> {
+    return this.directory.regions();
+  }
+  districts(regionCode: string): Promise<SaturnDistrictCatalogResponse> {
+    return this.directory.list(regionCode);
   }
   refreshDistricts(
+    regionCode: string,
     initiator: `${SaturnRequestInitiator}` = SaturnRequestInitiator.Admin,
   ): Promise<SaturnDistrictCatalogResponse> {
-    return this.directory.refresh(initiator);
+    return this.directory.refresh(regionCode, initiator);
   }
-  districtPoints(districtId: number): Promise<SaturnDistrictPointsResponse> {
-    return this.stored.districtPoints(districtId);
+  async districtPoints(
+    regionCode: string,
+    districtId: number,
+  ): Promise<SaturnDistrictPointsResponse> {
+    if (!(await this.directory.includesRegion(regionCode)))
+      throw new ApiFailure(
+        400,
+        "REGION_NOT_REGISTERED",
+        "Select a registered Saturn region",
+      );
+    return this.stored.districtPoints(regionCode, districtId);
   }
   storedFields(requestHash: string): Promise<SaturnStoredFieldsResponse> {
     return this.stored.requestFields(requestHash);
@@ -244,6 +265,7 @@ export class SaturnViewportCollectionService {
       attempt: {
         action: SaturnRequestAction.ViewportPage,
         initiator,
+        regionCode: selection.regionCode,
         districtId: selection.districtId,
         requestHash,
         pageNumber: pageNumber ?? undefined,

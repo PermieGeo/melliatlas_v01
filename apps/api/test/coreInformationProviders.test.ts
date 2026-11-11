@@ -28,6 +28,7 @@ const weatherResponse = {
   },
 };
 const selection = {
+  regionCode: "55",
   districtId: 1477,
   bbox: { west: 32.2, south: 54.9, east: 33, north: 55.4 },
   fromDate: "2026-10-01",

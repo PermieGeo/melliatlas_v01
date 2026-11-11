@@ -6,8 +6,10 @@ import {
   type SaturnProviderPort,
 } from "../src/modules/sources/providers/saturn/SaturnProvider.js";
 import { SATURN_JSON_REQUEST_PROFILE } from "../src/modules/sources/providers/saturn/requestProfile.js";
+import { saturnDirectoryRequestProfile } from "../src/modules/sources/providers/saturn/requestProfile.js";
 
 const selection: ViewportCollectionSelection = {
+  regionCode: "55",
   districtId: 1477,
   bbox: {
     west: 32.409804730540266,
@@ -20,6 +22,21 @@ const selection: ViewportCollectionSelection = {
 };
 
 describe("Saturn provider capabilities", () => {
+  it("constructs region-specific queries and exact directory URL policies", () => {
+    const provider = new SaturnProvider();
+    expect(
+      provider.firstPage({ ...selection, regionCode: "77" }).filter.subject,
+    ).toBe("77");
+    const profile = saturnDirectoryRequestProfile(
+      "https://bee-saturn.ru/backend/beemaster/district/77",
+    );
+    expect(profile.allowedUrls).toEqual([
+      "https://bee-saturn.ru/backend/beemaster/district/77",
+    ]);
+    expect(SATURN_JSON_REQUEST_PROFILE.allowedUrls).not.toContain(
+      profile.allowedUrls[0],
+    );
+  });
   it("exposes a source-bound request policy and deterministic viewport pages", () => {
     const provider: SaturnProviderPort = new SaturnProvider();
     expect(provider.sourceId).toBe("treatment-feed");

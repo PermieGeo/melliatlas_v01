@@ -9,10 +9,12 @@ import {
   viewportCollectionSelectionSchema,
   viewportCollectionResultSchema,
   saturnDistrictCatalogResponseSchema,
+  saturnRegionCatalogResponseSchema,
   saturnDistrictPointsResponseSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
   type SaturnDistrictCatalogResponse,
+  type SaturnRegionCatalogResponse,
   type SaturnDistrictPointsResponse,
 } from "@melliatlas/contracts";
 
@@ -87,11 +89,11 @@ export function fetchDistrictViewportPage(
   return clientViewportRequest("next", selection);
 }
 
-/** Return the cached district directory; no provider traffic. */
-export async function loadSaturnDistrictCatalog(): Promise<SaturnDistrictCatalogResponse> {
-  return saturnDistrictCatalogResponseSchema.parse(
+/** Return the operator-seeded region allowlist without contacting the provider. */
+export async function loadSaturnRegions(): Promise<SaturnRegionCatalogResponse> {
+  return saturnRegionCatalogResponseSchema.parse(
     await decode(
-      await fetch("/api/v1/map/saturn-viewport/districts", {
+      await fetch("/api/v1/map/saturn-viewport/regions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",
@@ -101,14 +103,32 @@ export async function loadSaturnDistrictCatalog(): Promise<SaturnDistrictCatalog
   );
 }
 
+/** Return the cached district directory for a selected region; no provider traffic. */
+export async function loadSaturnDistrictCatalog(
+  regionCode: string,
+): Promise<SaturnDistrictCatalogResponse> {
+  return saturnDistrictCatalogResponseSchema.parse(
+    await decode(
+      await fetch("/api/v1/map/saturn-viewport/districts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ regionCode }),
+        cache: "no-store",
+      }),
+    ),
+  );
+}
+
 /** Explicitly refresh the provider's district directory once. */
-export async function refreshSaturnDistrictCatalog(): Promise<SaturnDistrictCatalogResponse> {
+export async function refreshSaturnDistrictCatalog(
+  regionCode: string,
+): Promise<SaturnDistrictCatalogResponse> {
   return saturnDistrictCatalogResponseSchema.parse(
     await decode(
       await fetch("/api/v1/map/saturn-viewport/districts/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ regionCode }),
         cache: "no-store",
       }),
     ),
@@ -117,6 +137,7 @@ export async function refreshSaturnDistrictCatalog(): Promise<SaturnDistrictCata
 
 /** All stored centers of one district, even when the map's exact viewport key changes. */
 export async function loadSavedDistrictPoints(
+  regionCode: string,
   districtId: number,
 ): Promise<SaturnDistrictPointsResponse> {
   return saturnDistrictPointsResponseSchema.parse(
@@ -124,7 +145,7 @@ export async function loadSavedDistrictPoints(
       await fetch("/api/v1/map/saturn-viewport/district-points", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ districtId }),
+        body: JSON.stringify({ regionCode, districtId }),
         cache: "no-store",
       }),
     ),

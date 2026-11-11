@@ -3,16 +3,19 @@ import { z } from "zod";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-/** A deliberately bounded Smolensk pilot selection shared by local operator and beekeeper views. */
+export const saturnRegionCodeSchema = z.string().regex(/^[1-9][0-9]{0,5}$/);
+
+/** A deliberately bounded WGS84 selection shared by local operator and beekeeper views. */
 export const viewportCollectionSelectionSchema = z
   .object({
+    regionCode: saturnRegionCodeSchema,
     districtId: z.number().int().positive().safe(),
     bbox: z
       .object({
-        west: z.number().finite().min(30).max(36),
-        south: z.number().finite().min(53).max(56),
-        east: z.number().finite().min(30).max(36),
-        north: z.number().finite().min(53).max(56),
+        west: z.number().finite().min(-180).max(180),
+        south: z.number().finite().min(-90).max(90),
+        east: z.number().finite().min(-180).max(180),
+        north: z.number().finite().min(-90).max(90),
       })
       .strict(),
     fromDate: isoDate,
@@ -98,6 +101,7 @@ export const viewportCacheHistoryResponseSchema = z
             requestHash: z.string().regex(/^[0-9a-f]{64}$/),
             sourceRevision: z.string().min(1),
             sourceRevisionCurrent: z.boolean(),
+            regionCode: saturnRegionCodeSchema,
             districtId: z.number().int().positive(),
             bbox: z
               .object({
@@ -135,9 +139,29 @@ export type ViewportCacheHistoryResponse = z.infer<
   typeof viewportCacheHistoryResponseSchema
 >;
 
-/** Provider district directory, cached server-side and never administrative boundaries. */
+/** Explicitly registered provider regions, loaded from PostgreSQL. */
+export const saturnRegionCatalogResponseSchema = z
+  .object({
+    regions: z
+      .array(
+        z
+          .object({
+            code: saturnRegionCodeSchema,
+            name: z.string().min(1).max(250),
+          })
+          .strict(),
+      )
+      .max(256),
+  })
+  .strict();
+export type SaturnRegionCatalogResponse = z.infer<
+  typeof saturnRegionCatalogResponseSchema
+>;
+
+/** Provider district directory, cached per region and never administrative boundaries. */
 export const saturnDistrictCatalogResponseSchema = z
   .object({
+    regionCode: saturnRegionCodeSchema,
     enabled: z.boolean(),
     retrievedAt: z.string().datetime().nullable(),
     districts: z
@@ -188,6 +212,7 @@ export const saturnRequestLogResponseSchema = z
             id: z.string().regex(/^[1-9][0-9]*$/),
             action: z.enum(["viewport_page", "district_directory"]),
             initiator: z.enum(["web", "admin"]),
+            regionCode: saturnRegionCodeSchema.nullable(),
             districtId: z.number().int().positive().nullable(),
             requestHash: z
               .string()

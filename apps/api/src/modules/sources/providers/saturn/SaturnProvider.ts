@@ -14,7 +14,6 @@ import {
 import { SATURN_JSON_REQUEST_PROFILE } from "./requestProfile.js";
 import {
   SATURN_SOURCE_ID,
-  SATURN_SUBJECT_CODE,
   SATURN_VIEWPORT_PAGE_SIZE,
 } from "./sourceProfile.js";
 import {
@@ -43,7 +42,7 @@ export function makeViewportFirstRequest(
     filter: {
       leftTop: { longitude: parsed.bbox.west, latitude: parsed.bbox.north },
       rightDown: { longitude: parsed.bbox.east, latitude: parsed.bbox.south },
-      subject: SATURN_SUBJECT_CODE,
+      subject: parsed.regionCode,
       district: String(parsed.districtId),
       startDateUpdateMap: `${parsed.fromDate}T00:00:00.000Z`,
       endDateUpdateMap: `${parsed.toDate}T00:00:00.000Z`,

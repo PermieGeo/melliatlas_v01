@@ -7,11 +7,13 @@ import {
   type ViewportCollectionResult,
   type ViewportCollectionSelection,
   type SaturnDistrictCatalogResponse,
+  type SaturnRegionCatalogResponse,
 } from "@melliatlas/contracts";
 import {
   fetchDistrictViewportPage,
   loadDistrictViewportProgress,
   loadSaturnDistrictCatalog,
+  loadSaturnRegions,
   loadSavedDistrictPoints,
   refreshSaturnDistrictCatalog,
 } from "../api/client";
@@ -24,12 +26,6 @@ type Props = {
   onCachedCentersChange(points: ViewportIndexCenter[]): void;
 };
 type Action = "status" | "next";
-const pilotDistrict = {
-  id: 1477,
-  name: "Ярцевский район",
-  latitude: 55.06,
-  longitude: 32.68,
-};
 
 /** One explicit click fetches one page; selected-district markers always read the shared DB archive. */
 export function DistrictViewportPanel({
@@ -39,6 +35,10 @@ export function DistrictViewportPanel({
   onCachedCentersChange,
 }: Props) {
   const t = (key: MessageKey): string => translate(locale, key);
+  const [regions, setRegions] = useState<
+    SaturnRegionCatalogResponse["regions"]
+  >([]);
+  const [regionCode, setRegionCode] = useState("");
   const [districtId, setDistrictId] = useState("");
   const [catalog, setCatalog] = useState<SaturnDistrictCatalogResponse | null>(
     null,
@@ -55,17 +55,16 @@ export function DistrictViewportPanel({
   const requestSequence = useRef(0);
   const districtSequence = useRef(0);
   const catalogRequestSequence = useRef(0);
-  const key = `${districtId}|${fromDate}|${toDate}|${viewport?.join(",") ?? ""}`;
-  const districts = (
-    catalog?.districts.length ? catalog.districts : [pilotDistrict]
-  )
+  const key = `${regionCode}|${districtId}|${fromDate}|${toDate}|${viewport?.join(",") ?? ""}`;
+  const districts = (catalog?.districts ?? [])
     .slice()
     .sort((a, b) =>
       a.name.localeCompare(b.name, locale === "ru" ? "ru-RU" : "en-GB"),
     );
   const selection: ViewportCollectionSelection | null =
-    districtId && viewport
+    regionCode && districtId && viewport
       ? {
+          regionCode,
           districtId: Number(districtId),
           bbox: {
             west: viewport[0],
@@ -89,24 +88,45 @@ export function DistrictViewportPanel({
   const complete = progress?.progress?.state === "viewport_index_complete";
 
   useEffect(() => {
-    const sequence = ++catalogRequestSequence.current;
-    void loadSaturnDistrictCatalog()
+    let active = true;
+    void loadSaturnRegions()
       .then((value) => {
-        if (catalogRequestSequence.current === sequence) setCatalog(value);
+        if (!active) return;
+        setRegions(value.regions);
+        setRegionCode((selected) => selected || value.regions[0]?.code || "");
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const sequence = ++catalogRequestSequence.current;
+    setCatalog(null);
+    setDistrictId("");
+    if (!regionCode) return;
+    void loadSaturnDistrictCatalog(regionCode)
+      .then((value) => {
+        if (
+          catalogRequestSequence.current === sequence &&
+          value.regionCode === regionCode
+        )
+          setCatalog(value);
       })
       .catch(() => {});
     return () => {
       catalogRequestSequence.current++;
     };
-  }, []);
+  }, [regionCode]);
 
   // Loaded centers are shared between viewports, not restricted to the current UpdateMap filter.
   useEffect(() => {
     const sequence = ++districtSequence.current;
     setKnownCenters(null);
     onCachedCentersChange([]);
-    if (!districtId) return;
-    void loadSavedDistrictPoints(Number(districtId))
+    if (!regionCode || !districtId) return;
+    void loadSavedDistrictPoints(regionCode, Number(districtId))
       .then((value) => {
         if (sequence !== districtSequence.current) return;
         setKnownCenters(value.totalKnown);
@@ -115,7 +135,7 @@ export function DistrictViewportPanel({
       .catch(() => {
         if (sequence === districtSequence.current) setKnownCenters(0);
       });
-  }, [districtId, onCachedCentersChange]);
+  }, [regionCode, districtId, onCachedCentersChange]);
 
   // Inspection reads only the exact selection and never starts a provider request.
   useEffect(() => {
@@ -133,9 +153,12 @@ export function DistrictViewportPanel({
     return () => clearTimeout(timer);
   }, [key, valid]);
 
-  async function refreshCenters(id: number): Promise<void> {
-    const result = await loadSavedDistrictPoints(id);
-    if (districtId === String(id)) {
+  async function refreshCenters(
+    selectedRegion: string,
+    id: number,
+  ): Promise<void> {
+    const result = await loadSavedDistrictPoints(selectedRegion, id);
+    if (regionCode === selectedRegion && districtId === String(id)) {
       setKnownCenters(result.totalKnown);
       onCachedCentersChange(result.centers);
     }
@@ -145,9 +168,14 @@ export function DistrictViewportPanel({
     const sequence = ++catalogRequestSequence.current;
     setCatalogBusy(true);
     setError("");
+    if (!regionCode) return;
     try {
-      const result = await refreshSaturnDistrictCatalog();
-      if (catalogRequestSequence.current === sequence) setCatalog(result);
+      const result = await refreshSaturnDistrictCatalog(regionCode);
+      if (
+        catalogRequestSequence.current === sequence &&
+        result.regionCode === regionCode
+      )
+        setCatalog(result);
     } catch (cause) {
       if (catalogRequestSequence.current === sequence)
         setError(localizeError(cause));
@@ -181,7 +209,7 @@ export function DistrictViewportPanel({
           : await fetchDistrictViewportPage(selection);
       if (requestSequence.current === sequence) {
         setProgress(result);
-        await refreshCenters(selection.districtId);
+        await refreshCenters(selection.regionCode, selection.districtId);
       }
     } catch (cause) {
       if (requestSequence.current === sequence) setError(localizeError(cause));
@@ -209,7 +237,7 @@ export function DistrictViewportPanel({
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-600">
         <button
           type="button"
-          disabled={catalogBusy}
+          disabled={!regionCode || catalogBusy}
           onClick={() => void refreshDirectory()}
           className="rounded-lg border border-emerald-700 px-3 py-2 font-semibold text-emerald-900 disabled:opacity-40"
         >
@@ -222,6 +250,22 @@ export function DistrictViewportPanel({
         </span>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+        <label className="text-sm font-medium">
+          {t("districtRegion")}
+          <select
+            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5"
+            value={regionCode}
+            disabled={busy}
+            onChange={(event) => setRegionCode(event.target.value)}
+          >
+            <option value="">{t("districtRegionChoose")}</option>
+            {regions.map((region) => (
+              <option key={region.code} value={region.code}>
+                {region.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="text-sm font-medium">
           {t("districtSelect")}
           <select

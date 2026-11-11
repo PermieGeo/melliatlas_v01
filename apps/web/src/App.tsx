@@ -13,15 +13,19 @@ import { TreatmentDetailsPanel } from "./components/TreatmentDetailsPanel";
 import { HelpPage } from "./components/HelpPage";
 import { DistrictViewportPanel } from "./components/DistrictViewportPanel";
 import { translate, type Locale, type MessageKey } from "./i18n";
+import mapDefaults from "../config/map-defaults.json";
 
-const defaultFocus: Coordinates = { lat: 54.782, lon: 32.045 };
+const defaultFocus: Coordinates = {
+  lat: mapDefaults.lat,
+  lon: mapDefaults.lon,
+};
 type LayerState =
   { status: "loading" | "error" } | { status: "loaded"; value: MapTreatment[] };
 
 export default function App() {
   const [locale, setLocale] = useState<Locale>("ru");
   const [mapFocus, setMapFocus] = useState<Coordinates>(defaultFocus);
-  const [mapZoom, setMapZoom] = useState(10);
+  const [mapZoom, setMapZoom] = useState(mapDefaults.zoom);
   const focusOnDistrict = useCallback((center: Coordinates): void => {
     setMapFocus(center);
     setMapZoom(12);

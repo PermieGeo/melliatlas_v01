@@ -18,17 +18,20 @@ export class SaturnStoredIndex {
 
   /** Combine saved filter snapshots by provider district; do not infer coverage. */
   async districtPoints(
+    regionCode: string,
     districtId: number,
   ): Promise<SaturnDistrictPointsResponse> {
     if (!Number.isSafeInteger(districtId) || districtId < 1)
       throw new Error("Invalid Saturn district ID");
-    const args = [SATURN_SOURCE_ID, districtId];
+    if (!/^[1-9][0-9]{0,5}$/.test(regionCode))
+      throw new Error("Invalid Saturn region code");
+    const args = [SATURN_SOURCE_ID, regionCode, districtId];
     const [count, result] = await Promise.all([
       this.db.query<{ count: string }>(
         `SELECT COUNT(DISTINCT f.feature_id)::text AS count
          FROM source_viewport_index_features f
          JOIN source_viewport_index_progress v USING (source_id, source_revision, request_hash)
-         WHERE f.source_id=$1 AND v.district_provider_id=$2`,
+         WHERE f.source_id=$1 AND v.first_request->'filter'->>'subject'=$2 AND v.district_provider_id=$3`,
         args,
       ),
       this.db.query<{
@@ -41,8 +44,8 @@ export class SaturnStoredIndex {
            ST_X(f.center) AS center_x, ST_Y(f.center) AS center_y
          FROM source_viewport_index_features f
          JOIN source_viewport_index_progress v USING (source_id, source_revision, request_hash)
-         WHERE f.source_id=$1 AND v.district_provider_id=$2
-         ORDER BY f.feature_id, v.updated_at DESC LIMIT $3`,
+         WHERE f.source_id=$1 AND v.first_request->'filter'->>'subject'=$2 AND v.district_provider_id=$3
+         ORDER BY f.feature_id, v.updated_at DESC LIMIT $4`,
         [...args, SATURN_DISTRICT_PREVIEW_LIMIT],
       ),
     ]);

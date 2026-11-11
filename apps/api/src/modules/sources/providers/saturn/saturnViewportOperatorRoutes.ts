@@ -3,10 +3,12 @@ import { Router } from "express";
 import { z } from "zod";
 import {
   viewportCollectionSelectionSchema,
+  saturnRegionCodeSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
   type ViewportCacheHistoryResponse,
   type SaturnDistrictCatalogResponse,
+  type SaturnRegionCatalogResponse,
   type SaturnStoredFieldsResponse,
   type SaturnRequestLogResponse,
 } from "@melliatlas/contracts";
@@ -25,8 +27,10 @@ export type ViewportCollectionActions = {
     initiator?: `${SaturnRequestInitiator}`,
   ): Promise<ViewportCollectionResult>;
   history?(): Promise<ViewportCacheHistoryResponse>;
-  districts?(): Promise<SaturnDistrictCatalogResponse>;
+  regions?(): Promise<SaturnRegionCatalogResponse>;
+  districts?(regionCode: string): Promise<SaturnDistrictCatalogResponse>;
   refreshDistricts?(
+    regionCode: string,
     initiator?: `${SaturnRequestInitiator}`,
   ): Promise<SaturnDistrictCatalogResponse>;
   storedFields?(hash: string): Promise<SaturnStoredFieldsResponse>;
@@ -98,7 +102,23 @@ export function createSaturnViewportOperatorRouter(
       next(error);
     }
   });
-  router.get("/districts", async (_req, res, next) => {
+  router.get("/regions", async (_req, res, next) => {
+    if (!service?.regions)
+      return next(
+        new ApiFailure(
+          503,
+          "VIEWPORT_COLLECTION_UNAVAILABLE",
+          "Region catalog unavailable",
+        ),
+      );
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await service.regions());
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get("/districts", async (req, res, next) => {
     if (!service?.districts)
       return next(
         new ApiFailure(
@@ -107,14 +127,23 @@ export function createSaturnViewportOperatorRouter(
           "District catalog unavailable",
         ),
       );
+    const region = saturnRegionCodeSchema.safeParse(req.query.regionCode);
+    if (!region.success)
+      return next(
+        new ApiFailure(
+          400,
+          "INVALID_VIEWPORT_SELECTION",
+          "Invalid region code",
+        ),
+      );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.districts());
+      res.json(await service.districts(region.data));
     } catch (error) {
       next(error);
     }
   });
-  router.post("/districts/refresh", async (_req, res, next) => {
+  router.post("/districts/refresh", async (req, res, next) => {
     if (!service?.refreshDistricts)
       return next(
         new ApiFailure(
@@ -123,9 +152,23 @@ export function createSaturnViewportOperatorRouter(
           "District catalog unavailable",
         ),
       );
+    const region = saturnRegionCodeSchema.safeParse(req.body?.regionCode);
+    if (!region.success)
+      return next(
+        new ApiFailure(
+          400,
+          "INVALID_VIEWPORT_SELECTION",
+          "Invalid region code",
+        ),
+      );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.refreshDistricts(SaturnRequestInitiator.Admin));
+      res.json(
+        await service.refreshDistricts(
+          region.data,
+          SaturnRequestInitiator.Admin,
+        ),
+      );
     } catch (error) {
       next(error);
     }

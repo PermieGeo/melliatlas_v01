@@ -7,6 +7,7 @@ import { SaturnProvider } from "../src/modules/sources/providers/saturn/SaturnPr
 import { SaturnViewportPageFetcher } from "../src/modules/sources/providers/saturn/saturnViewportPageFetcher.js";
 
 const selection: ViewportCollectionSelection = {
+  regionCode: "55",
   districtId: 1477,
   bbox: { west: 32.4, south: 54.92, east: 33.02, north: 55.21 },
   fromDate: "2026-08-01",

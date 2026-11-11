@@ -1,19 +1,30 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  viewportCollectionSelectionSchema,
+  type SaturnRegionCatalogResponse,
+  type SaturnDistrictCatalogResponse,
+} from "@melliatlas/contracts";
 import type {
   ViewportCollectionResult,
   ViewportCollectionSelection,
 } from "@melliatlas/contracts";
-import { loadViewportProgress, fetchViewportNextPage } from "../api/client";
+import {
+  loadViewportProgress,
+  fetchViewportNextPage,
+  loadOperatorSaturnRegions,
+  loadOperatorSaturnDistricts,
+} from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
 
 const initial: ViewportCollectionSelection = {
-  districtId: 1477,
+  regionCode: "",
+  districtId: 0,
   bbox: {
-    west: 32.409804730540266,
-    south: 54.92780435298192,
-    east: 33.02984562409493,
-    north: 55.210325361370735,
+    west: 0,
+    south: 0,
+    east: 0,
+    north: 0,
   },
   fromDate: "2026-08-01",
   toDate: "2026-11-30",
@@ -22,11 +33,43 @@ const initial: ViewportCollectionSelection = {
 /** Explicit one-page live collection; never fetch on map movement or field edits. */
 export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
   const [selection, setSelection] = useState(initial);
+  const [regions, setRegions] = useState<
+    SaturnRegionCatalogResponse["regions"]
+  >([]);
+  const [districts, setDistricts] = useState<
+    SaturnDistrictCatalogResponse["districts"]
+  >([]);
   const [result, setResult] = useState<ViewportCollectionResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const text = (key: Key): string => t(locale, key);
+  useEffect(() => {
+    let active = true;
+    void loadOperatorSaturnRegions()
+      .then((value) => {
+        if (active) setRegions(value.regions);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    let active = true;
+    setDistricts([]);
+    if (!selection.regionCode) return;
+    void loadOperatorSaturnDistricts(selection.regionCode)
+      .then((value) => {
+        if (active) setDistricts(value.districts);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [selection.regionCode]);
+  const valid = viewportCollectionSelectionSchema.safeParse(selection).success;
   async function run(action: "status" | "next"): Promise<void> {
+    if (!valid) return;
     setBusy(true);
     setError("");
     try {
@@ -66,7 +109,53 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
       <p className="text-xs text-slate-600">
         {text("viewportPageExplanation")}
       </p>
-      <p className="text-sm font-medium">{text("viewportDistrict")}: 1477</p>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-sm">
+          {text("viewportRegion")}
+          <select
+            aria-label={text("viewportRegion")}
+            className="mt-1 w-full rounded border p-2"
+            value={selection.regionCode}
+            onChange={(event) => {
+              setSelection((value) => ({
+                ...value,
+                regionCode: event.target.value,
+                districtId: 0,
+              }));
+              setResult(null);
+            }}
+          >
+            <option value="">—</option>
+            {regions.map((region) => (
+              <option key={region.code} value={region.code}>
+                {region.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          {text("viewportDistrict")}
+          <select
+            aria-label={text("viewportDistrict")}
+            className="mt-1 w-full rounded border p-2"
+            value={selection.districtId}
+            onChange={(event) => {
+              setSelection((value) => ({
+                ...value,
+                districtId: Number(event.target.value),
+              }));
+              setResult(null);
+            }}
+          >
+            <option value={0}>—</option>
+            {districts.map((district) => (
+              <option key={district.id} value={district.id}>
+                {district.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <p className="text-xs text-slate-600">{text("viewportGuideLimits")}</p>
       <details className="rounded-lg border border-slate-200 p-3">
         <summary className="cursor-pointer text-sm font-medium">
@@ -104,7 +193,7 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
         <button
           className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
           type="button"
-          disabled={busy}
+          disabled={busy || !valid}
           onClick={() => void run("status")}
         >
           {text("viewportCheck")}
@@ -112,7 +201,7 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
         <button
           className="rounded-lg bg-emerald-800 px-3 py-2 text-sm text-white disabled:opacity-50"
           type="button"
-          disabled={busy || complete || result?.enabled === false}
+          disabled={!valid || busy || complete || result?.enabled === false}
           onClick={() => void run("next")}
         >
           {text("viewportFetch")}

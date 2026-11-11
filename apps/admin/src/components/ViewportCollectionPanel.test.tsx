@@ -23,7 +23,36 @@ const { check, fetchNext } = vi.hoisted(() => ({
 vi.mock("../api/client", () => ({
   loadViewportProgress: check,
   fetchViewportNextPage: fetchNext,
+  loadOperatorSaturnRegions: vi.fn(async () => ({
+    regions: [{ code: "55", name: "Smolensk" }],
+  })),
+  loadOperatorSaturnDistricts: vi.fn(async () => ({
+    regionCode: "55",
+    enabled: false,
+    retrievedAt: null,
+    districts: [
+      { id: 1477, name: "Yartsevo", latitude: 55.06, longitude: 32.68 },
+    ],
+  })),
 }));
+
+async function selectViewport(): Promise<void> {
+  await screen.findByRole("option", { name: "Smolensk" });
+  fireEvent.change(screen.getByLabelText("Регион источника"), {
+    target: { value: "55" },
+  });
+  await screen.findByRole("option", { name: "Yartsevo" });
+  fireEvent.change(screen.getByLabelText("Район источника"), {
+    target: { value: "1477" },
+  });
+  for (const [label, value] of [
+    ["Запад (долгота)", "32.41"],
+    ["Юг (широта)", "54.93"],
+    ["Восток (долгота)", "33.03"],
+    ["Север (широта)", "55.21"],
+  ])
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+}
 
 afterEach(() => {
   cleanup();
@@ -42,6 +71,7 @@ it("never starts external retrieval during render or viewport edits", () => {
 
 it("distinguishes read-only progress from one requested upstream page", async () => {
   render(<ViewportCollectionPanel locale="ru" />);
+  await selectViewport();
   fireEvent.click(
     screen.getByRole("button", { name: "Проверить сохранённое" }),
   );

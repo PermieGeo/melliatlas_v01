@@ -41,7 +41,17 @@ Re-running preserves customized provider settings. The preset does not call Satu
 
 ## Optional Saturn viewport pilot
 
-Only after reviewing external source access conditions, start the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true` in its environment. In the local Web map, select a Saturn district, zoom to a viewport no larger than **1° × 1°**, choose an `UpdateMap` period of at most **124 days** and explicitly click **Fetch up to 10 more records**. The district directory can also be refreshed by an explicit click. A request shares the backend's **20-second** minimum source-wide interval; wait before another action. Cache checks and map panning do not contact Saturn.
+After `pnpm db:migrate`, explicitly register demo regions in PostgreSQL (this makes **no external requests**):
+
+```bash
+pnpm --dir apps/api saturn:regions:seed config/saturn-demo-regions.json
+```
+
+The JSON preset is editable and currently contains only the provider region code observed in the Smolensk pilot. Other regions require independently checked Saturn provider codes before registration. Seeding is repeatable and does not erase cached directories. A new region starts with an empty district catalog; use **Fetch all districts** explicitly once permitted.
+
+Initial map centers are presentation-only presets in `apps/web/config/map-defaults.json` and `apps/admin/config/map-defaults.json`; they do not restrict the registered provider regions or allowable WGS84 viewport selections.
+
+Only after reviewing external source access conditions, start the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true` in its environment. In the local Web map, select a registered Saturn region and one of its cached districts, zoom to a viewport no larger than **1° × 1°**, choose an `UpdateMap` period of at most **124 days** and explicitly click **Fetch up to 10 more records**. A request shares the backend's **20-second** minimum source-wide interval; wait before another action. Cache checks and map panning do not contact Saturn.
 
 Admin → **Data collection** exposes saved viewport queries, per-page history and a sanitized request log. Completion of an index request establishes neither full district coverage nor treatment dates or pesticide safety. Disable the flag to stop future live pilot requests without removing stored index evidence.
 

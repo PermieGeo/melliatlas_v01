@@ -5,7 +5,7 @@ export const messages = {
     ...cacheHistoryMessages.ru,
     viewportGuideTitle: "Как загружать данные — три шага",
     viewportGuideOne:
-      "1. На карте пчеловода получите справочник районов Сатурна и выберите нужный район Смоленской области.",
+      "1. На карте пчеловода выберите зарегистрированный регион, получите его справочник районов и выберите район.",
     viewportGuideTwo:
       "2. Приблизьте нужные поля и задайте период обновлений карты (это не даты фактических обработок).",
     viewportGuideThree:
@@ -19,7 +19,8 @@ export const messages = {
 
     viewportTitle: "Индекс «Сатурна» по выбранному квадрату",
     viewportDisclaimer:
-      "Пилот: только Ярцевский район. По нажатию загружается одна страница /query, не полигоны и не фактические обработки. Даты — UpdateMap; полнота истории района неизвестна.",
+      "Пилот: только зарегистрированные регионы. По нажатию загружается одна страница /query, не полигоны и не фактические обработки. Даты — UpdateMap; полнота истории района неизвестна.",
+    viewportRegion: "Регион источника",
     viewportDistrict: "Район источника",
     viewportWest: "Запад (долгота)",
     viewportSouth: "Юг (широта)",
@@ -205,7 +206,7 @@ export const messages = {
     ...cacheHistoryMessages.en,
     viewportGuideTitle: "How to load data — three steps",
     viewportGuideOne:
-      "1. Open the beekeeper map, fetch the Saturn district directory and select a Smolensk Oblast district.",
+      "1. On the beekeeper map, select a registered region, fetch its Saturn district directory and select a district.",
     viewportGuideTwo:
       "2. Zoom to the fields and choose a map-update period (not actual treatment dates).",
     viewportGuideThree:
@@ -219,7 +220,8 @@ export const messages = {
 
     viewportTitle: "Saturn map index for a bounded viewport",
     viewportDisclaimer:
-      "Pilot: Yartsevo district only. Each click fetches one /query page, not polygons or confirmed treatments. Dates filter UpdateMap; district history completeness is unknown.",
+      "Pilot: registered regions only. Each click fetches one /query page, not polygons or confirmed treatments. Dates filter UpdateMap; district history completeness is unknown.",
+    viewportRegion: "Provider region",
     viewportDistrict: "Provider district",
     viewportWest: "West (longitude)",
     viewportSouth: "South (latitude)",
