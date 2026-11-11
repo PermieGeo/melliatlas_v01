@@ -83,6 +83,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
     expect(result.indexWithoutPolygonIds).toEqual(["238196"]);
     expect(result.polygonWithoutIndexIds).toEqual(["2712972"]);
     expect(result.acrObservations).toEqual([]);
+    expect(result.threeEndpointCandidates).toEqual([]);
   });
 
   it("keeps the observed ACR URL identity distinct from its response ID", () => {
@@ -126,6 +127,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
       },
     ]);
     expect(result.acrObservations[0]).not.toHaveProperty("privateData");
+    expect(result.threeEndpointCandidates).toEqual([]);
   });
 
   it("recognizes a shared ACR plan ID without conflating its distinct field IDs", () => {
@@ -158,6 +160,20 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
       "1273662",
       "1273663",
     ]);
+    expect(result.threeEndpointCandidates).toEqual([
+      {
+        featureId: "1273662",
+        planId: "1716288",
+        geometrySha256: result.idMatchCandidates[0].geometrySha256,
+        relation: "id_and_plan_match_candidate_only",
+      },
+      {
+        featureId: "1273663",
+        planId: "1716288",
+        geometrySha256: result.idMatchCandidates[1].geometrySha256,
+        relation: "id_and_plan_match_candidate_only",
+      },
+    ]);
     expect(
       result.idMatchCandidates.every(
         (item) => item.relation === "id_match_only",
@@ -173,6 +189,35 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
     expect(result.idMatchCandidates).toEqual([]);
     expect(result.indexWithoutPolygonIds).toEqual(["1"]);
     expect(result.polygonWithoutIndexIds).toEqual(["2"]);
+    expect(result.threeEndpointCandidates).toEqual([]);
+  });
+
+  it("excludes conflicting plans and absent polygons from three-endpoint candidates", () => {
+    const result = compareSaturnCapturedIdentities(
+      [
+        indexEntry("101", "601"),
+        indexEntry("102", "601"),
+        indexEntry("103", "601"),
+      ],
+      polygons([polygon("101"), polygon("102", otherGeometry)]),
+      [
+        { requestedFeatureId: "101", response: { id: 601 } },
+        { requestedFeatureId: "102", response: { id: 602 } },
+        { requestedFeatureId: "103", response: { id: 601 } },
+      ],
+    );
+    expect(
+      result.threeEndpointCandidates.map((item) => item.featureId),
+    ).toEqual(["101"]);
+    expect(result.acrObservations.map((item) => item.planRelation)).toEqual([
+      "matches_index_plan",
+      "conflicts_with_index_plan",
+      "matches_index_plan",
+    ]);
+    expect(result.idMatchCandidates.map((item) => item.featureId)).toEqual([
+      "101",
+      "102",
+    ]);
   });
 
   it("rejects duplicate source identities instead of silently merging records", () => {
@@ -238,6 +283,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
   it("reports empty evidence as empty, never as completed polygon coverage", () => {
     expect(compareSaturnCapturedIdentities([], polygons([]))).toEqual({
       idMatchCandidates: [],
+      threeEndpointCandidates: [],
       indexWithoutPolygonIds: [],
       polygonWithoutIndexIds: [],
       sharedGeometryGroups: [],
