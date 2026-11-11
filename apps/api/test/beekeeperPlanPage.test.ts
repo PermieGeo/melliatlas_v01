@@ -4,11 +4,12 @@ import { describe, expect, it } from "vitest";
 import { parseBeekeeperPlanPage } from "../src/modules/sources/beekeeperPlanPage.js";
 
 describe("published treatment plan page parsing", () => {
-  it("keeps original plan IDs, UTC dates and GeoJSON longitude-latitude order", () => {
+  it("keeps distinct field and plan IDs, UTC dates and GeoJSON longitude-latitude order", () => {
     const page = parseBeekeeperPlanPage({
       content: [
         {
           beeAcreage: {
+            id: 420,
             planId: 42,
             contractorName: "Farm A",
             cadNum: "67:01:1:7",
@@ -39,7 +40,8 @@ describe("published treatment plan page parsing", () => {
     });
     expect(page.totalElements).toBe(100);
     expect(page.plans[0]).toMatchObject({
-      externalId: "42",
+      externalId: "420",
+      planId: "42",
       contractorName: "Farm A",
       cadastralNumber: "67:01:1:7",
     });
@@ -67,6 +69,8 @@ describe("published treatment plan page parsing", () => {
     expect(page.totalElements).toBeNull();
     expect(page.plans[0]).toEqual({
       externalId: null,
+      planId: null,
+      isUpdated: null,
       contractorName: null,
       cadastralNumber: null,
       startAt: null,
@@ -117,7 +121,8 @@ describe("published treatment plan page parsing", () => {
     expect(result.totalElements).toBe(21661);
     expect(result.plans).toHaveLength(2);
     expect(result.plans[0]).toMatchObject({
-      externalId: "21",
+      externalId: null,
+      planId: null,
       contractorName: null,
       cadastralNumber: null,
       endAt: null,
@@ -133,6 +138,81 @@ describe("published treatment plan page parsing", () => {
       geometry: null,
       treatments: [],
     });
+  });
+
+  it("keeps separate fields even when they belong to one shared plan", () => {
+    const result = parseBeekeeperPlanPage({
+      content: [
+        { beeAcreage: { id: 1001, planId: 70 } },
+        { beeAcreage: { id: 1002, planId: 70 } },
+        { id: 1003, beeAcreage: { planId: 70 } },
+      ],
+    });
+    expect(
+      result.plans.map(({ externalId, planId }) => ({ externalId, planId })),
+    ).toEqual([
+      { externalId: "1001", planId: "70" },
+      { externalId: "1002", planId: "70" },
+      { externalId: null, planId: "70" },
+    ]);
+  });
+
+  it("uses revised dates and source-selected treatments for updated records", () => {
+    const result = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            id: 55,
+            planId: 5,
+            isUpdated: true,
+            planDate: 1793491200,
+            planDateEnd: 1793577600,
+            planDateUpdate: 1793664000,
+            planDateEndUpdate: 1793750400,
+            patIds: "10",
+            patIdsUpdate: "20",
+          },
+          allPatList: [{ patId: 20, patName: "Revised product" }],
+        },
+        {
+          beeAcreage: {
+            id: 56,
+            isUpdated: false,
+            planDate: 1793491200,
+            planDateEnd: 1793577600,
+            planDateUpdate: 1793664000,
+            planDateEndUpdate: 1793750400,
+          },
+        },
+        {
+          beeAcreage: {
+            id: 57,
+            isUpdated: true,
+            planDate: 1793491200,
+            planDateEnd: 1793577600,
+            planDateUpdate: null,
+            planDateEndUpdate: "invalid",
+          },
+        },
+      ],
+    });
+    expect(result.plans[0]).toMatchObject({
+      externalId: "55",
+      planId: "5",
+      isUpdated: true,
+      startAt: new Date(1793664000 * 1000).toISOString(),
+      endAt: new Date(1793750400 * 1000).toISOString(),
+      treatments: [
+        { name: "Revised product", crop: null, beeHazardClass: null },
+      ],
+    });
+    expect(result.plans[1].startAt).toBe(
+      new Date(1793491200 * 1000).toISOString(),
+    );
+    expect(result.plans[1].endAt).toBe(
+      new Date(1793577600 * 1000).toISOString(),
+    );
+    expect(result.plans[2]).toMatchObject({ startAt: null, endAt: null });
   });
 
   it("rejects Saturn map-query summaries instead of storing parcel centers as treatment evidence", () => {

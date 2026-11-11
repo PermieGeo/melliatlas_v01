@@ -385,6 +385,8 @@ export class TreatmentIngestionService {
             recordIndex: index,
             sourceName: source.name,
             externalId: plan.externalId,
+            planId: plan.planId,
+            isUpdated: plan.isUpdated,
             contractorName: plan.contractorName,
             cadastralNumber: plan.cadastralNumber,
             treatments: plan.treatments,
