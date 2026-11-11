@@ -4,6 +4,10 @@ import {
   SATURN_CAPTURE_ACR_URL_PREFIX,
   SATURN_CAPTURE_POLYGON_URL,
   SATURN_MAX_ACR_CAPTURE_FILES,
+  SATURN_MAX_LATITUDE,
+  SATURN_MAX_LONGITUDE,
+  SATURN_MIN_LATITUDE,
+  SATURN_MIN_LONGITUDE,
   SaturnBboxRelation,
   SaturnCaptureStatus,
 } from "./sourceProfile.js";
@@ -69,7 +73,11 @@ export type SaturnCaptureManifestReport = {
 type Bbox = { west: number; south: number; east: number; north: number };
 const BBOX_COMPONENT_COUNT = 4;
 
-/** Parse the observed west,south,east,north request bounds, not polygon geometry. */
+/**
+ * Parse west,south,east,north bounds in WGS84 degrees, not polygon geometry.
+ * A valid nonempty rectangle establishes only the operator's requested area;
+ * it says nothing about actual source polygon coverage or completeness.
+ */
 function parsePolygonRequestBbox(value: string): Bbox {
   const values = value.split(",");
   if (
@@ -81,10 +89,10 @@ function parsePolygonRequestBbox(value: string): Bbox {
   const [west, south, east, north] = values.map(Number);
   if (
     ![west, south, east, north].every(Number.isFinite) ||
-    west < -180 ||
-    east > 180 ||
-    south < -90 ||
-    north > 90 ||
+    west < SATURN_MIN_LONGITUDE ||
+    east > SATURN_MAX_LONGITUDE ||
+    south < SATURN_MIN_LATITUDE ||
+    north > SATURN_MAX_LATITUDE ||
     west >= east ||
     south >= north
   ) {

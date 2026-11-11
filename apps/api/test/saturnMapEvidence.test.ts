@@ -71,6 +71,30 @@ describe("captured Saturn spatial reference contracts", () => {
     expect(() => parseSaturnDistrictCatalog({ content: [original] })).toThrow();
   });
 
+  it("accepts geographic coordinate boundaries and rejects out-of-range district values", () => {
+    const district = {
+      id: 1477,
+      name: "D".repeat(250),
+      latitude: 90,
+      longitude: -180,
+    };
+    expect(parseSaturnDistrictCatalog([district])).toEqual([district]);
+    expect(
+      parseSaturnDistrictCatalog([
+        { ...district, latitude: -90, longitude: 180 },
+      ]),
+    ).toHaveLength(1);
+    expect(() =>
+      parseSaturnDistrictCatalog([{ ...district, name: "D".repeat(251) }]),
+    ).toThrow();
+    expect(() =>
+      parseSaturnDistrictCatalog([{ ...district, latitude: -90.01 }]),
+    ).toThrow();
+    expect(() =>
+      parseSaturnDistrictCatalog([{ ...district, longitude: 180.01 }]),
+    ).toThrow();
+  });
+
   it("preserves map IDs and deduplicates only identical polygons, not plans", () => {
     const batch = parseSaturnPolygonJsonp(
       jsonp([
@@ -124,6 +148,109 @@ describe("captured Saturn spatial reference contracts", () => {
     expect(batch.uniqueGeometryCount).toBe(1);
     expect(batch.polygons[0]).not.toHaveProperty("properties");
     expect(batch.polygons[0]).not.toHaveProperty("options");
+  });
+
+  it("enforces the GeoJSON four-position closed-ring minimum", () => {
+    const ring = geometry.coordinates[0];
+    expect(
+      parseSaturnPolygonJsonp(jsonp([polygon("1")]), callback).polygons,
+    ).toHaveLength(1);
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("1", { type: "Polygon", coordinates: [ring.slice(0, 3)] }),
+        ]),
+        callback,
+      ),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("1", {
+            type: "Polygon",
+            coordinates: [[...ring.slice(0, 3), [31.9, 55.9]]],
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow("Saturn polygon ring is not closed");
+  });
+
+  it("keeps independent limits for rings per polygon and polygons per multipolygon", () => {
+    const ring = geometry.coordinates[0];
+    const polygonAtLimit = {
+      type: "Polygon",
+      coordinates: Array(100).fill(ring),
+    };
+    expect(
+      parseSaturnPolygonJsonp(jsonp([polygon("1", polygonAtLimit)]), callback)
+        .polygons,
+    ).toHaveLength(1);
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("1", {
+            ...polygonAtLimit,
+            coordinates: Array(101).fill(ring),
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow();
+
+    const multiPolygonAtLimit = {
+      type: "MultiPolygon",
+      coordinates: Array(100).fill([ring]),
+    };
+    expect(
+      parseSaturnPolygonJsonp(
+        jsonp([polygon("2", multiPolygonAtLimit)]),
+        callback,
+      ).polygons,
+    ).toHaveLength(1);
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("2", {
+            ...multiPolygonAtLimit,
+            coordinates: Array(101).fill([ring]),
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow();
+  });
+
+  it("bounds coordinates per ring and per geometry independently", () => {
+    const ringAtLimit = [[31, 55], ...Array(19_998).fill([32, 56]), [31, 55]];
+    expect(
+      parseSaturnPolygonJsonp(
+        jsonp([polygon("1", { type: "Polygon", coordinates: [ringAtLimit] })]),
+        callback,
+      ).polygons,
+    ).toHaveLength(1);
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("1", {
+            type: "Polygon",
+            coordinates: [[...ringAtLimit, [31, 55]]],
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow();
+    expect(() =>
+      parseSaturnPolygonJsonp(
+        jsonp([
+          polygon("1", {
+            type: "Polygon",
+            coordinates: Array(3).fill(ringAtLimit),
+          }),
+        ]),
+        callback,
+      ),
+    ).toThrow("Too many polygon coordinates");
   });
 
   it("never executes JSONP scripts or accepts the wrong callback", () => {

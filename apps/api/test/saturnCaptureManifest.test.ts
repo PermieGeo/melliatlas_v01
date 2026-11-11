@@ -111,6 +111,13 @@ describe("offline Saturn capture manifest integrity", () => {
     }
   });
 
+  it("accepts the geographic bbox endpoints without inferring source coverage", () => {
+    const manifest = sampleManifest();
+    const polygons = manifest.polygons as Record<string, unknown>;
+    polygons.requestUrl = polygonUrl.replace("32,54,33,55", "-180,-90,180,90");
+    expect(verify(manifest).polygonBboxRelation).toBe("overlapping");
+  });
+
   it("rejects malformed, degenerate and out-of-range polygon request rectangles", () => {
     for (const bbox of [
       "opaque-value",
@@ -119,6 +126,8 @@ describe("offline Saturn capture manifest integrity", () => {
       "32,55,33,54",
       "32,54,200,55",
       "32,54,33,95",
+      "-180.01,54,33,55",
+      "32,-90.01,33,55",
       "32,54,33",
       "32,54,33,55,56",
       "32,54,Infinity,55",
