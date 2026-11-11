@@ -230,22 +230,26 @@ function parseSaturnPageBody(
   requestedPageNumber: number,
 ): SaturnViewportPage {
   const page = pageSchema.parse(body);
+  // Provider pagination metadata is not independently authoritative: reject
+  // inconsistent headers before any caller stores the raw page and its centers.
+  const expectedTotalPages = Math.ceil(page.totalElements / page.size);
+  const firstPage = page.number === 0;
+  const lastPage = page.totalPages === 0 || page.number === page.totalPages - 1;
+  const expectedPageLength = Math.min(
+    page.size,
+    Math.max(0, page.totalElements - page.number * page.size),
+  );
   if (
     page.number !== requestedPageNumber ||
     page.pageable.pageNumber !== page.number ||
     page.numberOfElements !== page.content.length ||
     page.empty !== (page.content.length === 0) ||
-    page.first !== (page.number === 0) ||
-    page.totalPages !== Math.ceil(page.totalElements / page.size) ||
-    page.last !==
-      (page.totalPages === 0 || page.number === page.totalPages - 1) ||
+    page.first !== firstPage ||
+    page.totalPages !== expectedTotalPages ||
+    page.last !== lastPage ||
     (page.totalPages === 0 && page.number !== 0) ||
     (page.totalPages > 0 && page.number >= page.totalPages) ||
-    page.content.length !==
-      Math.min(
-        page.size,
-        Math.max(0, page.totalElements - page.number * page.size),
-      )
+    page.content.length !== expectedPageLength
   ) {
     throw new Error("Inconsistent Saturn map-query pagination");
   }

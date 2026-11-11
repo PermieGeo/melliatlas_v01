@@ -20,15 +20,24 @@ import {
 } from "../../providerRequestThrottle.js";
 import { SaturnRequestJournal } from "./saturnRequestJournal.js";
 import {
+  SATURN_DISTRICT_PATH,
   SATURN_DISTRICT_URL,
   SATURN_SOURCE_ID,
+  SATURN_SUBJECT_CODE,
+  SaturnRequestAction,
+  SaturnRequestInitiator,
+  SaturnRequestOutcome,
+  SaturnSourceKind,
+  SaturnSourceLifecycle,
   saturnJsonSource,
 } from "./sourceProfile.js";
 import { SATURN_JSON_PROFILE_ID } from "./requestProfile.js";
 
 export type DirectoryPort = {
   list(): Promise<SaturnDistrictCatalogResponse>;
-  refresh(initiator: "web" | "admin"): Promise<SaturnDistrictCatalogResponse>;
+  refresh(
+    initiator: `${SaturnRequestInitiator}`,
+  ): Promise<SaturnDistrictCatalogResponse>;
   includes(districtId: number): Promise<boolean>;
 };
 
@@ -59,6 +68,7 @@ export class SaturnDistrictDirectory implements DirectoryPort {
     this.journal = deps.journal ?? new SaturnRequestJournal(db);
   }
 
+  /** Return previously saved names and center coordinates; never fetch online. */
   async list(): Promise<SaturnDistrictCatalogResponse> {
     const result = await this.db.query<{
       catalog: unknown;
@@ -81,8 +91,13 @@ export class SaturnDistrictDirectory implements DirectoryPort {
     return result.districts.some((district) => district.id === districtId);
   }
 
+  /**
+   * One explicitly approved directory request runs through the source-wide
+   * audit and throttle. The resulting catalog is a list of provider centers,
+   * not administrative polygons or verified coverage of any district.
+   */
   async refresh(
-    initiator: "web" | "admin",
+    initiator: `${SaturnRequestInitiator}`,
   ): Promise<SaturnDistrictCatalogResponse> {
     if (!this.enabled)
       throw new ApiFailure(
@@ -100,7 +115,11 @@ export class SaturnDistrictDirectory implements DirectoryPort {
       [SATURN_SOURCE_ID],
     );
     const row = source.rows[0];
-    if (!row || row.kind !== "treatment" || row.lifecycle !== "configured") {
+    if (
+      !row ||
+      row.kind !== SaturnSourceKind.Treatment ||
+      row.lifecycle !== SaturnSourceLifecycle.Configured
+    ) {
       throw new ApiFailure(
         409,
         "SATURN_VIEWPORT_NOT_CONFIGURED",
@@ -109,12 +128,12 @@ export class SaturnDistrictDirectory implements DirectoryPort {
     }
     return executeAuditedSourceRequest({
       sourceId: SATURN_SOURCE_ID,
-      attempt: { action: "district_directory", initiator },
+      attempt: { action: SaturnRequestAction.DistrictDirectory, initiator },
       gate: this.gate,
       journal: this.journal,
       perform: async () => {
         const reply = await this.fetcher.fetch(
-          saturnJsonSource(row.name, "/backend/beemaster/district/55"),
+          saturnJsonSource(row.name, SATURN_DISTRICT_PATH),
           {
             url: SATURN_DISTRICT_URL,
             method: "GET",
@@ -128,12 +147,13 @@ export class SaturnDistrictDirectory implements DirectoryPort {
         await this.db.query(
           `INSERT INTO source_saturn_district_catalog
            (source_id, source_revision, subject_code, catalog, catalog_sha256, retrieved_at)
-           VALUES ($1,$2,'55',$3::jsonb,$4,now())
+           VALUES ($1,$2,$3,$4::jsonb,$5,now())
            ON CONFLICT (source_id) DO UPDATE SET source_revision=EXCLUDED.source_revision,
             catalog=EXCLUDED.catalog, catalog_sha256=EXCLUDED.catalog_sha256, retrieved_at=now()`,
           [
             SATURN_SOURCE_ID,
             row.registry_revision,
+            SATURN_SUBJECT_CODE,
             json,
             createHash("sha256").update(json).digest("hex"),
           ],
@@ -145,7 +165,10 @@ export class SaturnDistrictDirectory implements DirectoryPort {
           return {
             error,
             code: error.code,
-            outcome: error.code === "SOURCE_THROTTLED" ? "throttled" : "failed",
+            outcome:
+              error.code === "SOURCE_THROTTLED"
+                ? SaturnRequestOutcome.Throttled
+                : SaturnRequestOutcome.Failed,
           };
         }
         return {
@@ -158,7 +181,7 @@ export class SaturnDistrictDirectory implements DirectoryPort {
             error instanceof SourceFetchFailure
               ? error.code
               : "DISTRICT_DIRECTORY_FAILED",
-          outcome: "failed" as const,
+          outcome: SaturnRequestOutcome.Failed,
         };
       },
     });

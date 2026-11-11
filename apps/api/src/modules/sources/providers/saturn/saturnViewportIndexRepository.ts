@@ -7,8 +7,14 @@ import {
   type SaturnViewportQuery,
 } from "./saturnViewportQuery.js";
 import {
+  SATURN_INDEX_PREVIEW_LIMIT,
+  SATURN_JSON_RESPONSE_LIMIT_BYTES,
   SATURN_MAX_VIEWPORT_ELEMENTS,
   SATURN_MAX_VIEWPORT_PAGES,
+  SATURN_WGS84_SRID,
+  SaturnSourceKind,
+  SaturnSourceLifecycle,
+  SaturnViewportState,
 } from "./sourceProfile.js";
 
 export type ViewportIndexKey = {
@@ -19,7 +25,7 @@ export type ViewportIndexKey = {
 
 export type ViewportIndexStatus = {
   requestHash: string;
-  state: "partial" | "viewport_index_complete";
+  state: `${SaturnViewportState}`;
   nextPage: number | null;
   pagesFetched: number;
   entriesReceived: number;
@@ -48,6 +54,7 @@ type Row = {
   source_revision_current: boolean;
 };
 
+/** Hash the exact first-page request and revision, not just a district ID. */
 function validateKey(key: ViewportIndexKey): {
   request: SaturnViewportQuery;
   hash: string;
@@ -107,9 +114,13 @@ export class SaturnViewportIndexRepository {
   /** Read only saved center points; neither exact field geometry nor spray evidence. */
   async listFeatures(
     key: ViewportIndexKey,
-    limit = 100,
+    limit = SATURN_INDEX_PREVIEW_LIMIT,
   ): Promise<StoredViewportFeature[]> {
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    if (
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > SATURN_INDEX_PREVIEW_LIMIT
+    ) {
       throw new Error("Invalid viewport preview limit");
     }
     const { hash } = validateKey(key);
@@ -136,7 +147,9 @@ export class SaturnViewportIndexRepository {
 
   /**
    * Atomically record exactly the expected next captured page and its indexed points.
-   * A restart resumes from getStatus(). No HTTP access, district freshness or publication follows.
+   * The row lock rejects races and conflicting pagination; document bytes, features,
+   * and next-page state commit together. A restart resumes from getStatus().
+   * No HTTP access, district freshness or treatment publication follows.
    *
    * @throws Error for stale source revisions, duplicate IDs, inconsistent pages, or completed keys.
    */
@@ -148,7 +161,7 @@ export class SaturnViewportIndexRepository {
     const json = JSON.stringify(response);
     if (
       typeof json !== "string" ||
-      Buffer.byteLength(json, "utf8") > 1_000_000
+      Buffer.byteLength(json, "utf8") > SATURN_JSON_RESPONSE_LIMIT_BYTES
     ) {
       throw new Error("Viewport response is not bounded JSON");
     }
@@ -184,7 +197,10 @@ export class SaturnViewportIndexRepository {
       ) {
         throw new Error("Viewport index filter identity changed");
       }
-      if (current.next_page === null || current.state !== "partial") {
+      if (
+        current.next_page === null ||
+        current.state !== SaturnViewportState.Partial
+      ) {
         throw new Error("Viewport index already complete");
       }
       const page = parseSaturnViewportPage(response, {
@@ -223,7 +239,7 @@ export class SaturnViewportIndexRepository {
           `INSERT INTO source_viewport_index_features
            (source_id, source_revision, request_hash, page_number, feature_id, plan_id, center)
            VALUES ($1,$2,$3,$4,$5::bigint,$6::bigint,
-                   ST_SetSRID(ST_MakePoint($7,$8),4326))`,
+                   ST_SetSRID(ST_MakePoint($7,$8),${SATURN_WGS84_SRID}))`,
           [
             key.sourceId,
             key.sourceRevision,
@@ -247,7 +263,9 @@ export class SaturnViewportIndexRepository {
           key.sourceId,
           key.sourceRevision,
           hash,
-          page.nextPage === null ? "viewport_index_complete" : "partial",
+          page.nextPage === null
+            ? SaturnViewportState.Complete
+            : SaturnViewportState.Partial,
           page.nextPage,
           page.entries.length,
           page.totalPages,
@@ -270,6 +288,7 @@ export class SaturnViewportIndexRepository {
     }
   }
 
+  /** Prevent a stale configuration revision from writing into a current listing. */
   private async assertCurrentSource(
     client: PoolClient,
     key: ViewportIndexKey,
@@ -285,8 +304,8 @@ export class SaturnViewportIndexRepository {
     );
     if (
       source.rows[0]?.registry_revision !== key.sourceRevision ||
-      source.rows[0]?.kind !== "treatment" ||
-      source.rows[0]?.lifecycle !== "configured"
+      source.rows[0]?.kind !== SaturnSourceKind.Treatment ||
+      source.rows[0]?.lifecycle !== SaturnSourceLifecycle.Configured
     ) {
       throw new Error("Viewport source revision is not configured");
     }

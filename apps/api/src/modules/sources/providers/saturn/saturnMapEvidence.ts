@@ -1,6 +1,26 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import {
+  SATURN_MAX_DISTRICT_CATALOG_ENTRIES,
+  SATURN_MAX_POLYGON_FEATURES,
+  SATURN_MAX_POLYGON_RING_POINTS,
+  SATURN_MAX_POLYGON_RINGS,
+  SATURN_MAX_POLYGON_TOTAL_POINTS,
+  SATURN_POLYGON_JSONP_MAX_BYTES,
+} from "./sourceProfile.js";
+
+enum SaturnMapElementType {
+  Feature = "Feature",
+  FeatureCollection = "FeatureCollection",
+  Cluster = "Cluster",
+  Point = "Point",
+  Polygon = "Polygon",
+  MultiPolygon = "MultiPolygon",
+}
+
+const MIN_CLOSED_RING_POINTS = 4;
+const MAX_JSONP_CALLBACK_LENGTH = 128;
 
 const districtSchema = z.object({
   id: z.number().int().positive(),
@@ -13,14 +33,20 @@ const coordinateSchema = z.tuple([
   z.number().finite().min(-180).max(180),
   z.number().finite().min(-90).max(90),
 ]);
-const ringSchema = z.array(coordinateSchema).min(4).max(20_000);
+const ringSchema = z
+  .array(coordinateSchema)
+  .min(MIN_CLOSED_RING_POINTS)
+  .max(SATURN_MAX_POLYGON_RING_POINTS);
 const polygonSchema = z.object({
-  type: z.literal("Polygon"),
-  coordinates: z.array(ringSchema).min(1).max(100),
+  type: z.literal(SaturnMapElementType.Polygon),
+  coordinates: z.array(ringSchema).min(1).max(SATURN_MAX_POLYGON_RINGS),
 });
 const multiPolygonSchema = z.object({
-  type: z.literal("MultiPolygon"),
-  coordinates: z.array(z.array(ringSchema).min(1).max(100)).min(1).max(100),
+  type: z.literal(SaturnMapElementType.MultiPolygon),
+  coordinates: z
+    .array(z.array(ringSchema).min(1).max(SATURN_MAX_POLYGON_RINGS))
+    .min(1)
+    .max(SATURN_MAX_POLYGON_RINGS),
 });
 const geometrySchema = z.discriminatedUnion("type", [
   polygonSchema,
@@ -28,7 +54,7 @@ const geometrySchema = z.discriminatedUnion("type", [
 ]);
 const featureSchema = z
   .object({
-    type: z.literal("Feature"),
+    type: z.literal(SaturnMapElementType.Feature),
     id: z.string().regex(/^[1-9][0-9]{0,19}$/),
     geometry: geometrySchema,
   })
@@ -36,8 +62,8 @@ const featureSchema = z
 const collectionSchema = z
   .object({
     data: z.object({
-      type: z.literal("FeatureCollection"),
-      features: z.array(z.unknown()).max(2_000),
+      type: z.literal(SaturnMapElementType.FeatureCollection),
+      features: z.array(z.unknown()).max(SATURN_MAX_POLYGON_FEATURES),
     }),
   })
   .passthrough();
@@ -58,7 +84,10 @@ export type SaturnPolygonBatch = {
 
 /** Validate a captured district directory; coordinates are centers, not boundaries. */
 export function parseSaturnDistrictCatalog(input: unknown): SaturnDistrict[] {
-  const districts = z.array(districtSchema).max(256).parse(input);
+  const districts = z
+    .array(districtSchema)
+    .max(SATURN_MAX_DISTRICT_CATALOG_ENTRIES)
+    .parse(input);
   const ids = new Set<number>();
   for (const district of districts) {
     if (ids.has(district.id)) throw new Error("Duplicate Saturn district ID");
@@ -68,7 +97,7 @@ export function parseSaturnDistrictCatalog(input: unknown): SaturnDistrict[] {
 }
 
 function ringsOf(geometry: SaturnPolygonGeometry): number[][][][] {
-  return geometry.type === "Polygon"
+  return geometry.type === SaturnMapElementType.Polygon
     ? [geometry.coordinates]
     : geometry.coordinates;
 }
@@ -78,7 +107,8 @@ function requireClosedRings(geometry: SaturnPolygonGeometry): void {
   for (const polygon of ringsOf(geometry)) {
     for (const ring of polygon) {
       vertices += ring.length;
-      if (vertices > 50_000) throw new Error("Too many polygon coordinates");
+      if (vertices > SATURN_MAX_POLYGON_TOTAL_POINTS)
+        throw new Error("Too many polygon coordinates");
       const first = ring[0];
       const last = ring[ring.length - 1];
       if (first[0] !== last[0] || first[1] !== last[1]) {
@@ -104,10 +134,13 @@ export function parseSaturnPolygonJsonp(
   body: string,
   callback: string,
 ): SaturnPolygonBatch {
-  if (!/^[A-Za-z_$][A-Za-z0-9_$]{0,127}$/.test(callback)) {
+  if (
+    callback.length > MAX_JSONP_CALLBACK_LENGTH ||
+    !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(callback)
+  ) {
     throw new Error("Invalid Saturn JSONP callback");
   }
-  if (Buffer.byteLength(body, "utf8") > 8 * 1024 * 1024) {
+  if (Buffer.byteLength(body, "utf8") > SATURN_POLYGON_JSONP_MAX_BYTES) {
     throw new Error("Saturn JSONP response exceeds the offline limit");
   }
   const trimmed = body.trim();
@@ -130,20 +163,22 @@ export function parseSaturnPolygonJsonp(
       throw new Error("Unexpected Saturn map element");
     }
     const element = candidate as Record<string, unknown>;
-    if (element.type === "Cluster") {
+    if (element.type === SaturnMapElementType.Cluster) {
       const cluster = z
-        .object({ geometry: z.object({ type: z.literal("Point") }) })
+        .object({
+          geometry: z.object({ type: z.literal(SaturnMapElementType.Point) }),
+        })
         .parse(element);
-      if (cluster.geometry.type === "Point") clusterCount++;
+      if (cluster.geometry.type === SaturnMapElementType.Point) clusterCount++;
       continue;
     }
-    if (element.type !== "Feature") {
+    if (element.type !== SaturnMapElementType.Feature) {
       throw new Error("Unexpected Saturn map element type");
     }
     const shape = z
       .object({ geometry: z.object({ type: z.string() }) })
       .parse(element);
-    if (shape.geometry.type === "Point") {
+    if (shape.geometry.type === SaturnMapElementType.Point) {
       if (
         !z
           .string()

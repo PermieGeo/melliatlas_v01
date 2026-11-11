@@ -3,6 +3,9 @@ import { z } from "zod";
 import {
   SATURN_CAPTURE_ACR_URL_PREFIX,
   SATURN_CAPTURE_POLYGON_URL,
+  SATURN_MAX_ACR_CAPTURE_FILES,
+  SaturnBboxRelation,
+  SaturnCaptureStatus,
 } from "./sourceProfile.js";
 import { validateSaturnCapturedViewportQuery } from "./saturnViewportQuery.js";
 
@@ -43,7 +46,7 @@ const manifestSchema = z
           })
           .strict(),
       )
-      .max(100),
+      .max(SATURN_MAX_ACR_CAPTURE_FILES),
   })
   .strict();
 
@@ -55,21 +58,22 @@ export type SaturnCaptureFileHashes = {
 };
 
 export type SaturnCaptureManifestReport = {
-  status: "SELF_REPORTED_METADATA_HASH_BOUND";
+  status: `${SaturnCaptureStatus.MetadataHashBound}`;
   reportedCaptureSpanMs: number;
   polygonZoom: number;
   polygonBboxParameterPresent: true;
-  polygonBboxRelation: "identical" | "overlapping" | "disjoint";
+  polygonBboxRelation: `${SaturnBboxRelation}`;
   limitations: readonly string[];
 };
 
 type Bbox = { west: number; south: number; east: number; north: number };
+const BBOX_COMPONENT_COUNT = 4;
 
 /** Parse the observed west,south,east,north request bounds, not polygon geometry. */
 function parsePolygonRequestBbox(value: string): Bbox {
   const values = value.split(",");
   if (
-    values.length !== 4 ||
+    values.length !== BBOX_COMPONENT_COUNT ||
     values.some((item) => !/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(item))
   ) {
     throw new Error("Invalid Saturn polygon bbox parameter");
@@ -99,14 +103,14 @@ function bboxRelation(
     a.east === b.east &&
     a.north === b.north
   ) {
-    return "identical";
+    return SaturnBboxRelation.Identical;
   }
   return a.west < b.east &&
     b.west < a.east &&
     a.south < b.north &&
     b.south < a.north
-    ? "overlapping"
-    : "disjoint";
+    ? SaturnBboxRelation.Overlapping
+    : SaturnBboxRelation.Disjoint;
 }
 
 function expectedSourceUrl(value: string, expectedUrl: string): URL {
@@ -135,6 +139,7 @@ function oneParameter(url: URL, key: string): string {
  * Source host, endpoint, callback and subject must match the observed profile.
  * Compare numeric requested viewports without asserting feature correspondence.
  * Matching hashes do not authenticate the browser, server, time or legal rights.
+ * This is an offline evidence check, not the live indexed-page ingestion path.
  *
  * @throws Error for malformed, inconsistent or incorrectly bound metadata.
  */
@@ -205,7 +210,7 @@ export function verifySaturnCaptureManifest(
     ...manifest.acr.map((item) => item.capturedAt),
   ].map((value) => Date.parse(value));
   return {
-    status: "SELF_REPORTED_METADATA_HASH_BOUND",
+    status: SaturnCaptureStatus.MetadataHashBound,
     reportedCaptureSpanMs: Math.max(...times) - Math.min(...times),
     polygonZoom,
     polygonBboxParameterPresent: true,

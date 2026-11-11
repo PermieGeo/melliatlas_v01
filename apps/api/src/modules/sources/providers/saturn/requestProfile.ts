@@ -2,6 +2,7 @@
 import type { SourceRequestProfile } from "../../httpFetcher.js";
 import {
   SATURN_DISTRICT_URL,
+  SATURN_ORIGIN,
   SATURN_SOURCE_ID,
   SATURN_VIEWPORT_URL,
 } from "./sourceProfile.js";
@@ -16,8 +17,8 @@ export const SATURN_JSON_REQUEST_PROFILE: SourceRequestProfile = {
   headers: {
     accept: "application/json, text/plain, */*",
     acceptLanguage: "ru-RU,ru;q=0.9,en;q=0.5",
-    origin: "https://bee-saturn.ru",
-    referer: "https://bee-saturn.ru/",
+    origin: SATURN_ORIGIN,
+    referer: `${SATURN_ORIGIN}/`,
     contentType: "application/json;charset=UTF-8",
   },
 };

@@ -8,12 +8,13 @@ import {
 import {
   SATURN_MAX_VIEWPORT_ELEMENTS,
   SATURN_MAX_VIEWPORT_PAGES,
+  SaturnViewportState,
 } from "./sourceProfile.js";
 
 export type SaturnViewportProgress = {
   /** The exact map-index filter; this is not a district-wide history key. */
   firstPageRequest: SaturnViewportQuery;
-  status: "partial" | "viewport_index_complete";
+  status: `${SaturnViewportState}`;
   nextPage: number | null;
   pagesFetched: number;
   totalPages: number | null;
@@ -31,7 +32,7 @@ export function startSaturnViewportProgress(
   }
   return {
     firstPageRequest: structuredClone(validated),
-    status: "partial",
+    status: SaturnViewportState.Partial,
     nextPage: 0,
     pagesFetched: 0,
     totalPages: null,
@@ -52,7 +53,7 @@ export function advanceSaturnViewportProgress(
   state: SaturnViewportProgress,
   body: unknown,
 ): SaturnViewportProgress {
-  if (state.status !== "partial" || state.nextPage === null) {
+  if (state.status !== SaturnViewportState.Partial || state.nextPage === null) {
     throw new Error("Saturn viewport listing is already terminal");
   }
   if (state.pagesFetched !== state.nextPage) {
@@ -93,7 +94,10 @@ export function advanceSaturnViewportProgress(
   }
   return {
     firstPageRequest: state.firstPageRequest,
-    status: page.nextPage === null ? "viewport_index_complete" : "partial",
+    status:
+      page.nextPage === null
+        ? SaturnViewportState.Complete
+        : SaturnViewportState.Partial,
     nextPage: page.nextPage,
     pagesFetched: state.pagesFetched + 1,
     totalPages,

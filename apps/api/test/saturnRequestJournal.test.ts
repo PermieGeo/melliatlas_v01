@@ -2,6 +2,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Pool } from "pg";
 import { SaturnRequestJournal } from "../src/modules/sources/providers/saturn/saturnRequestJournal.js";
+import {
+  SATURN_REQUEST_LOG_LIMIT,
+  SATURN_SOURCE_ID,
+  SaturnRequestAction,
+  SaturnRequestInitiator,
+  SaturnRequestOutcome,
+} from "../src/modules/sources/providers/saturn/sourceProfile.js";
 
 describe("Saturn request audit writes and bounded reads", () => {
   it("stores a started attempt, a sanitized result, and reads the bounded log", async () => {
@@ -29,16 +36,24 @@ describe("Saturn request audit writes and bounded reads", () => {
     });
     const journal = new SaturnRequestJournal({ query } as unknown as Pool);
     const id = await journal.start({
-      action: "viewport_page",
-      initiator: "web",
+      action: SaturnRequestAction.ViewportPage,
+      initiator: SaturnRequestInitiator.Web,
       districtId: 1477,
       requestHash: "a".repeat(64),
       pageNumber: 0,
     });
-    await journal.finish(id, "succeeded", 10);
+    await journal.finish(id, SaturnRequestOutcome.Succeeded, 10);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("source_saturn_request_log"),
-      ["viewport_page", "web", 1477, "a".repeat(64), 0],
+      [
+        SATURN_SOURCE_ID,
+        SaturnRequestAction.ViewportPage,
+        SaturnRequestInitiator.Web,
+        1477,
+        "a".repeat(64),
+        0,
+        SaturnRequestOutcome.Started,
+      ],
     );
     expect((await journal.list()).entries[0]).toMatchObject({
       id: "10",
@@ -46,6 +61,10 @@ describe("Saturn request audit writes and bounded reads", () => {
       receivedCount: 10,
       status: "succeeded",
     });
-    expect(query.mock.calls.at(-1)?.[0]).toContain("LIMIT 100");
+    expect(query.mock.calls.at(-1)?.[0]).toContain("LIMIT $2");
+    expect(query.mock.calls.at(-1)?.[1]).toEqual([
+      SATURN_SOURCE_ID,
+      SATURN_REQUEST_LOG_LIMIT,
+    ]);
   });
 });

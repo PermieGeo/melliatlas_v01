@@ -9,6 +9,14 @@ import {
   type SaturnDistrictPointsResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../../../lib/errors.js";
+import {
+  SaturnRequestInitiator,
+  SaturnViewportRouteAction,
+} from "./sourceProfile.js";
+
+const LOCAL_BEEKEEPER_PEERS = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+const LOCAL_BEEKEEPER_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const LOCAL_BEEKEEPER_PORTS = new Set(["5173", "3001"]);
 
 export type ClientViewportActions = {
   status(
@@ -16,11 +24,11 @@ export type ClientViewportActions = {
   ): Promise<ViewportCollectionResult>;
   fetchNext(
     selection: ViewportCollectionSelection,
-    initiator?: "web" | "admin",
+    initiator?: `${SaturnRequestInitiator}`,
   ): Promise<ViewportCollectionResult>;
   districts?(): Promise<SaturnDistrictCatalogResponse>;
   refreshDistricts?(
-    initiator?: "web" | "admin",
+    initiator?: `${SaturnRequestInitiator}`,
   ): Promise<SaturnDistrictCatalogResponse>;
   districtPoints?(districtId: number): Promise<SaturnDistrictPointsResponse>;
 };
@@ -28,8 +36,7 @@ export type ClientViewportActions = {
 /** Local-only diagnostic access; a browser Origin is not a production authentication factor. */
 const requireLocalBeekeeper: RequestHandler = (req, _res, next) => {
   const peer = req.socket.remoteAddress;
-  const localPeer =
-    peer === "127.0.0.1" || peer === "::1" || peer === "::ffff:127.0.0.1";
+  const localPeer = peer !== undefined && LOCAL_BEEKEEPER_PEERS.has(peer);
   const origin = req.header("origin");
   let allowedOrigin = false;
   try {
@@ -37,8 +44,8 @@ const requireLocalBeekeeper: RequestHandler = (req, _res, next) => {
       const url = new URL(origin);
       allowedOrigin =
         url.protocol === "http:" &&
-        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) &&
-        ["5173", "3001"].includes(url.port);
+        LOCAL_BEEKEEPER_HOSTS.has(url.hostname) &&
+        LOCAL_BEEKEEPER_PORTS.has(url.port);
     }
   } catch {
     allowedOrigin = false;
@@ -88,7 +95,7 @@ export function createSaturnViewportClientRouter(
       );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.refreshDistricts("web"));
+      res.json(await service.refreshDistricts(SaturnRequestInitiator.Web));
     } catch (error) {
       next(error);
     }
@@ -121,7 +128,10 @@ export function createSaturnViewportClientRouter(
       next(error);
     }
   });
-  for (const action of ["status", "next"] as const) {
+  for (const action of [
+    SaturnViewportRouteAction.Status,
+    SaturnViewportRouteAction.Next,
+  ]) {
     router.post(`/${action}`, async (req, res, next) => {
       if (!service)
         return next(
@@ -143,9 +153,9 @@ export function createSaturnViewportClientRouter(
       try {
         res.setHeader("Cache-Control", "no-store");
         res.json(
-          action === "status"
+          action === SaturnViewportRouteAction.Status
             ? await service.status(parsed.data)
-            : await service.fetchNext(parsed.data, "web"),
+            : await service.fetchNext(parsed.data, SaturnRequestInitiator.Web),
         );
       } catch (error) {
         next(error);

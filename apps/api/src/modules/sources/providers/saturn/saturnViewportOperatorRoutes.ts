@@ -11,6 +11,10 @@ import {
   type SaturnRequestLogResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../../../lib/errors.js";
+import {
+  SaturnRequestInitiator,
+  SaturnViewportRouteAction,
+} from "./sourceProfile.js";
 
 export type ViewportCollectionActions = {
   status(
@@ -18,12 +22,12 @@ export type ViewportCollectionActions = {
   ): Promise<ViewportCollectionResult>;
   fetchNext(
     selection: ViewportCollectionSelection,
-    initiator?: "web" | "admin",
+    initiator?: `${SaturnRequestInitiator}`,
   ): Promise<ViewportCollectionResult>;
   history?(): Promise<ViewportCacheHistoryResponse>;
   districts?(): Promise<SaturnDistrictCatalogResponse>;
   refreshDistricts?(
-    initiator?: "web" | "admin",
+    initiator?: `${SaturnRequestInitiator}`,
   ): Promise<SaturnDistrictCatalogResponse>;
   storedFields?(hash: string): Promise<SaturnStoredFieldsResponse>;
   requestLog?(): Promise<SaturnRequestLogResponse>;
@@ -121,12 +125,15 @@ export function createSaturnViewportOperatorRouter(
       );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.refreshDistricts("admin"));
+      res.json(await service.refreshDistricts(SaturnRequestInitiator.Admin));
     } catch (error) {
       next(error);
     }
   });
-  for (const action of ["status", "next"] as const) {
+  for (const action of [
+    SaturnViewportRouteAction.Status,
+    SaturnViewportRouteAction.Next,
+  ]) {
     router.post(`/${action}`, async (req, res, next) => {
       if (!service)
         return next(
@@ -148,9 +155,12 @@ export function createSaturnViewportOperatorRouter(
       try {
         res.setHeader("Cache-Control", "no-store");
         res.json(
-          action === "status"
+          action === SaturnViewportRouteAction.Status
             ? await service.status(selection.data)
-            : await service.fetchNext(selection.data, "admin"),
+            : await service.fetchNext(
+                selection.data,
+                SaturnRequestInitiator.Admin,
+              ),
         );
       } catch (error) {
         next(error);

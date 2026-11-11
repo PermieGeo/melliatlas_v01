@@ -62,6 +62,7 @@ export class SaturnProvider implements SaturnProviderPort {
   readonly sourceId = SATURN_SOURCE_ID;
   readonly requestProfiles = [SATURN_JSON_REQUEST_PROFILE] as const;
 
+  /** Translate a bounded app selection to Saturn's observed UpdateMap request. */
   firstPage(selection: ViewportCollectionSelection): SaturnViewportQuery {
     return makeViewportFirstRequest(selection);
   }
@@ -73,6 +74,7 @@ export class SaturnProvider implements SaturnProviderPort {
     return validateSaturnViewportQuery({ ...firstPage, pageNumber });
   }
 
+  /** Reject inconsistent upstream pagination before database persistence. */
   parsePage(
     payload: unknown,
     request: SaturnViewportQuery,
@@ -80,6 +82,7 @@ export class SaturnProvider implements SaturnProviderPort {
     return parseSaturnViewportPage(payload, request);
   }
 
+  /** Decode provider-named centers, without inventing district boundaries. */
   parseDirectory(payload: unknown): readonly SaturnDistrict[] {
     return parseSaturnDistrictCatalog(payload);
   }
