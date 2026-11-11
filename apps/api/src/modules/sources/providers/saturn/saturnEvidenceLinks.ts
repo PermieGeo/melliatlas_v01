@@ -14,9 +14,14 @@ import type { SaturnViewportPage } from "./saturnViewportQuery.js";
 
 const providerIdSchema = z.string().regex(/^[1-9][0-9]{0,19}$/);
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/);
-const minimalAcrIdentitySchema = z.object({
-  id: z.number().int().positive().safe(),
+const minimalAcrIdentitySchema = z
+  .object({ id: z.number().int().positive().safe() })
+  .passthrough();
+const acrCenterSchema = z.object({
+  centerX: z.number().finite().min(-180).max(180),
+  centerY: z.number().finite().min(-90).max(90),
 });
+const ACR_CENTER_MATCH_TOLERANCE_DEGREES = 0.000001;
 
 enum SaturnIdentityRelation {
   IdMatchOnly = "id_match_only",
@@ -26,6 +31,15 @@ enum SaturnIdentityRelation {
 enum SaturnAcrPlanRelation {
   MatchesIndexPlan = "matches_index_plan",
   ConflictsWithIndexPlan = "conflicts_with_index_plan",
+  NotInIndex = "not_in_index",
+}
+
+enum SaturnAcrCenterRelation {
+  MatchesIndex = "matches_index_center_within_tolerance",
+  DiffersFromIndex = "differs_from_index_center",
+  Missing = "not_reported",
+  Partial = "partial_center",
+  Invalid = "invalid_center",
   NotInIndex = "not_in_index",
 }
 
@@ -61,6 +75,8 @@ export type SaturnIdentityComparison = {
     responseIdMatchesRequest: boolean;
     /** The ACR body ID may name the shared plan, not the requested field. */
     planRelation: `${SaturnAcrPlanRelation}`;
+    /** Coordinate comparison is independent of plan ID and polygon evidence. */
+    centerRelation: `${SaturnAcrCenterRelation}`;
     listedInIndex: boolean;
     listedInPolygons: boolean;
   }>;
@@ -94,6 +110,26 @@ function geometryContainsCenterInBounds(
     south <= latitude &&
     latitude <= north
   );
+}
+
+/** Invalid optional center attributes must never be treated as a match. */
+function compareAcrIndexCenters(
+  response: z.infer<typeof minimalAcrIdentitySchema>,
+  indexed: { centerX: number; centerY: number } | undefined,
+): SaturnAcrCenterRelation {
+  if (!indexed) return SaturnAcrCenterRelation.NotInIndex;
+  const absentX = response.centerX === undefined || response.centerX === null;
+  const absentY = response.centerY === undefined || response.centerY === null;
+  if (absentX && absentY) return SaturnAcrCenterRelation.Missing;
+  if (absentX || absentY) return SaturnAcrCenterRelation.Partial;
+  const center = acrCenterSchema.safeParse(response);
+  if (!center.success) return SaturnAcrCenterRelation.Invalid;
+  return Math.abs(indexed.centerX - center.data.centerX) <=
+    ACR_CENTER_MATCH_TOLERANCE_DEGREES &&
+    Math.abs(indexed.centerY - center.data.centerY) <=
+      ACR_CENTER_MATCH_TOLERANCE_DEGREES
+    ? SaturnAcrCenterRelation.MatchesIndex
+    : SaturnAcrCenterRelation.DiffersFromIndex;
 }
 
 /**
@@ -200,21 +236,23 @@ export function compareSaturnCapturedIdentities(
       throw new Error("Duplicate ACR request identity");
     }
     seenCaptures.add(requestedFeatureId);
-    const responseId = String(
-      minimalAcrIdentitySchema.parse(capture.response).id,
-    );
-    const indexedPlanId = indexById.get(requestedFeatureId)?.planId;
+    const response = minimalAcrIdentitySchema.parse(capture.response);
+    const responseId = String(response.id);
+    const indexed = indexById.get(requestedFeatureId);
+    const indexedPlanId = indexed?.planId;
     const planRelation =
       indexedPlanId === undefined
         ? SaturnAcrPlanRelation.NotInIndex
         : responseId === indexedPlanId
           ? SaturnAcrPlanRelation.MatchesIndexPlan
           : SaturnAcrPlanRelation.ConflictsWithIndexPlan;
+    const centerRelation = compareAcrIndexCenters(response, indexed);
     return {
       requestedFeatureId,
       responseId,
       responseIdMatchesRequest: responseId === requestedFeatureId,
       planRelation,
+      centerRelation,
       listedInIndex: indexById.has(requestedFeatureId),
       listedInPolygons: polygonById.has(requestedFeatureId),
     };

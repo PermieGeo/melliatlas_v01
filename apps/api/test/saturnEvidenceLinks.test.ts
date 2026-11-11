@@ -108,6 +108,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         responseId: "1586314",
         responseIdMatchesRequest: false,
         planRelation: "conflicts_with_index_plan",
+        centerRelation: "not_reported",
         listedInIndex: true,
         listedInPolygons: true,
       },
@@ -116,6 +117,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         responseId: "238195",
         responseIdMatchesRequest: true,
         planRelation: "conflicts_with_index_plan",
+        centerRelation: "not_reported",
         listedInIndex: true,
         listedInPolygons: false,
       },
@@ -124,6 +126,7 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         responseId: "99",
         responseIdMatchesRequest: false,
         planRelation: "not_in_index",
+        centerRelation: "not_in_index",
         listedInIndex: false,
         listedInPolygons: false,
       },
@@ -183,6 +186,95 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         (item) => item.relation === "id_match_only",
       ),
     ).toBe(true);
+  });
+
+  it("reconciles two observed ACR field centers with separately captured index values", () => {
+    // ACR details and the index page were observed at different times.
+    const result = compareSaturnCapturedIdentities(
+      [
+        {
+          featureId: "2038836",
+          planId: "1811436",
+          centerX: 32.917616,
+          centerY: 55.088542,
+        },
+        {
+          featureId: "2038837",
+          planId: "1811436",
+          centerX: 32.893398,
+          centerY: 55.110574,
+        },
+      ],
+      polygons([]),
+      [
+        {
+          requestedFeatureId: "2038836",
+          response: {
+            id: 1811436,
+            centerX: 32.917616,
+            centerY: 55.088542,
+          },
+        },
+        {
+          requestedFeatureId: "2038837",
+          response: {
+            id: 1811436,
+            centerX: 32.893398,
+            centerY: 55.110574,
+          },
+        },
+      ],
+    );
+    expect(
+      result.acrObservations.map(({ planRelation, centerRelation }) => ({
+        planRelation,
+        centerRelation,
+      })),
+    ).toEqual([
+      {
+        planRelation: "matches_index_plan",
+        centerRelation: "matches_index_center_within_tolerance",
+      },
+      {
+        planRelation: "matches_index_plan",
+        centerRelation: "matches_index_center_within_tolerance",
+      },
+    ]);
+    expect(result.threeEndpointCandidates).toEqual([]);
+  });
+
+  it("distinguishes mismatched, partial, invalid and absent ACR centers", () => {
+    const result = compareSaturnCapturedIdentities(
+      [
+        indexEntry("101"),
+        indexEntry("102"),
+        indexEntry("103"),
+        indexEntry("104"),
+      ],
+      polygons([]),
+      [
+        {
+          requestedFeatureId: "101",
+          response: { id: 1811436, centerX: 32.7, centerY: 55 },
+        },
+        { requestedFeatureId: "102", response: { id: 1811436, centerX: 32.5 } },
+        {
+          requestedFeatureId: "103",
+          response: { id: 1811436, centerX: null, centerY: null },
+        },
+        {
+          requestedFeatureId: "104",
+          response: { id: 1811436, centerX: "32.5", centerY: 55 },
+        },
+      ],
+    );
+    expect(result.acrObservations.map((item) => item.centerRelation)).toEqual([
+      "differs_from_index_center",
+      "partial_center",
+      "not_reported",
+      "invalid_center",
+    ]);
+    expect(result.threeEndpointCandidates).toEqual([]);
   });
 
   it("flags a matching-ID polygon whose bounds contradict the indexed center", () => {
