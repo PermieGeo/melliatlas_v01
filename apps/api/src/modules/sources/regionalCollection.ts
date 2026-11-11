@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.DOCUMENT_HISTORY, NOTICES.EXTRACTION
+// Feature IDs: SOURCES.DOCUMENT_HISTORY
 import type { Pool, PoolClient } from "pg";
 import { providerRequestSettingsSchema } from "@melliatlas/contracts";
 import { ApiFailure } from "../../lib/errors.js";

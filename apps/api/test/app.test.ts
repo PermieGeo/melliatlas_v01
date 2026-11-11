@@ -1,3 +1,4 @@
+// Feature IDs: NOTICES.MAP_OVERLAY, SOURCES.CATALOG, SOURCES.PROVIDER_CONFIGURATION, WEATHER.POINT_FORECAST
 import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp, type ApiServices } from "../src/app.js";

@@ -2,7 +2,7 @@
 
 **Progress note (2026-11-01):** The `SRC-01` source-policy contract and registry now have independent unit tests. Migration `002` has a dedicated PostGIS-backed upgrade, approval, revision-history and fail-closed integration suite (`apps/api/integration/sourceCatalogMigration.test.ts`) included in CI. This suite has **not** been executed in the current artifact environment because PostgreSQL/PostGIS is unavailable; its actual result must be checked in CI or against local PostGIS. The original-baseline counts and remaining coverage risks below refer to the initial audit and are not updated coverage percentages.
 
-This is a **source-level review**, not a certified coverage report. It uses the starter implementation and the existing test sources; test execution results must be recorded separately. The review distinguishes implemented bootstrap behavior from work that only exists in the SRC-01 specification.
+This is a **historical source-level audit of the starter**, not the current test inventory or a certified coverage report. Test execution results must be recorded separately. For subsequently implemented source security, PostGIS, review and Saturn tests, consult [TESTS](TESTS.md); the original gaps below must not be read as current feature status.
 
 ## 1. What the original tests actually covered
 
@@ -28,7 +28,7 @@ This is a **source-level review**, not a certified coverage report. It uses the 
 - Some assertions are too narrow: a 500 response may still leak an implementation detail unless the error body is inspected, and returning a forecast does not prove its entire wire contract or provenance.
 - Original UI tests could remain green while the actual map-selection, error, retry and catalog behaviors are broken. The shallow map mock is acceptable for isolated App states, but cannot substitute for Playwright interaction.
 - The API's PostGIS persistence has no integration tests. Service stubs cannot expose SQL schema drift, geospatial distance mistakes, transaction rollback or incorrect source revisions.
-- No tests yet verify municipality access rules, SSRF/redirect protection, deduplication, worker restart safety, notice precision, agent citations, privacy or field calibration. Most of these capabilities **are not implemented yet**; tests must be written as their sub-spec requirements are implemented, not claimed as existing coverage.
+- At the original audit date, no tests yet verified municipality access rules, SSRF/redirect protection, deduplication, worker restart safety, notice precision, agent citations, privacy or field calibration. Several source-path tests have since been added (see [TESTS](TESTS.md)); agent, private-apiary and field calibration checks remain future work.
 - Playwright intercepts both public API routes, so its passing result cannot certify live Open-Meteo access, municipal ingestion or database readiness. Requiring PostgreSQL for API startup does not remove that limitation.
 - No objective mutation testing, coverage thresholds, accessibility automation, load testing or contract-compatibility suite has been measured.
 

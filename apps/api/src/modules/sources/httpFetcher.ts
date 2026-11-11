@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.SAFE_FETCH, SOURCES.PROVIDER_CONFIGURATION
+// Feature IDs: SOURCES.SAFE_FETCH
 import { isIP } from "node:net";
 import { evaluateSourceDestination } from "./destinationPolicy.js";
 import {

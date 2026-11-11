@@ -1,29 +1,11 @@
 # Database Infrastructure Contract
 
-**Owner:** `apps/api/src/db/`. **Status:** implemented foundation for `SRC-01`.
+**Owner:** `apps/api/src/db/`.
 
-- **Responsibility:** PostgreSQL connection pool, ordered checksummed SQL migrations, source catalog query.
-- **Public entry points:** [pool.ts](pool.ts) `createDatabasePool`; [sourceRepository.ts](sourceRepository.ts) `SourceRepository.list`; migration command [migrate.ts](migrate.ts).
-- **Owned data:** SQL schema in [001_source_core.sql](../../migrations/001_source_core.sql) , additive [002_source_access_registry.sql](../../migrations/002_source_access_registry.sql) and [003_saturn_api_configuration.sql](../../migrations/003_saturn_api_configuration.sql). Migration 003 stores a legacy candidate endpoint and request parameters in the same revisioned registry. Migration 004 adds a provider-neutral connection row without rewriting legacy audit revisions. Migration 002 preserves legacy source rows as unapproved, adds source policy metadata and append-only revision snapshots; the municipal source module owns the policy read semantics.
-- **Dependencies:** `pg` and shared public catalog schema; no browser or source-HTTP adapters.
-- **Forbidden:** Expose raw query objects to HTTP clients, bypass schema validation, modify an applied migration, silently discard ingestion evidence.
-- **Invariants:** Catalog responses conform to shared Zod schema; migrations use advisory lock, transaction and stored checksum. Approval requires reviewer evidence and source policy metadata. Policy changes increment the catalog revision and append a snapshot; routine cursor/freshness changes do not. API readiness checks database connectivity.
-- **Provider bootstrap:** The existing `source_catalog` row stores provider name, `kind` (type), full endpoint `url`, optional `api_key` (migration 006), and `api_request_config`. The manual [seedProvider.ts](seedProvider.ts) CLI installs a vetted local preset without activating ingestion. Revision snapshots exclude the key; provider changes revoke prior approval. Database operators must protect key material at rest and restrict SQL access.
-- **Extension:** Future capability-owned repositories should keep SQL/data ownership explicit and expose narrow repository interfaces. Add numbered migrations for schema changes.
+- **Public APIs:** `createDatabasePool` in `pool.ts`, `SourceRepository.list()` in `sourceRepository.ts`, and the `migrate.ts` CLI.
+- **Consumers:** server composition obtains a pool and public source catalog; capability-owned repositories consume the pool without exposing SQL rows as HTTP wire types.
+- **Guarantees:** ordered checksummed SQL migrations, transactional migration execution and validated public catalog responses. Existing migrations are immutable.
+- **Boundaries:** source evidence, review decisions, Saturn indexes, audits and other domain writes are owned by their respective source modules. PostgreSQL credentials and query objects are never exposed to clients.
+- **Extension:** use a new numbered migration and a narrow capability-owned repository interface. Local demo-seeding commands may target only their explicit disposable demo databases.
 
-- Migration `007_treatment_observation_dedupe.sql` creates record-per-document deduplication and immutable operator-review evidence. The treatment ingestion module owns writes; other features must not mutate these records directly.
-
-- **Migration 008:** An existing matching treatment endpoint is promoted to `configured` for manual operator fetching. This is not an approval/terms assertion. Earlier migrations and immutable audit history are left intact.
-
-- **Migration 009:** Corrects the exact untouched migration-004 treatment-feed bootstrap, whose historical `url` held only the portal homepage. It aligns that URL with the already configured full endpoint and makes only this known legacy source manually fetchable. It does not alter checked migration 008, user-customized provider rows, disabled registrations, credentials, or historical permission evidence.
-
-- **Migration 010:** Adds `last_seen_at` to `source_documents` for repeat-observation tracking. The original payload, hash, document identity and `retrieved_at` remain immutable. The source-ingestion module owns updating last-seen metadata, not a new table or independent cache.
-
-- **Migration 011:** `source_district_cache` stores source/revision/district/filter-scoped pagination and completion timestamps. Zero-result complete listings may be fresh; partial runs are not. The source-ingestion module owns state writes. The migration does not schedule or authorize network operations.
-
-- **Migration 012:** Optional lease ownership on `source_district_cache` enables crash/restart recovery and rejects stale worker page updates. Existing migration-011 rows remain valid and unowned running rows can be reclaimed; no source documents or existing completion timestamps are removed.
-
-- **Migration 012:** Adds lease token/expiry columns to the district cache; concurrent workers cannot commit under a superseded ownership token.
-- **Migration 013:** Creates `source_request_throttle`, keyed by source ID, storing only the next permitted provider fetch start (no upstream payload or secrets). The source-ingestion module owns its atomic reservation. Preserve the row after failures; deleting it may allow premature upstream requests.
-
-- **Local demonstration database:** `createDemoDatabase.ts`, `seedDemo.ts` and `demoSafety.ts` are developer-only entry points for the separate loopback-only `melliatlas_demo` and `melliatlas_demo_e2e` databases. Schema migrations apply unchanged. The fixture writer lives in the source-ingestion module, and seed assertions/cleanup are covered by isolated PostGIS tests. Do not mix synthetic fixture evidence into the normal database or production.
+Migration history and schema details are maintained in `apps/api/migrations/` and [Implementation](../../../../docs/IMPLEMENTATION.md), not duplicated here.

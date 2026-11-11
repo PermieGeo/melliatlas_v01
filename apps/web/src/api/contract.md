@@ -1,12 +1,8 @@
-# Beekeeper Browser API Contract
+# Beekeeper HTTP Client Contract
 
-**Owner:** `apps/web/src/api/`.
+**Owner:** `apps/web/src/api/`. **Public API:** exported functions in `client.ts`, validated with `@melliatlas/contracts`.
 
-- **Responsibility:** Same-origin `/api/v1` calls and strict schema validation for public map/weather data and the explicitly enabled local-only viewport-index pilot.
-- **Public entry points:** `inspectLocation(point, signal)`, `loadMapTreatments(signal, bbox?)`, `loadDistrictViewportProgress(selection)` and `fetchDistrictViewportPage(selection)` in [client.ts](client.ts).
-- **Invariants:** Map reads use `GET /api/v1/notices` with an optional viewport bbox (verified polygons and validated structured pending polygons with explicit review status). Never request `/api/v1/operator/*`, expose rejected or unlocated geometry, or create synthetic results on errors. The separate `POST /api/v1/map/saturn-viewport/{status,next}` is an explicit local-only, backend-gated pilot exception: ordinary map reads and navigation never initiate upstream collection, and index progress never implies polygon availability.
-- **Error handling:** Parse language-neutral server error codes; localized display strings belong to UI catalogs, not the HTTP client.
-
-- Local `POST /api/v1/map/saturn-viewport/status` is a strictly bounded, source-free cache read for one exact viewport/date filter. Its response may include at most 100 saved field-center points; it is safe to debounce on map selection. Only a user's explicit `POST /next` action starts one provider request. The markers must remain visually distinct from treatment polygons.
-
-- `loadSaturnDistrictCatalog`, `loadSavedDistrictPoints` and the exact-key status route are DB-only. `refreshSaturnDistrictCatalog` explicitly calls the local-only provider directory endpoint, while `fetchDistrictViewportPage` explicitly obtains at most one `/query` page. All payloads use shared Zod contracts and browser HTTP requests remain same-origin; this does not grant public access to data collection.
+- Weather inspection and public notice retrieval read `/api/v1` without contacting external evidence providers from the browser.
+- Local Saturn pilot functions read cached districts, field centers and exact-filter viewport progress; directory refresh and next-page fetch require explicit user actions on separate `/api/v1/map/saturn-viewport/*` routes.
+- Responses are validated, and errors preserve server codes for localized presentation. Cached index centers are **not** treatment polygons, observations of spraying, or evidence of district coverage.
+- This client must not call `/api/v1/operator/*`, synthesize observations, or expose provider secrets. The loopback-only fetch pilot needs real authentication before any public deployment.

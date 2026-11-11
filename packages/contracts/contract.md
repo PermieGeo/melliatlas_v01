@@ -1,26 +1,11 @@
-# Shared HTTP Contract Module
+# Shared HTTP Contracts
 
-**Owner:** `packages/contracts/`. **Status:** implemented `/api/v1` schema foundation.
+**Owner:** `packages/contracts/`. **Public API:** `src/index.ts` (including re-exports from `src/viewportCollection.ts`).
 
-- **Responsibility:** Publish strict serializable Zod schemas and inferred TypeScript types consumed by API and browser.
-- **Public entry point:** [src/index.ts](src/index.ts): coordinates/location query, weather/provenance, source catalog, provider operator configuration, help document schema, and typed API errors.
-- **Owned data:** Public schema definitions only; no database or runtime state.
-- **Allowed dependencies:** Zod and TypeScript only.
-- **Forbidden:** React/Express, Node-specific APIs, database access, provider-specific request libraries or mutable application services.
-- **Invariants:** Coordinates use WGS84 degrees; timestamps are ISO date-time strings; optional source-success time is explicit nullable; provider output must be mapped to public schema before returning.
-- **Provider configuration:** `saturnConfigurationSchema`, `saturnConfigurationEditSchema` and `saturnRequestSettingsSchema` validate method, flat bounded parameters, region code and optimistic revision. Endpoint destination safety is additionally checked on the backend; this schema does not grant fetching permission.
-- **Extension:** Update schema, backend, web consumer and independent tests together. Preserve existing `/api/v1` compatibility or introduce deliberate versioning.
+- **Consumers:** `apps/api`, `apps/web`, and `apps/admin` import the same Zod wire schemas and inferred TypeScript types.
+- **Published shapes:** WGS84 coordinates, attributed weather, source catalog, provider configuration, notice geometries and review status, local Saturn viewport selection/progress/catalog/history, help documents, and typed API errors.
+- **Guarantees:** Validation applies to JSON boundaries; coordinates use longitude/latitude with documented bounds, dates have explicit representations, and unknown evidence is not turned into a safety verdict. Pending structured polygons may be visible with an unverified label; rejected and text-only records are not public polygons.
+- **Limits:** Schema validity does not approve a source, grant operator permissions, validate source licensing, or prove spatial coverage. The Saturn district selector accepts server-recognized provider IDs (cached directory or verified fallback), not arbitrary geographic boundaries.
+- **Changes:** Update each API producer, browser consumer and contract test together. Avoid breaking `/api/v1` without explicit versioning.
 
-- `mapTreatmentSchema` and `mapTreatmentsResponseSchema` define WGS84 geometry, source provenance and explicit operator-review status for the public map. Structured pending treatment observations with validated polygons may appear as unreviewed; rejected, text-only and non-structured pending observations remain private. No map record implies a verified safety assessment.
-
-- `providerCollectionStatusSchema` is the authenticated, read-only import diagnostics response. It reports counts and last run status without raw source payloads or provider keys.
-
-- `helpDocumentSchema` owns the versioned shape of locally hosted RU/EN user guides. It validates content boundaries without importing React, using network services, or treating text as HTML. The frontend owns loading and presentation.
-
-- `viewportCollectionSelectionSchema` and `viewportCollectionResultSchema` in `src/viewportCollection.ts` own the operator-only pilot request/response: exact provider district 1477, bounded bbox/UpdateMap interval, and durable page-index progress. They do not represent source treatment polygons, verified district coverage or a risk assessment.
-
-- `viewportCollectionSelectionSchema` and `viewportCollectionResultSchema` are also reused by the local-only beekeeper viewport-index pilot. The schema is intentionally restricted to one verified district and a short bounded geographic/UpdateMap window; client use grants no access to operator endpoints or complete treatment records.
-
-- `viewportCollectionResultSchema` optionally includes up to 100 persisted field-center summaries for local-only map index display, distinct from published treatment geometry. `viewportCacheHistoryResponseSchema` validates the bounded operator-only history of committed viewport keys and page receipts without original source payloads. No source access capability is granted by these schemas.
-
-- `saturnDistrictCatalogResponseSchema`, `saturnDistrictPointsResponseSchema`, `saturnStoredFieldsResponseSchema` and `saturnRequestLogResponseSchema` describe cached provider centers, cross-filter district previews, per-filter saved IDs, and sanitized explicit-attempt audit without private coordinates or raw provider payloads. The selected district ID is a positive integer validated against the server-cached provider directory before collection; it is not a verified administrative boundary.
+No database, React, HTTP transport, secrets, or mutable provider state belongs here.

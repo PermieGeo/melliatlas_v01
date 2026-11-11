@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.DOCUMENT_HISTORY, NOTICES.EXTRACTION
+// Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { z } from "zod";
 
 export const regionalScanSchema = z
