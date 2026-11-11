@@ -5,9 +5,13 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   inspectSaturnHarFile,
+  inventorySaturnHarFile,
   parseSaturnHarCliArgs,
 } from "../src/modules/sources/providers/saturn/saturnCaptureCli.js";
-import { inspectSaturnHarCapture } from "../src/modules/sources/providers/saturn/saturnHarCapture.js";
+import {
+  inspectSaturnHarCapture,
+  inventorySaturnHarCapture,
+} from "../src/modules/sources/providers/saturn/saturnHarCapture.js";
 import { buildSaturnViewportQuery } from "../src/modules/sources/providers/saturn/saturnViewportQuery.js";
 
 const fieldId = "2038836";
@@ -152,6 +156,63 @@ function validHar(): { log: { version: string; entries: HarEntry[] } } {
 }
 
 describe("offline Saturn HAR capture inspection", () => {
+  it("previews a readable triple using only counts and bounded fixed messages", () => {
+    const report = inventorySaturnHarCapture(validHar(), fieldId);
+    expect(report).toMatchObject({
+      status: "CANDIDATE_TRIO",
+      endpoints: {
+        query: { matching: 1, readable: 1 },
+        polygons: { matching: 1, readable: 1 },
+        acr: { matching: 1, readable: 1 },
+      },
+    });
+    expect(JSON.stringify(report)).not.toMatch(
+      /2038836|1811436|Do not reveal|PRIVATE|Authorization|example\.org|coordinates|32\.5/,
+    );
+  });
+
+  it("distinguishes missing, duplicate and unreadable endpoint captures", () => {
+    const missing = validHar();
+    missing.log.entries.splice(2, 1);
+    expect(inventorySaturnHarCapture(missing, fieldId)).toMatchObject({
+      status: "INCOMPLETE",
+      endpoints: { polygons: { matching: 0, readable: 0 } },
+    });
+
+    const duplicate = validHar();
+    duplicate.log.entries.push(structuredClone(duplicate.log.entries[1]));
+    expect(inventorySaturnHarCapture(duplicate, fieldId)).toMatchObject({
+      status: "AMBIGUOUS",
+      endpoints: { query: { matching: 2, readable: 2 } },
+    });
+
+    const unreadable = validHar();
+    delete unreadable.log.entries[2].response.content.text;
+    unreadable.log.entries[3].response.status = 503;
+    delete unreadable.log.entries[1].request.postData;
+    expect(inventorySaturnHarCapture(unreadable, fieldId)).toMatchObject({
+      status: "UNREADABLE",
+      endpoints: {
+        query: { matching: 1, readable: 0 },
+        polygons: { matching: 1, readable: 0 },
+        acr: { matching: 1, readable: 0 },
+      },
+    });
+    expect(
+      JSON.stringify(inventorySaturnHarCapture(unreadable, fieldId)),
+    ).not.toMatch(/Do not reveal|Authorization|example\.org/);
+  });
+
+  it("applies the same HAR entry bound and feature ID checks to previews", () => {
+    const tooMany = validHar();
+    tooMany.log.entries = Array.from(
+      { length: 2001 },
+      () => tooMany.log.entries[0],
+    );
+    expect(() => inventorySaturnHarCapture(tooMany, fieldId)).toThrow();
+    expect(() => inventorySaturnHarCapture(validHar(), "bad")).toThrow();
+  });
+
   it("binds a single three-endpoint HAR trace without authenticating geometry", () => {
     const report = inspectSaturnHarCapture(validHar(), fieldId);
     expect(report).toMatchObject({
@@ -290,6 +351,25 @@ describe("Saturn HAR CLI", () => {
       harPath: "short.har",
       requestedFeatureId: fieldId,
     });
+    expect(
+      parseSaturnHarCliArgs(
+        ["--har-preview", "short.har", "--acr-id", fieldId],
+        "--har-preview",
+      ),
+    ).toEqual({ harPath: "short.har", requestedFeatureId: fieldId });
+    expect(() =>
+      parseSaturnHarCliArgs(
+        [
+          "--har-preview",
+          "short.har",
+          "--har",
+          "other.har",
+          "--acr-id",
+          fieldId,
+        ],
+        "--har-preview",
+      ),
+    ).toThrow();
     for (const invalid of [
       ["--har", "short.har"],
       ["--acr-id", fieldId],
@@ -312,10 +392,24 @@ describe("Saturn HAR CLI", () => {
     });
     expect(report.harFileSha256).toMatch(/^[0-9a-f]{64}$/);
     expect(report.findings.threeEndpointCandidates).toHaveLength(1);
+    const preview = await inventorySaturnHarFile({
+      harPath,
+      requestedFeatureId: fieldId,
+    });
+    expect(preview).toMatchObject({
+      harFileSha256: report.harFileSha256,
+      status: "CANDIDATE_TRIO",
+    });
     const symlinkPath = join(dir, "link.har");
     await symlink(harPath, symlinkPath);
     await expect(
       inspectSaturnHarFile({
+        harPath: symlinkPath,
+        requestedFeatureId: fieldId,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      inventorySaturnHarFile({
         harPath: symlinkPath,
         requestedFeatureId: fieldId,
       }),

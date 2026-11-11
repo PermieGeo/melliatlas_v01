@@ -10,7 +10,9 @@ import {
 } from "./saturnCaptureInspection.js";
 import {
   inspectSaturnHarCapture,
+  inventorySaturnHarCapture,
   type SaturnHarInspection,
+  type SaturnHarInventory,
 } from "./saturnHarCapture.js";
 import {
   verifySaturnCaptureManifest,
@@ -56,8 +58,10 @@ const usage = [
   "Offline Saturn capture inspection (no HTTP requests or database writes)",
   "Usage: pnpm --dir apps/api evidence:saturn -- --query-request <request.json> --query-response <response.json> --polygons <response.jsonp> --callback <name> [--acr <requestedFeatureId> <response.json>]... [--manifest <manifest.json>]",
   "   or: pnpm --dir apps/api evidence:saturn -- --har <capture.har> --acr-id <requestedFeatureId>",
+  "   or: pnpm --dir apps/api evidence:saturn -- --har-preview <capture.har> --acr-id <requestedFeatureId>",
   "Direct-body mode requires provider response files, not HAR wrappers.",
   "HAR mode requires exactly one successful query, polygon and requested ACR response; export with response content from a short browser Network session.",
+  "HAR preview reports only endpoint counts and readable-body counts to help diagnose incomplete or ambiguous exports; it does not validate joins.",
   "Keep HAR private: it may contain credentials, cookies and unrelated browsing data. Never commit or upload the raw export.",
   "Output includes source IDs and hashes only; it does not verify cross-endpoint joins.",
 ].join("\n");
@@ -126,12 +130,13 @@ export function parseSaturnCaptureCliArgs(
 /** Require one local HAR and one requested field ID without any network options. */
 export function parseSaturnHarCliArgs(
   args: readonly string[],
+  fileFlag: "--har" | "--har-preview" = "--har",
 ): SaturnHarCliOptions {
   const values = new Map<string, string>();
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
     if (flag === "--") continue;
-    if (!flag || !["--har", "--acr-id"].includes(flag) || values.has(flag)) {
+    if (!flag || ![fileFlag, "--acr-id"].includes(flag) || values.has(flag)) {
       throw new Error("Unknown or duplicate HAR capture argument");
     }
     const value = args[++i];
@@ -140,7 +145,7 @@ export function parseSaturnHarCliArgs(
     }
     values.set(flag, value);
   }
-  const harPath = values.get("--har");
+  const harPath = values.get(fileFlag);
   const requestedFeatureId = values.get("--acr-id");
   if (
     !harPath ||
@@ -244,14 +249,28 @@ export async function inspectSaturnHarFile(
   };
 }
 
+/** Preflight one local HAR without echoing request or response contents. */
+export async function inventorySaturnHarFile(
+  options: SaturnHarCliOptions,
+): Promise<SaturnHarInventory & { harFileSha256: string }> {
+  const capture = await readJsonCapture(options.harPath, MAX_HAR_BYTES);
+  return {
+    ...inventorySaturnHarCapture(capture.value, options.requestedFeatureId),
+    harFileSha256: capture.sha256,
+  };
+}
+
 async function main(args: readonly string[]): Promise<void> {
   if (args.length === 1 && args[0] === "--help") {
     process.stdout.write(`${usage}\n`);
     return;
   }
   try {
-    const report =
-      args.includes("--har") || args.includes("--acr-id")
+    const report = args.includes("--har-preview")
+      ? await inventorySaturnHarFile(
+          parseSaturnHarCliArgs(args, "--har-preview"),
+        )
+      : args.includes("--har") || args.includes("--acr-id")
         ? await inspectSaturnHarFile(parseSaturnHarCliArgs(args))
         : await inspectSaturnCaptureFiles(parseSaturnCaptureCliArgs(args));
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
