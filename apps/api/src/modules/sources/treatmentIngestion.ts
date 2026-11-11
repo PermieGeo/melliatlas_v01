@@ -56,6 +56,47 @@ export function safePlanGeometry(
   return input;
 }
 
+/**
+ * Reject contradictory upstream page metadata before writing evidence or advancing
+ * a durable cursor. A provider that repeats page zero must not look like progress.
+ * Missing optional Spring pagination fields retain the legacy short-page fallback.
+ */
+export function nextTreatmentPageNumber(
+  page: ReturnType<typeof parseBeekeeperPlanPage>,
+  requestedPage: number,
+  requestedSize: number,
+): number {
+  const { number, size, numberOfElements, totalPages, last } = page.pagination;
+  const offset = requestedPage * requestedSize;
+  const count = page.plans.length;
+  const total = page.totalElements;
+  const incompatible =
+    (number !== null && number !== requestedPage) ||
+    (size !== null && size !== requestedSize) ||
+    (numberOfElements !== null && numberOfElements !== count) ||
+    (total !== null &&
+      (offset + count > total || (offset >= total && requestedPage > 0))) ||
+    (total !== null && count < requestedSize && offset + count < total) ||
+    (last === false && count < requestedSize) ||
+    (total !== null &&
+      totalPages !== null &&
+      totalPages !== Math.ceil(total / requestedSize)) ||
+    (total !== null &&
+      last !== null &&
+      last !== offset + requestedSize >= total);
+  if (incompatible) {
+    throw new ApiFailure(
+      502,
+      "INCONSISTENT_SOURCE_PAGE",
+      "Provider page metadata does not match the requested page",
+    );
+  }
+  if (total !== null)
+    return offset + requestedSize >= total ? 0 : requestedPage + 1;
+  if (last !== null) return last ? 0 : requestedPage + 1;
+  return count < requestedSize ? 0 : requestedPage + 1;
+}
+
 type ConnectionRow = {
   api_request_config: unknown;
   registry_revision: string;
@@ -276,25 +317,11 @@ export class TreatmentIngestionService {
           );
         }
         const hash = createHash("sha256").update(response.bytes).digest("hex");
-        if (
-          page.totalElements !== null &&
-          page.plans.length === 0 &&
-          pageNumber * Number(size) < page.totalElements
-        ) {
-          throw new ApiFailure(
-            502,
-            "INCOMPLETE_SOURCE_PAGE",
-            "Provider returned an empty page before the reported end",
-          );
-        }
-        const nextPage =
-          page.totalElements !== null
-            ? (pageNumber + 1) * Number(size) >= page.totalElements
-              ? 0
-              : pageNumber + 1
-            : page.plans.length < Number(size)
-              ? 0
-              : pageNumber + 1;
+        const nextPage = nextTreatmentPageNumber(
+          page,
+          pageNumber,
+          Number(size),
+        );
         await client.query("BEGIN");
         const registry = await client.query<{
           registry_revision: string;

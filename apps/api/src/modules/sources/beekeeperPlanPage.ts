@@ -65,8 +65,65 @@ const pageSchema = z
       .array(z.object({}).passthrough())
       .max(MAX_TREATMENT_PAGE_RECORDS),
     totalElements: z.number().int().nonnegative().nullish(),
+    number: z.number().int().nonnegative().nullish(),
+    size: z.number().int().positive().max(MAX_TREATMENT_PAGE_RECORDS).nullish(),
+    numberOfElements: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(MAX_TREATMENT_PAGE_RECORDS)
+      .nullish(),
+    totalPages: z.number().int().nonnegative().nullish(),
+    last: z.boolean().nullish(),
+    pageable: z
+      .object({
+        pageNumber: z.number().int().nonnegative().nullish(),
+        pageSize: z
+          .number()
+          .int()
+          .positive()
+          .max(MAX_TREATMENT_PAGE_RECORDS)
+          .nullish(),
+      })
+      .passthrough()
+      .nullish(),
   })
-  .passthrough();
+  .passthrough()
+  .superRefine((page, ctx) => {
+    // Spring pages may report position and size both at the root and under pageable.
+    // Disagreement cannot be safely resolved by choosing one representation.
+    if (
+      page.number != null &&
+      page.pageable?.pageNumber != null &&
+      page.number !== page.pageable.pageNumber
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["pageable", "pageNumber"],
+        message: "Conflicting page numbers",
+      });
+    }
+    if (
+      page.size != null &&
+      page.pageable?.pageSize != null &&
+      page.size !== page.pageable.pageSize
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["pageable", "pageSize"],
+        message: "Conflicting page sizes",
+      });
+    }
+  });
+
+/** Provider-reported page metadata is optional but must be consistent when present. */
+export type TreatmentPageMetadata = {
+  number: number | null;
+  size: number | null;
+  numberOfElements: number | null;
+  totalPages: number | null;
+  last: boolean | null;
+};
 
 export type BeekeeperPlan = {
   /** Source field/acreage record ID, never the potentially shared plan ID. */
@@ -137,6 +194,7 @@ function beeHazardClass(value: unknown): number | null {
  */
 export function parseBeekeeperPlanPage(input: unknown): {
   totalElements: number | null;
+  pagination: TreatmentPageMetadata;
   plans: BeekeeperPlan[];
 } {
   const page = pageSchema.parse(input);
@@ -156,6 +214,13 @@ export function parseBeekeeperPlanPage(input: unknown): {
   }
   return {
     totalElements: page.totalElements ?? null,
+    pagination: {
+      number: page.number ?? page.pageable?.pageNumber ?? null,
+      size: page.size ?? page.pageable?.pageSize ?? null,
+      numberOfElements: page.numberOfElements ?? null,
+      totalPages: page.totalPages ?? null,
+      last: page.last ?? null,
+    },
     plans: page.content.map((record) => {
       const acreage = objectOrNull(record.beeAcreage);
       const parsedGeometry = geometrySchema.safeParse(acreage?.geo);

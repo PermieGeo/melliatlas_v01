@@ -347,4 +347,60 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     });
     expect(calls).toBe(1);
   });
+  it("does not store a replayed page or advance its cursor when Saturn ignores pageNumber", async () => {
+    await pool.query(
+      "UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb WHERE id='treatment-feed'",
+    );
+    const existing = await pool.query<{ count: string }>(
+      "SELECT count(*) AS count FROM source_observations WHERE observation_type='treatment_plan'",
+    );
+    const response = {
+      ...portalFixture,
+      totalElements: 2,
+      totalPages: 2,
+      number: 0,
+      size: 1,
+      numberOfElements: 1,
+      last: false,
+      pageable: { pageNumber: 0, pageSize: 1 },
+    };
+    const requests: number[] = [];
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async (_source, request) => {
+          const body = JSON.parse(request.body ?? "{}") as {
+            pageNumber: number;
+          };
+          requests.push(body.pageNumber);
+          return {
+            canonicalUrl: sourceFixture.url,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(response)),
+          };
+        },
+      },
+      evidenceTestGate,
+    );
+    const first = await service.syncOnePage();
+    expect(first).toMatchObject({ pageNumber: 0, received: 1, nextPage: 1 });
+    await expect(service.syncOnePage()).rejects.toMatchObject({
+      code: "INCONSISTENT_SOURCE_PAGE",
+      statusCode: 502,
+    });
+    expect(requests).toEqual([0, 1]);
+    const cursor = await pool.query<{ source_cursor: { pageNumber: number } }>(
+      "SELECT source_cursor FROM source_catalog WHERE id='treatment-feed'",
+    );
+    expect(cursor.rows[0].source_cursor.pageNumber).toBe(1);
+    const after = await pool.query<{ count: string }>(
+      "SELECT count(*) AS count FROM source_observations WHERE observation_type='treatment_plan'",
+    );
+    expect(Number(after.rows[0].count) - Number(existing.rows[0].count)).toBe(
+      1,
+    );
+    expect(await service.status()).toMatchObject({
+      latestRun: { status: "failed", errorCode: "INCONSISTENT_SOURCE_PAGE" },
+    });
+  });
 });
