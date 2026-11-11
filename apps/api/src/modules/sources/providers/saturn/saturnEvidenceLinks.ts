@@ -1,7 +1,10 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { SaturnPolygonBatch } from "./saturnMapEvidence.js";
+import type {
+  SaturnPolygonBatch,
+  SaturnPolygonGeometry,
+} from "./saturnMapEvidence.js";
 import {
   SATURN_MAX_ACR_CAPTURE_FILES,
   SATURN_MAX_POLYGON_FEATURES,
@@ -37,6 +40,8 @@ export type SaturnIdentityComparison = {
     featureId: string;
     planId: string;
     geometrySha256: string;
+    /** Bbox containment is a weak plausibility check, not a polygon join. */
+    indexCenterWithinPolygonBounds: boolean;
     relation: `${SaturnIdentityRelation.IdMatchOnly}`;
   }>;
   /** Three matching identifiers are still only a candidate across captures. */
@@ -44,6 +49,7 @@ export type SaturnIdentityComparison = {
     featureId: string;
     planId: string;
     geometrySha256: string;
+    indexCenterWithinPolygonBounds: boolean;
     relation: `${SaturnIdentityRelation.IdAndPlanMatchOnly}`;
   }>;
   indexWithoutPolygonIds: string[];
@@ -59,6 +65,36 @@ export type SaturnIdentityComparison = {
     listedInPolygons: boolean;
   }>;
 };
+
+/** An exterior bounding box includes holes and empty gaps in MultiPolygons. */
+function geometryContainsCenterInBounds(
+  geometry: SaturnPolygonGeometry,
+  longitude: number,
+  latitude: number,
+): boolean {
+  const polygons =
+    geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const polygon of polygons) {
+    for (const ring of polygon) {
+      for (const [x, y] of ring) {
+        west = Math.min(west, x);
+        south = Math.min(south, y);
+        east = Math.max(east, x);
+        north = Math.max(north, y);
+      }
+    }
+  }
+  return (
+    west <= longitude &&
+    longitude <= east &&
+    south <= latitude &&
+    latitude <= north
+  );
+}
 
 /**
  * Compare independently captured map IDs without establishing source joins.
@@ -85,17 +121,30 @@ export function compareSaturnCapturedIdentities(
     throw new Error("Saturn identity comparison exceeds offline limits");
   }
 
-  const indexById = new Map<string, string>();
+  const indexById = new Map<
+    string,
+    { planId: string; centerX: number; centerY: number }
+  >();
   for (const entry of indexEntries) {
     const featureId = providerIdSchema.parse(entry.featureId);
     const planId = providerIdSchema.parse(entry.planId);
     if (indexById.has(featureId)) {
       throw new Error("Duplicate map-index feature ID");
     }
-    indexById.set(featureId, planId);
+    if (!Number.isFinite(entry.centerX) || !Number.isFinite(entry.centerY)) {
+      throw new Error("Invalid map-index center coordinates");
+    }
+    indexById.set(featureId, {
+      planId,
+      centerX: entry.centerX,
+      centerY: entry.centerY,
+    });
   }
 
-  const polygonById = new Map<string, string>();
+  const polygonById = new Map<
+    string,
+    { geometrySha256: string; geometry: SaturnPolygonGeometry }
+  >();
   const geometryGroups = new Map<string, string[]>();
   for (const polygon of polygonBatch.polygons) {
     const featureId = providerIdSchema.parse(polygon.featureId);
@@ -111,7 +160,10 @@ export function compareSaturnCapturedIdentities(
     if (polygonById.has(featureId)) {
       throw new Error("Duplicate polygon feature ID");
     }
-    polygonById.set(featureId, digest);
+    polygonById.set(featureId, {
+      geometrySha256: digest,
+      geometry: polygon.geometry,
+    });
     geometryGroups.set(digest, [
       ...(geometryGroups.get(digest) ?? []),
       featureId,
@@ -120,14 +172,19 @@ export function compareSaturnCapturedIdentities(
 
   const idMatchCandidates: SaturnIdentityComparison["idMatchCandidates"] = [
     ...indexById,
-  ].flatMap(([featureId, planId]) => {
-    const geometrySha256 = polygonById.get(featureId);
-    return geometrySha256
+  ].flatMap(([featureId, indexed]) => {
+    const polygon = polygonById.get(featureId);
+    return polygon
       ? [
           {
             featureId,
-            planId,
-            geometrySha256,
+            planId: indexed.planId,
+            geometrySha256: polygon.geometrySha256,
+            indexCenterWithinPolygonBounds: geometryContainsCenterInBounds(
+              polygon.geometry,
+              indexed.centerX,
+              indexed.centerY,
+            ),
             relation: SaturnIdentityRelation.IdMatchOnly,
           },
         ]
@@ -146,7 +203,7 @@ export function compareSaturnCapturedIdentities(
     const responseId = String(
       minimalAcrIdentitySchema.parse(capture.response).id,
     );
-    const indexedPlanId = indexById.get(requestedFeatureId);
+    const indexedPlanId = indexById.get(requestedFeatureId)?.planId;
     const planRelation =
       indexedPlanId === undefined
         ? SaturnAcrPlanRelation.NotInIndex
@@ -174,12 +231,20 @@ export function compareSaturnCapturedIdentities(
   const threeEndpointCandidates: SaturnIdentityComparison["threeEndpointCandidates"] =
     idMatchCandidates
       .filter((candidate) => acrPlanMatches.has(candidate.featureId))
-      .map(({ featureId, planId, geometrySha256 }) => ({
-        featureId,
-        planId,
-        geometrySha256,
-        relation: SaturnIdentityRelation.IdAndPlanMatchOnly,
-      }));
+      .map(
+        ({
+          featureId,
+          planId,
+          geometrySha256,
+          indexCenterWithinPolygonBounds,
+        }) => ({
+          featureId,
+          planId,
+          geometrySha256,
+          indexCenterWithinPolygonBounds,
+          relation: SaturnIdentityRelation.IdAndPlanMatchOnly,
+        }),
+      );
 
   return {
     idMatchCandidates,

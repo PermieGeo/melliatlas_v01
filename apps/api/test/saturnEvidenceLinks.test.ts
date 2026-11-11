@@ -63,11 +63,13 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
       expect.objectContaining({
         featureId: "238194",
         planId: "1811436",
+        indexCenterWithinPolygonBounds: true,
         relation: "id_match_only",
       }),
       expect.objectContaining({
         featureId: "238195",
         planId: "1811436",
+        indexCenterWithinPolygonBounds: true,
         relation: "id_match_only",
       }),
     ]);
@@ -165,12 +167,14 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         featureId: "1273662",
         planId: "1716288",
         geometrySha256: result.idMatchCandidates[0].geometrySha256,
+        indexCenterWithinPolygonBounds: true,
         relation: "id_and_plan_match_candidate_only",
       },
       {
         featureId: "1273663",
         planId: "1716288",
         geometrySha256: result.idMatchCandidates[1].geometrySha256,
+        indexCenterWithinPolygonBounds: false,
         relation: "id_and_plan_match_candidate_only",
       },
     ]);
@@ -179,6 +183,54 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
         (item) => item.relation === "id_match_only",
       ),
     ).toBe(true);
+  });
+
+  it("flags a matching-ID polygon whose bounds contradict the indexed center", () => {
+    const result = compareSaturnCapturedIdentities(
+      [indexEntry("101", "601")],
+      polygons([polygon("101", otherGeometry)]),
+      [{ requestedFeatureId: "101", response: { id: 601 } }],
+    );
+    expect(result.idMatchCandidates[0]).toMatchObject({
+      featureId: "101",
+      indexCenterWithinPolygonBounds: false,
+      relation: "id_match_only",
+    });
+    expect(result.threeEndpointCandidates[0]).toMatchObject({
+      featureId: "101",
+      indexCenterWithinPolygonBounds: false,
+      relation: "id_and_plan_match_candidate_only",
+    });
+  });
+
+  it("does not confuse bounding-box containment with membership in a polygon hole", () => {
+    const holeGeometry = {
+      type: "Polygon",
+      coordinates: [
+        [
+          [32.3, 54.9],
+          [32.8, 54.9],
+          [32.8, 55.2],
+          [32.3, 55.2],
+          [32.3, 54.9],
+        ],
+        [
+          [32.4, 54.95],
+          [32.6, 54.95],
+          [32.6, 55.1],
+          [32.4, 55.1],
+          [32.4, 54.95],
+        ],
+      ],
+    };
+    const result = compareSaturnCapturedIdentities(
+      [indexEntry("101")],
+      polygons([polygon("101", holeGeometry)]),
+    );
+    expect(result.idMatchCandidates[0].indexCenterWithinPolygonBounds).toBe(
+      true,
+    );
+    expect(result.threeEndpointCandidates).toEqual([]);
   });
 
   it("returns no implied linkage when captures have no overlapping IDs", () => {
@@ -258,6 +310,12 @@ describe("offline Saturn map-index, polygon and ACR identity comparison", () => 
     expect(() =>
       compareSaturnCapturedIdentities([indexEntry("1", "bad")], batch),
     ).toThrow();
+    expect(() =>
+      compareSaturnCapturedIdentities(
+        [{ ...indexEntry("1"), centerX: Number.NaN }],
+        batch,
+      ),
+    ).toThrow("Invalid map-index center coordinates");
     expect(() =>
       compareSaturnCapturedIdentities([], batch, [
         { requestedFeatureId: "1", response: {} },
