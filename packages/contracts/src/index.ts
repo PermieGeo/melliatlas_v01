@@ -140,15 +140,29 @@ export const providerRequestSettingsSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    const regionKey = value.regionContainer ?? value.regionParameter;
+    if (!Object.hasOwn(value.parameters, regionKey)) return;
+    if (!value.regionContainer) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Region parameter cannot be overridden",
+      });
+      return;
+    }
+    const filter = value.parameters[regionKey];
     if (
-      Object.hasOwn(
-        value.parameters,
-        value.regionContainer ?? value.regionParameter,
-      )
+      filter === null ||
+      typeof filter !== "object" ||
+      Array.isArray(filter)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Region field/container cannot be overridden",
+        message: "Region filter container must be an object",
+      });
+    } else if (Object.hasOwn(filter, value.regionParameter)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Region parameter cannot be overridden inside its filter",
       });
     }
   });

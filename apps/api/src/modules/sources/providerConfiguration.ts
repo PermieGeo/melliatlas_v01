@@ -75,7 +75,15 @@ export function buildProviderRequest(
   const parsed = providerRequestSettingsSchema.parse(settings);
   const payload: Record<string, unknown> = { ...parsed.parameters };
   if (parsed.regionContainer) {
+    // Merge bounded operator filters under the provider's container; the region
+    // identity remains separately validated and cannot be overridden there.
+    const filters = parsed.parameters[parsed.regionContainer];
     payload[parsed.regionContainer] = {
+      ...(filters !== null &&
+      typeof filters === "object" &&
+      !Array.isArray(filters)
+        ? filters
+        : {}),
       [parsed.regionParameter]: parsed.regionCode,
     };
   } else {
