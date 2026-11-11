@@ -38,3 +38,23 @@ for (const app of ["web", "admin"]) {
     }
   });
 }
+
+for (const [app, sectionId] of [
+  ["web", "local-viewport-index"],
+  ["admin", "local-beekeeper-collection"],
+]) {
+  test(`${app} describes registered provider regions without a fixed pilot district`, async () => {
+    for (const [locale, regionTerm, districtTerm, obsoleteDistrict] of [
+      ["en", /registered provider region/, /district/, /Yartsevo/i],
+      ["ru", /зарегистрированный регион/, /район/, /Ярцев/i],
+    ]) {
+      const document = await documentFor(app, locale);
+      const section = document.sections.find((entry) => entry.id === sectionId);
+      assert.ok(section);
+      const content = section.paragraphs.join(" ");
+      assert.match(content, regionTerm);
+      assert.match(content, districtTerm);
+      assert.doesNotMatch(content, obsoleteDistrict);
+    }
+  });
+}
