@@ -9,6 +9,7 @@ import { TreatmentIngestionService } from "./modules/sources/treatmentIngestion.
 import { SaturnViewportCollectionService } from "./modules/sources/providers/saturn/index.js";
 import { DistrictCacheRepository } from "./modules/sources/districtCacheRepository.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
+import { createCore } from "./modules/core/index.js";
 import { describeStartupFailure } from "./startupDiagnostics.js";
 
 async function start(): Promise<void> {
@@ -22,15 +23,17 @@ async function start(): Promise<void> {
     const providerConfiguration = new ProviderConfigurationRepository(pool);
     const treatmentFeed = new TreatmentIngestionService(pool);
     const districtCache = new DistrictCacheRepository(pool);
+    const viewportCollection = new SaturnViewportCollectionService(
+      pool,
+      config.SATURN_VIEWPORT_LIVE_ENABLED,
+    );
+    const core = createCore({ weather, saturn: viewportCollection });
     const app = createApp({
       providerConfiguration,
       treatmentFeed,
       districtCache,
-      viewportCollection: new SaturnViewportCollectionService(
-        pool,
-        config.SATURN_VIEWPORT_LIVE_ENABLED,
-      ),
-      inspectLocation: (point) => weather.inspect(point),
+      viewportCollection,
+      inspectLocation: (point) => core.inspectWeather(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {
         await pool.query("SELECT 1");

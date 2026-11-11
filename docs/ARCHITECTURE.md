@@ -48,6 +48,8 @@ Use WGS84 (EPSG:4326) at HTTP boundaries; use PostGIS `geography` for meter-base
 
 The agent is a **server-side bounded workflow**, not a free-running service with direct database or unrestricted browsing access.
 
+The first internal scaffold is [core/contract.md](../apps/api/src/modules/core/contract.md): a validated provider registry and a small sequential DAG runner for trusted, code-defined nodes. Open-Meteo and read-only Saturn viewport-index status are registered without moving their existing transport or source policies. This is not an AI agent, scheduler or beekeeper migration recommender; the graph has no durable runs, parallel execution or active LLM integration. Other source-catalog entries are configuration/metadata until they have a separately verified data adapter.
+
 1. A scheduler selects an approved source or a user asks about a location.
 2. Deterministic tools fetch source content, resolve documented places, retrieve nearby observations and obtain weather/phenology evidence.
 3. A configurable LLM adapter extracts notices into a strict schema or drafts a source-cited explanation. The model receives sanitized, bounded inputs, never secrets or precise private apiary coordinates.

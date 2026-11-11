@@ -4,9 +4,10 @@ This page describes **running code**. Planned behavior is owned by [specificatio
 
 ## Application composition
 
-- `apps/api/src/server.ts` validates environment configuration, opens a PostgreSQL pool, constructs `SourceRepository`, `ProviderConfigurationRepository` and `OpenMeteoAdapter`, and injects them into `createApp`.
+- `apps/api/src/server.ts` validates environment configuration, opens a PostgreSQL pool, constructs `SourceRepository`, `ProviderConfigurationRepository`, the existing Open-Meteo and Saturn services, and the small core provider registry before injecting services into `createApp`.
 - `apps/api/src/app.ts` installs request IDs, Helmet, JSON body limits, global rate limiting, readiness/liveness, two public `/api/v1` routes and local administrator Provider settings GET/PUT. It translates known errors into structured responses.
 - `apps/api/src/modules/weather/openMeteo.ts` calls the fixed Open-Meteo forecast endpoint with a timeout and validates current conditions.
+- `apps/api/src/modules/core/` contains an internal source-capability registry and a sequential, code-defined analysis DAG. Current weather inspection passes through the registry; the Saturn registration reads only persisted viewport-index status. No agent, recommendation job, new HTTP route, or autonomous source access is enabled by this scaffold.
 - `apps/api/src/modules/sources/contracts.ts` declares validated municipal/treatment-source access policy, fetch limits, document/run and text-only notice-candidate schemas. `destinationPolicy.ts` performs strict offline approval, HTTPS host and path-prefix preflight checks. `ApprovedSourceRegistry.getApproved()` loads eligible approved municipal or treatment-source registrations; `MunicipalSourceRegistry` remains a compatibility alias. `httpFetcher.ts` implements restricted DNS/TLS/redirect handling and is called only by the operator-triggered ingestion service.
 - `apps/api/src/db/` owns the pool, migration runner and public source-catalog SQL. Migrations `001`–`002` establish the PostGIS/evidence schema and reviewed-access history. Immutable historical migration `003_saturn_api_configuration.sql` creates an inert legacy candidate; `004_provider_connection.sql` creates the provider-neutral `treatment-feed`; `005_treatment_source_approval.sql` allows explicit complete treatment-source review without approving existing candidates. `providerConfiguration.ts` owns versioned reads/edits, access revocation on edit, and the pure `buildProviderRequest` function. The S3a service writes ingestion runs, immutable documents and pending observations; the S3b region worker reuses those tables and persists scan progress in the existing source cursor.
 - `packages/contracts/src/index.ts` holds Zod schemas for coordinates, weather/provenance, catalog entries, operator Provider settings and error responses.
@@ -16,6 +17,7 @@ This page describes **running code**. Planned behavior is owned by [specificatio
 
 | Unit                               | Contract                                                           |
 | ---------------------------------- | ------------------------------------------------------------------ |
+| Backend core scaffold              | [core/contract.md](../apps/api/src/modules/core/contract.md)       |
 | Backend weather adapter            | [weather/contract.md](../apps/api/src/modules/weather/contract.md) |
 | Backend source policy groundwork   | [sources/contract.md](../apps/api/src/modules/sources/contract.md) |
 | Backend persistence infrastructure | [db/contract.md](../apps/api/src/db/contract.md)                   |
@@ -24,7 +26,7 @@ This page describes **running code**. Planned behavior is owned by [specificatio
 | Browser map presentation           | [components/contract.md](../apps/web/src/components/contract.md)   |
 | Public wire schemas                | [contracts/contract.md](../packages/contracts/contract.md)         |
 
-The backend remains a single Node.js deployment. The source-attributed geospatial notice endpoint exists; full identity management and AI-agent orchestration remain future modules. Bounded optional nightly region scans use the existing backend and PostGIS. Local administrator settings are deliberately token-free and served only on the loopback interface; an internet-facing client must enforce a separate access boundary. The architecture is described in [ARCHITECTURE](ARCHITECTURE.md).
+The backend remains a single Node.js deployment. The source-attributed geospatial notice endpoint exists; full identity management and production AI-agent orchestration remain future work. The new internal graph runner is only a bounded foundation. Bounded optional nightly region scans use the existing backend and PostGIS. Local administrator settings are deliberately token-free and served only on the loopback interface; an internet-facing client must enforce a separate access boundary. The architecture is described in [ARCHITECTURE](ARCHITECTURE.md).
 
 ## Restricted provider retrieval (SRC-01 / S2)
 
