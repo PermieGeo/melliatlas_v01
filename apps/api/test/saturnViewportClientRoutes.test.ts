@@ -6,6 +6,7 @@ import type { ViewportCollectionSelection } from "@melliatlas/contracts";
 
 const origin = "http://127.0.0.1:5173";
 const selection: ViewportCollectionSelection = {
+  regionCode: "55",
   districtId: 1477,
   bbox: { west: 32.41, south: 54.93, east: 33.03, north: 55.21 },
   fromDate: "2026-08-01",
@@ -17,6 +18,7 @@ function setup(enabled = true) {
   const fetchNext = vi.fn(async () => ({ enabled, progress: null }));
   const history = vi.fn(async () => ({ entries: [] }));
   const districts = vi.fn(async () => ({
+    regionCode: "55",
     enabled,
     districts: [
       {
@@ -27,6 +29,9 @@ function setup(enabled = true) {
       },
     ],
     retrievedAt: "2026-11-07T00:00:00.000Z",
+  }));
+  const regions = vi.fn(async () => ({
+    regions: [{ code: "55", name: "Smolensk" }],
   }));
   const refreshDistricts = vi.fn(async () => districts());
   const districtPoints = vi.fn(async () => ({ centers: [], totalKnown: 0 }));
@@ -43,6 +48,7 @@ function setup(enabled = true) {
       fetchNext,
       history,
       districts,
+      regions,
       refreshDistricts,
       districtPoints,
       requestLog,
@@ -175,7 +181,7 @@ describe("district catalog and stored-index browser boundaries", () => {
         await request(app)
           .post("/api/v1/map/saturn-viewport/districts")
           .set("Origin", origin)
-          .send({})
+          .send({ regionCode: "55" })
       ).status,
     ).toBe(200);
     expect(
@@ -183,11 +189,11 @@ describe("district catalog and stored-index browser boundaries", () => {
         await request(app)
           .post("/api/v1/map/saturn-viewport/district-points")
           .set("Origin", origin)
-          .send({ districtId: 1477 })
+          .send({ regionCode: "55", districtId: 1477 })
       ).status,
     ).toBe(200);
     expect(districts).toHaveBeenCalledTimes(1);
-    expect(districtPoints).toHaveBeenCalledWith(1477);
+    expect(districtPoints).toHaveBeenCalledWith("55", 1477);
     expect(refreshDistricts).not.toHaveBeenCalled();
   });
 
@@ -198,7 +204,7 @@ describe("district catalog and stored-index browser boundaries", () => {
         await request(app)
           .post("/api/v1/map/saturn-viewport/districts/refresh")
           .set("Origin", "https://remote.invalid")
-          .send({})
+          .send({ regionCode: "55" })
       ).status,
     ).toBe(403);
     expect(refreshDistricts).not.toHaveBeenCalled();
@@ -207,10 +213,10 @@ describe("district catalog and stored-index browser boundaries", () => {
         await request(app)
           .post("/api/v1/map/saturn-viewport/districts/refresh")
           .set("Origin", origin)
-          .send({})
+          .send({ regionCode: "55" })
       ).status,
     ).toBe(200);
-    expect(refreshDistricts).toHaveBeenCalledWith("web");
+    expect(refreshDistricts).toHaveBeenCalledWith("55", "web");
   });
 
   it("restricts saved fields and request audit to the operator boundary", async () => {

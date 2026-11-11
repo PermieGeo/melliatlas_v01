@@ -9,7 +9,6 @@ import {
   SATURN_MIN_LATITUDE,
   SATURN_MIN_INDEX_FIELD_NAME_LENGTH,
   SATURN_MIN_LONGITUDE,
-  SATURN_SUBJECT_CODE,
   SATURN_VIEWPORT_PAGE_SIZE,
 } from "./sourceProfile.js";
 
@@ -33,7 +32,7 @@ const viewportFilterSchema = z
   .object({
     leftTop: positionSchema,
     rightDown: positionSchema,
-    subject: z.literal(SATURN_SUBJECT_CODE),
+    subject: z.string().regex(/^[1-9][0-9]{0,5}$/),
     district: z.string().regex(/^[1-9][0-9]{0,9}$/),
     startDateUpdateMap: timestampSchema,
     endDateUpdateMap: timestampSchema,
@@ -118,6 +117,7 @@ export type SaturnViewportPage = {
 
 export type SaturnViewportSelection = {
   districts: unknown;
+  regionCode: string;
   districtId: number;
   bbox: { west: number; south: number; east: number; north: number };
   fromDate: string;
@@ -140,7 +140,7 @@ function utcMidnight(date: string): string {
 }
 
 /**
- * Construct only the observed Smolensk map-index query shape for offline validation.
+ * Construct the observed Saturn map-index query shape for offline validation.
  * The dates select the provider's `UpdateMap` window, not verified treatment dates.
  * The district directory verifies ID membership, not its administrative boundary.
  * No HTTP request, coverage claim, or ingestion is performed by this function.
@@ -153,7 +153,7 @@ export function buildSaturnViewportQuery(
     !Number.isSafeInteger(options.districtId) ||
     !districts.some((district) => district.id === options.districtId)
   ) {
-    throw new Error("Unknown Saturn district for subject 55");
+    throw new Error("Unknown Saturn district for selected region");
   }
   const { west, east, north, south } = options.bbox;
   if (!(west < east && south < north)) {
@@ -168,7 +168,7 @@ export function buildSaturnViewportQuery(
     filter: {
       leftTop: { longitude: west, latitude: north },
       rightDown: { longitude: east, latitude: south },
-      subject: SATURN_SUBJECT_CODE,
+      subject: options.regionCode,
       district: String(options.districtId),
       startDateUpdateMap,
       endDateUpdateMap,

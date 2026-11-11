@@ -205,9 +205,11 @@ test("local district pilot loads only after an explicit beekeeper click", async 
   await page.route("**/api/v1/map/saturn-viewport/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/next")) fetches++;
-    const payload =
-      path.endsWith("/districts") || path.endsWith("/districts/refresh")
+    const payload = path.endsWith("/regions")
+      ? { regions: [{ code: "55", name: "Смоленская область" }] }
+      : path.endsWith("/districts") || path.endsWith("/districts/refresh")
         ? {
+            regionCode: "55",
             enabled: true,
             districts: [
               {
@@ -230,7 +232,7 @@ test("local district pilot loads only after an explicit beekeeper click", async 
   await page.goto("/");
   expect(fetches).toBe(0);
   await page
-    .getByRole("combobox", { name: "Район Смоленской области" })
+    .getByRole("combobox", { name: "Район выбранного региона" })
     .selectOption("1477");
   expect(fetches).toBe(0);
   await expect(

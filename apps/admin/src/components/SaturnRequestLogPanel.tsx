@@ -80,7 +80,7 @@ export function SaturnRequestLogPanel({ locale }: { locale: Locale }) {
               <p className="break-all text-xs text-slate-600">
                 {text("requestLogEndpoint")}: https://bee-saturn.ru
                 {entry.action === "district_directory"
-                  ? "/backend/beemaster/district/55"
+                  ? `/backend/beemaster/district/${entry.regionCode ?? "?"}`
                   : "/backend/beemaster/query"}
               </p>
               <p>

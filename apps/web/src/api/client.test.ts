@@ -75,6 +75,7 @@ it("sends an explicit bounded viewport index request through the non-operator cl
   );
   vi.stubGlobal("fetch", fetcher);
   const selected = {
+    regionCode: "55",
     districtId: 1477 as const,
     bbox: { west: 32.41, south: 54.93, east: 33.03, north: 55.21 },
     fromDate: "2026-08-01",

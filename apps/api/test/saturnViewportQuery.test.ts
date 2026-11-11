@@ -31,6 +31,7 @@ const districts = [
 ];
 const selection = {
   districts,
+  regionCode: "55",
   districtId: 1477,
   bbox: {
     west: 32.409804730540266,

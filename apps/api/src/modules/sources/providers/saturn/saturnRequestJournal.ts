@@ -20,6 +20,7 @@ export type RequestOutcome =
 export type RequestAttempt = {
   action: `${SaturnRequestAction}`;
   initiator: `${SaturnRequestInitiator}`;
+  regionCode?: string;
   districtId?: number;
   requestHash?: string;
   pageNumber?: number;
@@ -33,13 +34,14 @@ export class SaturnRequestJournal {
   async start(attempt: RequestAttempt): Promise<string> {
     const result = await this.db.query<{ id: string }>(
       `INSERT INTO source_saturn_request_log
-       (source_id, action, initiator, district_provider_id, request_hash, page_number, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (source_id, action, initiator, subject_code, district_provider_id, request_hash, page_number, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id::text`,
       [
         SATURN_SOURCE_ID,
         attempt.action,
         attempt.initiator,
+        attempt.regionCode ?? null,
         attempt.districtId ?? null,
         attempt.requestHash ?? null,
         attempt.pageNumber ?? null,
@@ -78,6 +80,7 @@ export class SaturnRequestJournal {
       id: string;
       action: RequestAttempt["action"];
       initiator: RequestAttempt["initiator"];
+      subject_code: string | null;
       district_provider_id: number | null;
       request_hash: string | null;
       page_number: number | null;
@@ -87,7 +90,7 @@ export class SaturnRequestJournal {
       started_at: Date;
       finished_at: Date | null;
     }>(
-      `SELECT id::text, action, initiator, district_provider_id, request_hash,
+      `SELECT id::text, action, initiator, subject_code, district_provider_id, request_hash,
               page_number, status, received_count, error_code, started_at, finished_at
        FROM source_saturn_request_log WHERE source_id=$1
        ORDER BY started_at DESC, id DESC LIMIT $2`,
@@ -98,6 +101,7 @@ export class SaturnRequestJournal {
         id: row.id,
         action: row.action,
         initiator: row.initiator,
+        regionCode: row.subject_code,
         districtId: row.district_provider_id,
         requestHash: row.request_hash?.trim() ?? null,
         pageNumber: row.page_number,

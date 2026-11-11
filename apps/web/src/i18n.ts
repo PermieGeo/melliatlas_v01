@@ -4,16 +4,17 @@ export const messages = {
     districtCatalogUpdated: "Справочник районов сохранён",
     districtCatalogCount: "Районов в списке",
     districtCatalogMissing:
-      "Полный справочник пока не загружен: доступен Ярцевский район. Нажмите «Получить все районы».",
+      "Для выбранного региона справочник районов пока не загружен. Нажмите «Получить все районы».",
     districtArchiveCount: "Уникальных центров полей в общем кэше района",
     districtArchiveNote:
       "Синие точки показывают ранее сохранённый индекс, независимо от выбранных дат и квадрата. Это не сведения о выполненных обработках.",
     districtPanelTitle: "Загрузить данные по району",
     districtSteps:
       "1. Один раз получите справочник районов. 2. Выберите район и нужную часть карты. 3. Укажите период до 124 дней и нажмите «Получить ещё до 10 записей».",
-    districtSelect: "Район Смоленской области",
+    districtRegion: "Регион источника",
+    districtRegionChoose: "Выберите регион…",
+    districtSelect: "Район выбранного региона",
     districtChoose: "Выберите район…",
-    districtYartsevo: "Ярцевский район",
     districtFrom: "Обновления карты с",
     districtTo: "Обновления карты по",
     districtCheck: "Проверить кэш",
@@ -22,7 +23,7 @@ export const messages = {
     districtHint:
       "Запрос касается только видимой части карты. За одно нажатие загружается одна страница (до 10 записей). Повторное нажатие продолжит загрузку. Это индекс точек полей, не полигоны и не подтверждённые обработки.",
     districtBoundsHint:
-      "Выберите район и приблизьте карту: доступен квадрат не больше 1° × 1° внутри пилотной области, период до 124 дней.",
+      "Выберите регион и район, приблизьте карту: квадрат не больше 1° × 1°, период до 124 дней.",
     districtDisabled:
       "Загрузка выключена на сервере. Администратор должен разрешить пилотный доступ к источнику.",
     districtLocalOnly:
@@ -122,16 +123,17 @@ export const messages = {
     districtCatalogUpdated: "District directory saved",
     districtCatalogCount: "Districts in selector",
     districtCatalogMissing:
-      "The full directory is not downloaded yet; only Yartsevo is available. Fetch all districts first.",
+      "The district directory for this region is not downloaded yet. Fetch the directory first.",
     districtArchiveCount: "Unique cached field centers in this district",
     districtArchiveNote:
       "Blue markers show previously cached index points across all saved filters. They are not evidence of pesticide application.",
     districtPanelTitle: "Load district data",
     districtSteps:
       "1. Fetch the district directory once. 2. Choose a district and date range. 3. Zoom in and load the next batch of up to 10 fields.",
-    districtSelect: "Smolensk Oblast district",
+    districtRegion: "Provider region",
+    districtRegionChoose: "Select a region…",
+    districtSelect: "District in selected region",
     districtChoose: "Select a district…",
-    districtYartsevo: "Yartsevo District",
     districtFrom: "Map updates from",
     districtTo: "Map updates through",
     districtCheck: "Check cache",
@@ -140,7 +142,7 @@ export const messages = {
     districtHint:
       "Only the visible map rectangle is requested. Each click loads one page (up to 10 index entries); another click resumes. These are field centers, not polygons or confirmed treatments.",
     districtBoundsHint:
-      "Choose a district and zoom in: the maximum rectangle is 1° × 1° within the pilot region, and the period is at most 124 days.",
+      "Choose a region and district, then zoom in: the maximum rectangle is 1° × 1°, and the period is at most 124 days.",
     districtDisabled:
       "Server-side collection is disabled. An operator must enable authorized pilot access.",
     districtLocalOnly:

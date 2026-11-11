@@ -6,11 +6,10 @@ import {
 import { SOURCE_REQUEST_GAP_MS } from "../../providerRequestThrottle.js";
 
 export const SATURN_SOURCE_ID = "treatment-feed";
-export const SATURN_SUBJECT_CODE = "55";
 export const SATURN_HOST = "bee-saturn.ru";
 export const SATURN_ORIGIN = `https://${SATURN_HOST}`;
 export const SATURN_VIEWPORT_PATH = "/backend/beemaster/query";
-export const SATURN_DISTRICT_PATH = `/backend/beemaster/district/${SATURN_SUBJECT_CODE}`;
+export const SATURN_DISTRICT_PATH_PREFIX = "/backend/beemaster/district/";
 export const SATURN_LEGACY_TREATMENT_PATH = "/backend/beemaster/planapplybees";
 export const SATURN_CAPTURE_POLYGON_PATH =
   "/backend/beemaster/geojson-polygons";
@@ -57,10 +56,16 @@ export const SATURN_MAX_POLYGONS_PER_MULTIPOLYGON = 100;
 export const SATURN_POLYGON_JSONP_MAX_BYTES = 8 * 1024 * 1024;
 export const SATURN_MAX_ACR_CAPTURE_FILES = 100;
 export const SATURN_MAX_ACR_PRODUCTS = 500;
-export const SATURN_VERIFIED_FALLBACK_DISTRICT_ID = 1477;
 export const SATURN_LEGACY_TREATMENT_URL = `${SATURN_ORIGIN}${SATURN_LEGACY_TREATMENT_PATH}`;
 export const SATURN_VIEWPORT_URL = `${SATURN_ORIGIN}${SATURN_VIEWPORT_PATH}`;
-export const SATURN_DISTRICT_URL = `${SATURN_ORIGIN}${SATURN_DISTRICT_PATH}`;
+export function saturnDistrictPath(regionCode: string): string {
+  if (!/^[1-9][0-9]{0,5}$/.test(regionCode))
+    throw new Error("Invalid Saturn region code");
+  return `${SATURN_DISTRICT_PATH_PREFIX}${regionCode}`;
+}
+export function saturnDistrictUrl(regionCode: string): string {
+  return `${SATURN_ORIGIN}${saturnDistrictPath(regionCode)}`;
+}
 // Observed capture endpoints are not registered for automatic retrieval.
 export const SATURN_CAPTURE_POLYGON_URL = `${SATURN_ORIGIN}${SATURN_CAPTURE_POLYGON_PATH}`;
 export const SATURN_CAPTURE_ACR_URL_PREFIX = `${SATURN_ORIGIN}${SATURN_CAPTURE_ACR_PATH_PREFIX}`;
@@ -118,7 +123,7 @@ export enum SaturnBboxRelation {
   Disjoint = "disjoint",
 }
 
-/** Keep one strict outbound policy for Saturn's two observed JSON endpoints. */
+/** Keep the outbound policy fixed to the exact validated endpoint path. */
 export function saturnJsonSource(name: string, path: string): SourceDefinition {
   return sourceDefinitionSchema.parse({
     id: SATURN_SOURCE_ID,

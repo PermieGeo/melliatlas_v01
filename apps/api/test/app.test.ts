@@ -378,6 +378,7 @@ it("district cache is operator-only and cannot refresh before the upstream contr
 
 describe("operator-only viewport route", () => {
   const selection = {
+    regionCode: "55",
     districtId: 1477,
     bbox: {
       west: 32.409804730540266,

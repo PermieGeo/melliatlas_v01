@@ -21,6 +21,7 @@ describe("Saturn request audit writes and bounded reads", () => {
               id: "10",
               action: "viewport_page",
               initiator: "web",
+              subject_code: "55",
               district_provider_id: 1477,
               request_hash: "a".repeat(64),
               page_number: 0,
@@ -38,6 +39,7 @@ describe("Saturn request audit writes and bounded reads", () => {
     const id = await journal.start({
       action: SaturnRequestAction.ViewportPage,
       initiator: SaturnRequestInitiator.Web,
+      regionCode: "55",
       districtId: 1477,
       requestHash: "a".repeat(64),
       pageNumber: 0,
@@ -49,6 +51,7 @@ describe("Saturn request audit writes and bounded reads", () => {
         SATURN_SOURCE_ID,
         SaturnRequestAction.ViewportPage,
         SaturnRequestInitiator.Web,
+        "55",
         1477,
         "a".repeat(64),
         0,

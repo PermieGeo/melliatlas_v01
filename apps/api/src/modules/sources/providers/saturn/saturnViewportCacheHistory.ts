@@ -62,6 +62,7 @@ export async function listViewportCacheHistory(
       requestHash: row.request_hash.trim(),
       sourceRevision: row.source_revision,
       sourceRevisionCurrent: row.source_revision_current,
+      regionCode: query.filter.subject,
       districtId: row.district_provider_id,
       bbox: {
         west: query.filter.leftTop.longitude,

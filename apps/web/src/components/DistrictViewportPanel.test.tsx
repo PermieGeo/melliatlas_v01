@@ -14,14 +14,26 @@ import type {
   ViewportCollectionResult,
 } from "@melliatlas/contracts";
 
-const { status, next, directory, refreshDirectory, points } = vi.hoisted(
-  () => ({
+const { status, next, regions, directory, refreshDirectory, points } =
+  vi.hoisted(() => ({
+    regions: vi.fn(async () => ({
+      regions: [{ code: "55", name: "Смоленская область" }],
+    })),
     directory: vi.fn(async (): Promise<SaturnDistrictCatalogResponse> => ({
+      regionCode: "55",
       enabled: true,
       retrievedAt: null,
-      districts: [],
+      districts: [
+        {
+          id: 1477,
+          name: "Ярцевский район",
+          latitude: 55.06,
+          longitude: 32.68,
+        },
+      ],
     })),
     refreshDirectory: vi.fn(async () => ({
+      regionCode: "55",
       enabled: true,
       retrievedAt: "2026-11-07T00:00:00.000Z",
       districts: [
@@ -63,12 +75,12 @@ const { status, next, directory, refreshDirectory, points } = vi.hoisted(
         { featureId: "55", planId: "60", centerX: 32.6, centerY: 55.1 },
       ],
     })),
-  }),
-);
+  }));
 vi.mock("../api/client", () => ({
   loadDistrictViewportProgress: status,
   fetchDistrictViewportPage: next,
   loadSaturnDistrictCatalog: directory,
+  loadSaturnRegions: regions,
   refreshSaturnDistrictCatalog: refreshDirectory,
   loadSavedDistrictPoints: points,
 }));
@@ -78,7 +90,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it("shows setup guidance and never collects on render, selecting a district or moving a map", () => {
+it("shows setup guidance and never collects on render, selecting a district or moving a map", async () => {
   const onFocusDistrict = vi.fn();
   const { rerender } = render(
     <DistrictViewportPanel
@@ -90,8 +102,9 @@ it("shows setup guidance and never collects on render, selecting a district or m
   );
   expect(screen.getByText(/^1\.\s+.*справочник районов/)).toBeTruthy();
   expect(next).not.toHaveBeenCalled();
+  await screen.findByRole("option", { name: "Ярцевский район" });
   fireEvent.change(
-    screen.getByRole("combobox", { name: "Район Смоленской области" }),
+    screen.getByRole("combobox", { name: "Район выбранного региона" }),
     { target: { value: "1477" } },
   );
   expect(onFocusDistrict).toHaveBeenCalledWith({ lat: 55.06, lon: 32.68 });
@@ -116,8 +129,9 @@ it("loads only one page on explicit click and reports separate index progress", 
       onCachedCentersChange={onCenters}
     />,
   );
+  await screen.findByRole("option", { name: "Ярцевский район" });
   fireEvent.change(
-    screen.getByRole("combobox", { name: "Район Смоленской области" }),
+    screen.getByRole("combobox", { name: "Район выбранного региона" }),
     { target: { value: "1477" } },
   );
   fireEvent.click(screen.getByRole("button", { name: "Проверить кэш" }));
@@ -146,7 +160,7 @@ it("loads only one page on explicit click and reports separate index progress", 
   });
 });
 
-it("blocks oversized viewports and invalid dates before sending a request", () => {
+it("blocks oversized viewports and invalid dates before sending a request", async () => {
   render(
     <DistrictViewportPanel
       locale="en"
@@ -155,8 +169,9 @@ it("blocks oversized viewports and invalid dates before sending a request", () =
       onCachedCentersChange={() => {}}
     />,
   );
+  await screen.findByRole("option", { name: "Ярцевский район" });
   fireEvent.change(
-    screen.getByRole("combobox", { name: "Smolensk Oblast district" }),
+    screen.getByRole("combobox", { name: "District in selected region" }),
     { target: { value: "1477" } },
   );
   expect(
@@ -169,7 +184,7 @@ it("blocks oversized viewports and invalid dates before sending a request", () =
   expect(next).not.toHaveBeenCalled();
 });
 
-it("explains the 124-day limit and offers a bounded range instead of silently disabling collection", () => {
+it("explains the 124-day limit and offers a bounded range instead of silently disabling collection", async () => {
   render(
     <DistrictViewportPanel
       locale="ru"
@@ -178,8 +193,9 @@ it("explains the 124-day limit and offers a bounded range instead of silently di
       onCachedCentersChange={() => {}}
     />,
   );
+  await screen.findByRole("option", { name: "Ярцевский район" });
   fireEvent.change(
-    screen.getByRole("combobox", { name: "Район Смоленской области" }),
+    screen.getByRole("combobox", { name: "Район выбранного региона" }),
     { target: { value: "1477" } },
   );
   fireEvent.change(screen.getByLabelText("Обновления карты с"), {
@@ -233,8 +249,9 @@ it("inspects the exact cached viewport after selection without triggering provid
       onCachedCentersChange={onCenters}
     />,
   );
+  await screen.findByRole("option", { name: "Ярцевский район" });
   fireEvent.change(
-    screen.getByRole("combobox", { name: "Район Смоленской области" }),
+    screen.getByRole("combobox", { name: "Район выбранного региона" }),
     { target: { value: "1477" } },
   );
   await waitFor(() => expect(status).toHaveBeenCalledTimes(1));
@@ -257,13 +274,14 @@ it("loads the provider district directory explicitly and supports selection of a
     />,
   );
   expect(refreshDirectory).not.toHaveBeenCalled();
+  await screen.findByRole("option", { name: "Ярцевский район" });
   fireEvent.click(
     screen.getByRole("button", { name: "Получить все районы из Сатурна" }),
   );
   await waitFor(() => expect(refreshDirectory).toHaveBeenCalledTimes(1));
   await screen.findByRole("option", { name: "Город Смоленск" });
   fireEvent.change(
-    screen.getByRole("combobox", { name: "Район Смоленской области" }),
+    screen.getByRole("combobox", { name: "Район выбранного региона" }),
     { target: { value: "2670" } },
   );
   expect(focus).toHaveBeenCalledWith({ lat: 54.78, lon: 32.05 });
@@ -286,13 +304,19 @@ it("keeps an explicitly refreshed directory when an earlier cached read finishes
       onCachedCentersChange={() => {}}
     />,
   );
+  await waitFor(() => expect(directory).toHaveBeenCalledTimes(1));
   fireEvent.click(
     screen.getByRole("button", { name: "Получить все районы из Сатурна" }),
   );
   await screen.findByRole("option", { name: "Город Смоленск" });
   expect(screen.getByText(/Районов в списке: 2/)).toBeTruthy();
   await act(async () => {
-    resolveOld?.({ enabled: true, retrievedAt: null, districts: [] });
+    resolveOld?.({
+      regionCode: "55",
+      enabled: true,
+      retrievedAt: null,
+      districts: [],
+    });
   });
   expect(screen.getByRole("option", { name: "Город Смоленск" })).toBeTruthy();
   expect(screen.getByText(/Районов в списке: 2/)).toBeTruthy();
@@ -301,6 +325,7 @@ it("keeps an explicitly refreshed directory when an earlier cached read finishes
 
 it("renders a previously persisted district catalog without fetching Saturn", async () => {
   directory.mockResolvedValueOnce({
+    regionCode: "55",
     enabled: true,
     retrievedAt: "2026-11-07T00:00:00.000Z",
     districts: [
@@ -319,5 +344,50 @@ it("renders a previously persisted district catalog without fetching Saturn", as
   await screen.findByRole("option", { name: "Город Смоленск" });
   expect(screen.getByText(/Районов в списке: 2/)).toBeTruthy();
   expect(refreshDirectory).not.toHaveBeenCalled();
+  expect(next).not.toHaveBeenCalled();
+});
+
+it("clears the old district and cached centers when switching registered regions", async () => {
+  regions.mockResolvedValueOnce({
+    regions: [
+      { code: "55", name: "Смоленская область" },
+      { code: "77", name: "Another region" },
+    ],
+  });
+  const onCenters = vi.fn();
+  render(
+    <DistrictViewportPanel
+      locale="ru"
+      viewport={bbox}
+      onFocusDistrict={() => {}}
+      onCachedCentersChange={onCenters}
+    />,
+  );
+  await screen.findByRole("option", { name: "Ярцевский район" });
+  fireEvent.change(
+    screen.getByRole("combobox", { name: "Район выбранного региона" }),
+    { target: { value: "1477" } },
+  );
+  await waitFor(() => expect(points).toHaveBeenCalledWith("55", 1477));
+  directory.mockResolvedValueOnce({
+    regionCode: "77",
+    enabled: true,
+    retrievedAt: null,
+    districts: [
+      { id: 3000, name: "Other district", latitude: 40, longitude: 60 },
+    ],
+  });
+  fireEvent.change(screen.getByRole("combobox", { name: "Регион источника" }), {
+    target: { value: "77" },
+  });
+  await screen.findByRole("option", { name: "Other district" });
+  expect(
+    (
+      screen.getByRole("combobox", {
+        name: "Район выбранного региона",
+      }) as HTMLSelectElement
+    ).value,
+  ).toBe("");
+  expect(onCenters).toHaveBeenLastCalledWith([]);
   expect(next).not.toHaveBeenCalled();
 });

@@ -12,6 +12,7 @@
     "test:db": "vitest run integration/",
     "db:migrate": "tsx src/db/migrate.ts",
     "provider:seed": "tsx src/db/seedProvider.ts",
+    "saturn:regions:seed": "tsx src/db/seedSaturnRegions.ts",
     "evidence:saturn": "node --import tsx src/modules/sources/providers/saturn/saturnCaptureCli.ts",
     "demo:seed": "tsx src/db/seedDemo.ts"
   },

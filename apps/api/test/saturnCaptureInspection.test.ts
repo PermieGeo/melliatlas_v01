@@ -17,6 +17,7 @@ import { buildSaturnViewportQuery } from "../src/modules/sources/providers/satur
 
 const callback = "capturedCallback";
 const queryRequest = buildSaturnViewportQuery({
+  regionCode: "55",
   districts: [{ id: 1477, name: "Test district", latitude: 55, longitude: 32 }],
   districtId: 1477,
   bbox: { west: 32, south: 54, east: 33, north: 55 },

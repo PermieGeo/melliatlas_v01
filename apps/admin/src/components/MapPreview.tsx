@@ -3,6 +3,7 @@ import { useState } from "react";
 import { MapContainer, Polygon, TileLayer } from "react-leaflet";
 import { t, type Locale } from "../i18n";
 import { PreviewFieldDetails } from "./PreviewFieldDetails";
+import mapDefaults from "../../config/map-defaults.json";
 
 /** Render source-derived geometry and keep the selected field in a persistent sidebar. */
 export function MapPreview({
@@ -26,8 +27,8 @@ export function MapPreview({
       <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           <MapContainer
-            center={[54.782, 32.045]}
-            zoom={8}
+            center={[mapDefaults.lat, mapDefaults.lon]}
+            zoom={mapDefaults.zoom}
             className="melliatlas-map"
             aria-label={t(locale, "map")}
           >

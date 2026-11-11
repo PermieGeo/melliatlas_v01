@@ -3,9 +3,11 @@ import { Router, type RequestHandler } from "express";
 import { z } from "zod";
 import {
   viewportCollectionSelectionSchema,
+  saturnRegionCodeSchema,
   type ViewportCollectionSelection,
   type ViewportCollectionResult,
   type SaturnDistrictCatalogResponse,
+  type SaturnRegionCatalogResponse,
   type SaturnDistrictPointsResponse,
 } from "@melliatlas/contracts";
 import { ApiFailure } from "../../../../lib/errors.js";
@@ -26,11 +28,16 @@ export type ClientViewportActions = {
     selection: ViewportCollectionSelection,
     initiator?: `${SaturnRequestInitiator}`,
   ): Promise<ViewportCollectionResult>;
-  districts?(): Promise<SaturnDistrictCatalogResponse>;
+  regions?(): Promise<SaturnRegionCatalogResponse>;
+  districts?(regionCode: string): Promise<SaturnDistrictCatalogResponse>;
   refreshDistricts?(
+    regionCode: string,
     initiator?: `${SaturnRequestInitiator}`,
   ): Promise<SaturnDistrictCatalogResponse>;
-  districtPoints?(districtId: number): Promise<SaturnDistrictPointsResponse>;
+  districtPoints?(
+    regionCode: string,
+    districtId: number,
+  ): Promise<SaturnDistrictPointsResponse>;
 };
 
 /** Local-only diagnostic access; a browser Origin is not a production authentication factor. */
@@ -68,7 +75,23 @@ export function createSaturnViewportClientRouter(
 ): Router {
   const router = Router();
   router.use(requireLocalBeekeeper);
-  router.post("/districts", async (_req, res, next) => {
+  router.post("/regions", async (_req, res, next) => {
+    if (!service?.regions)
+      return next(
+        new ApiFailure(
+          503,
+          "VIEWPORT_COLLECTION_UNAVAILABLE",
+          "Region catalog unavailable",
+        ),
+      );
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await service.regions());
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post("/districts", async (req, res, next) => {
     if (!service?.districts)
       return next(
         new ApiFailure(
@@ -77,14 +100,23 @@ export function createSaturnViewportClientRouter(
           "District catalog unavailable",
         ),
       );
+    const region = saturnRegionCodeSchema.safeParse(req.body?.regionCode);
+    if (!region.success)
+      return next(
+        new ApiFailure(
+          400,
+          "INVALID_VIEWPORT_SELECTION",
+          "Invalid region code",
+        ),
+      );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.districts());
+      res.json(await service.districts(region.data));
     } catch (error) {
       next(error);
     }
   });
-  router.post("/districts/refresh", async (_req, res, next) => {
+  router.post("/districts/refresh", async (req, res, next) => {
     if (!service?.refreshDistricts)
       return next(
         new ApiFailure(
@@ -93,9 +125,20 @@ export function createSaturnViewportClientRouter(
           "District catalog unavailable",
         ),
       );
+    const region = saturnRegionCodeSchema.safeParse(req.body?.regionCode);
+    if (!region.success)
+      return next(
+        new ApiFailure(
+          400,
+          "INVALID_VIEWPORT_SELECTION",
+          "Invalid region code",
+        ),
+      );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.refreshDistricts(SaturnRequestInitiator.Web));
+      res.json(
+        await service.refreshDistricts(region.data, SaturnRequestInitiator.Web),
+      );
     } catch (error) {
       next(error);
     }
@@ -110,7 +153,10 @@ export function createSaturnViewportClientRouter(
         ),
       );
     const parsed = z
-      .object({ districtId: z.number().int().positive().safe() })
+      .object({
+        regionCode: saturnRegionCodeSchema,
+        districtId: z.number().int().positive().safe(),
+      })
       .strict()
       .safeParse(req.body);
     if (!parsed.success)
@@ -123,7 +169,12 @@ export function createSaturnViewportClientRouter(
       );
     try {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await service.districtPoints(parsed.data.districtId));
+      res.json(
+        await service.districtPoints(
+          parsed.data.regionCode,
+          parsed.data.districtId,
+        ),
+      );
     } catch (error) {
       next(error);
     }
