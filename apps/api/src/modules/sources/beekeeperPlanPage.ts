@@ -1,28 +1,69 @@
 // Feature IDs: SOURCES.PROVIDER_CONFIGURATION, NOTICES.EXTRACTION
 import { z } from "zod";
+import {
+  SATURN_MAX_LATITUDE,
+  SATURN_MAX_LONGITUDE,
+  SATURN_MIN_LATITUDE,
+  SATURN_MIN_LINEAR_RING_POSITIONS,
+  SATURN_MIN_LONGITUDE,
+  SATURN_MIN_MULTIPOLYGON_POLYGONS,
+  SATURN_MIN_POLYGON_RINGS,
+} from "./providers/saturn/sourceProfile.js";
 
+// This legacy treatment-page adapter uses Saturn's observed provider shape.
+// Its page budget is independent of viewport-index pagination and public map limits.
+const MAX_TREATMENT_PAGE_RECORDS = 200;
+const MAX_UNIX_SECONDS = 253_402_300_799; // 9999-12-31T23:59:59Z.
+const MILLISECONDS_PER_SECOND = 1_000;
+const UNIX_SECONDS_PATTERN = /^\d{1,12}$/;
+
+/** Provider hazard-class codes, not an independently verified risk assessment. */
+enum BeeHazardClass {
+  One = 1,
+  Two = 2,
+  Three = 3,
+}
+
+enum GeoJsonGeometryType {
+  Polygon = "Polygon",
+  MultiPolygon = "MultiPolygon",
+}
+
+/** GeoJSON positions use WGS84 degrees in [longitude, latitude] order. */
 const coordinate = z.tuple([
-  z.number().finite().min(-180).max(180),
-  z.number().finite().min(-90).max(90),
+  z.number().finite().min(SATURN_MIN_LONGITUDE).max(SATURN_MAX_LONGITUDE),
+  z.number().finite().min(SATURN_MIN_LATITUDE).max(SATURN_MAX_LATITUDE),
 ]);
+
+// A linear ring needs at least four positions (including its closing point).
+// This permissive evidence parser does not enforce closure, winding or topology;
+// treatment ingestion checks spatial validity in PostGIS before map projection.
+const ring = z.array(coordinate).min(SATURN_MIN_LINEAR_RING_POSITIONS);
 const polygon = z
   .object({
-    type: z.literal("Polygon"),
-    coordinates: z.array(z.array(coordinate).min(4)).min(1),
+    type: z.literal(GeoJsonGeometryType.Polygon),
+    // The first ring is the exterior; subsequent rings can describe holes.
+    coordinates: z.array(ring).min(SATURN_MIN_POLYGON_RINGS),
   })
   .passthrough();
 const multiPolygon = z
   .object({
-    type: z.literal("MultiPolygon"),
-    coordinates: z.array(z.array(z.array(coordinate).min(4)).min(1)).min(1),
+    type: z.literal(GeoJsonGeometryType.MultiPolygon),
+    // Each polygon has its own exterior and optional interior rings.
+    coordinates: z
+      .array(z.array(ring).min(SATURN_MIN_POLYGON_RINGS))
+      .min(SATURN_MIN_MULTIPOLYGON_POLYGONS),
   })
   .passthrough();
+const geometrySchema = z.discriminatedUnion("type", [polygon, multiPolygon]);
 
 // Nullable and inconsistently typed optional provider fields must not reject an otherwise valid page.
 // Validate the page/record envelopes; interpret optional claims independently without inventing values.
 const pageSchema = z
   .object({
-    content: z.array(z.object({}).passthrough()).max(200),
+    content: z
+      .array(z.object({}).passthrough())
+      .max(MAX_TREATMENT_PAGE_RECORDS),
     totalElements: z.number().int().nonnegative().nullish(),
   })
   .passthrough();
@@ -60,24 +101,28 @@ function optionalId(value: unknown): string | null {
 
 function unixSeconds(value: unknown): string | null {
   const number =
-    typeof value === "string" && /^\d{1,12}$/.test(value)
+    typeof value === "string" && UNIX_SECONDS_PATTERN.test(value)
       ? Number(value)
       : value;
   if (
     typeof number !== "number" ||
     !Number.isSafeInteger(number) ||
     number <= 0 ||
-    number > 253402300799
+    number > MAX_UNIX_SECONDS
   )
     return null;
-  const date = new Date(number * 1000);
+  const date = new Date(number * MILLISECONDS_PER_SECOND);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function beeHazardClass(value: unknown): number | null {
   const number =
     typeof value === "string" && /^[1-3]$/.test(value) ? Number(value) : value;
-  return number === 1 || number === 2 || number === 3 ? number : null;
+  return number === BeeHazardClass.One ||
+    number === BeeHazardClass.Two ||
+    number === BeeHazardClass.Three
+    ? number
+    : null;
 }
 
 /** Parse a provider page as unreviewed evidence; unknown optional values remain unknown. */
@@ -104,9 +149,7 @@ export function parseBeekeeperPlanPage(input: unknown): {
     totalElements: page.totalElements ?? null,
     plans: page.content.map((record) => {
       const acreage = objectOrNull(record.beeAcreage);
-      const parsedGeometry = z
-        .union([polygon, multiPolygon])
-        .safeParse(acreage?.geo);
+      const parsedGeometry = geometrySchema.safeParse(acreage?.geo);
       const products = Array.isArray(record.allPatList)
         ? record.allPatList
         : [];
