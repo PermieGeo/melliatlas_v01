@@ -28,6 +28,7 @@ The script is **read-only** with respect to repository source. If formatting fai
 | Command                                                                       | Coverage                                                                 |
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | `pnpm --dir apps/api test`                                                    | Backend unit tests, parsers and transport boundaries (stubbed providers) |
+| `pnpm --dir apps/api exec vitest run test/saturnHarCapture.test.ts`           | Bounded offline HAR import, ambiguous/malformed evidence and secrecy     |
 | `pnpm --dir apps/api test:db`                                                 | Isolated real-PostGIS migration, persistence and restart cases           |
 | `pnpm --dir apps/web test`                                                    | Beekeeper components and HTTP decoding                                   |
 | `pnpm --dir apps/admin test`                                                  | Operator components and local workflows                                  |
