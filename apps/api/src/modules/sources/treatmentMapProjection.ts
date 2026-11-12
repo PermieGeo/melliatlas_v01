@@ -74,6 +74,8 @@ export async function listStoredMapTreatments(
     geometry: unknown;
     review_status: "pending" | "verified";
   }>(
+    // An identical historical snapshot can be fetched again after a newer revision.
+    // Its last_seen_at changes, but its original retrieval time and revision do not.
     `WITH latest AS (
          SELECT DISTINCT ON (COALESCE(NULLIF(o.attributes->>'externalId', ''), o.id::text))
            o.id, s.name, d.canonical_url, d.last_seen_at AS retrieved_at, d.published_at,
@@ -84,7 +86,7 @@ export async function listStoredMapTreatments(
          WHERE d.source_id=$1 AND s.lifecycle='configured' AND d.canonical_url=s.url
            AND o.observation_type='treatment_plan'
          ORDER BY COALESCE(NULLIF(o.attributes->>'externalId', ''), o.id::text),
-           d.last_seen_at DESC, d.retrieved_at DESC, o.created_at DESC, o.id DESC
+           d.retrieved_at DESC, o.created_at DESC, o.id DESC
        )
        SELECT id, name, canonical_url, retrieved_at, published_at, start_at, end_at,
          attributes, review_status, ST_AsGeoJSON(geometry)::json AS geometry
