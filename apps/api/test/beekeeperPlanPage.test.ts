@@ -62,6 +62,51 @@ describe("published treatment plan page parsing", () => {
     expect(page.plans[0].startAt).toMatch(/Z$/);
   });
 
+  it("reads Spring pagination metadata without coupling records to a page number", () => {
+    const page = parseBeekeeperPlanPage({
+      content: [{ beeAcreage: { id: 701, planId: 99 } }],
+      number: 3,
+      size: 10,
+      numberOfElements: 1,
+      totalPages: 4,
+      totalElements: 31,
+      last: true,
+      pageable: { pageNumber: 3, pageSize: 10 },
+    });
+    expect(page.pagination).toEqual({
+      number: 3,
+      size: 10,
+      numberOfElements: 1,
+      totalPages: 4,
+      last: true,
+    });
+    expect(page.plans[0]).toMatchObject({ externalId: "701", planId: "99" });
+    expect(parseBeekeeperPlanPage({ content: [{}] }).pagination).toEqual({
+      number: null,
+      size: null,
+      numberOfElements: null,
+      totalPages: null,
+      last: null,
+    });
+  });
+
+  it("rejects conflicting page metadata rather than picking one of two page numbers", () => {
+    expect(() =>
+      parseBeekeeperPlanPage({
+        content: [],
+        number: 0,
+        pageable: { pageNumber: 1, pageSize: 10 },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseBeekeeperPlanPage({
+        content: [],
+        size: 10,
+        pageable: { pageNumber: 0, pageSize: 20 },
+      }),
+    ).toThrow();
+  });
+
   it("does not fill in missing IDs, polygons, toxicity or publication dates", () => {
     const page = parseBeekeeperPlanPage({
       content: [{ beeAcreage: {}, allPatList: [{}] }],
