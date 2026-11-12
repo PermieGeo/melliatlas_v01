@@ -305,6 +305,78 @@ describe("published treatment plan page parsing", () => {
     expect(result.plans[2]).toMatchObject({ startAt: null, endAt: null });
   });
 
+  it("treats inverted original and revised treatment periods as unknown without discarding other claims", () => {
+    const start = 1793664000;
+    const end = 1793577600;
+    const page = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            id: 8801,
+            planId: 510,
+            planDate: start,
+            planDateEnd: end,
+            datePublishing: 1793491200,
+          },
+          allPatList: [{ patName: "Original product" }],
+        },
+        {
+          beeAcreage: {
+            id: 8802,
+            planId: 510,
+            isUpdated: true,
+            planDate: end,
+            planDateEnd: start,
+            planDateUpdate: start,
+            planDateEndUpdate: end,
+          },
+        },
+        {
+          beeAcreage: {
+            id: 8803,
+            planId: 510,
+            planDate: end,
+            planDateEnd: start,
+          },
+        },
+        {
+          beeAcreage: {
+            id: 8804,
+            planId: 510,
+            planDate: start,
+            planDateEnd: start,
+          },
+        },
+      ],
+    });
+    expect(page.plans[0]).toMatchObject({
+      externalId: "8801",
+      planId: "510",
+      startAt: null,
+      endAt: null,
+      publishedAt: new Date(1793491200 * 1000).toISOString(),
+      treatments: [
+        { name: "Original product", crop: null, beeHazardClass: null },
+      ],
+    });
+    expect(page.plans[1]).toMatchObject({
+      externalId: "8802",
+      isUpdated: true,
+      startAt: null,
+      endAt: null,
+    });
+    expect(page.plans[2]).toMatchObject({
+      externalId: "8803",
+      startAt: new Date(end * 1000).toISOString(),
+      endAt: new Date(start * 1000).toISOString(),
+    });
+    expect(page.plans[3]).toMatchObject({
+      externalId: "8804",
+      startAt: new Date(start * 1000).toISOString(),
+      endAt: new Date(start * 1000).toISOString(),
+    });
+  });
+
   it("rejects Saturn map-query summaries instead of storing parcel centers as treatment evidence", () => {
     const sample = JSON.parse(
       readFileSync(

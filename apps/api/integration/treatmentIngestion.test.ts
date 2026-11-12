@@ -724,4 +724,124 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       reviewStatus: "pending",
     });
   });
+  it("keeps valid neighboring fields when a source interval violates the database date-order constraint", async () => {
+    const invalidFieldId = "992701";
+    const validFieldId = "992702";
+    const original = portalFixture.content[0];
+    const originalStart = original.beeAcreage.planDate;
+    const originalEnd = original.beeAcreage.planDateEnd;
+    const response = {
+      content: [
+        {
+          ...original,
+          beeAcreage: {
+            ...original.beeAcreage,
+            id: Number(invalidFieldId),
+            planId: 992700,
+            planDate: originalEnd,
+            planDateEnd: originalStart,
+          },
+        },
+        {
+          ...original,
+          beeAcreage: {
+            ...original.beeAcreage,
+            id: Number(validFieldId),
+            planId: 992700,
+          },
+        },
+      ],
+      number: 0,
+      size: 2,
+      numberOfElements: 2,
+      totalElements: 2,
+      totalPages: 1,
+      last: true,
+    };
+    await pool.query(
+      `UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb,
+         api_request_config=$1::jsonb WHERE id='treatment-feed'`,
+      [
+        JSON.stringify({
+          endpoint: sourceFixture.url,
+          request: {
+            ...sourceFixture.request,
+            parameters: { pageNumber: 0, pageSize: 2 },
+          },
+        }),
+      ],
+    );
+    try {
+      const service = new TreatmentIngestionService(
+        pool,
+        {
+          fetch: async () => ({
+            canonicalUrl: sourceFixture.url,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(response)),
+          }),
+        },
+        evidenceTestGate,
+      );
+      expect(await service.syncOnePage()).toMatchObject({
+        received: 2,
+        stored: 2,
+        nextPage: 0,
+      });
+      const rows = await pool.query<{
+        id: string;
+        observation_id: string;
+        start_at: Date | null;
+        end_at: Date | null;
+        raw_json: typeof response;
+      }>(
+        `SELECT o.attributes->>'externalId' AS id, o.id AS observation_id,
+           o.start_at, o.end_at, d.raw_json
+         FROM source_observations o
+         JOIN source_documents d ON d.id=o.source_document_id
+         WHERE o.attributes->>'externalId' IN ($1, $2)
+         ORDER BY id`,
+        [invalidFieldId, validFieldId],
+      );
+      expect(rows.rows).toHaveLength(2);
+      const invalid = rows.rows.find((row) => row.id === invalidFieldId)!;
+      const valid = rows.rows.find((row) => row.id === validFieldId)!;
+      expect(invalid.start_at).toBeNull();
+      expect(invalid.end_at).toBeNull();
+      expect(invalid.raw_json.content[0].beeAcreage.planDate).toBe(originalEnd);
+      expect(invalid.raw_json.content[0].beeAcreage.planDateEnd).toBe(
+        originalStart,
+      );
+      expect(valid.start_at?.toISOString()).toBe(
+        new Date(originalStart * 1000).toISOString(),
+      );
+      expect(valid.end_at?.toISOString()).toBe(
+        new Date(originalEnd * 1000).toISOString(),
+      );
+      const observationIds = new Set(
+        rows.rows.map((row) => row.observation_id),
+      );
+      const visible = (await service.published([31, 53, 34, 56])).filter(
+        (record) => observationIds.has(record.id),
+      );
+      expect(visible).toHaveLength(2);
+      expect(visible.some((record) => record.startAt === null)).toBe(true);
+      expect(
+        visible.some(
+          (record) =>
+            record.startAt === new Date(originalStart * 1000).toISOString(),
+        ),
+      ).toBe(true);
+    } finally {
+      await pool.query(
+        "UPDATE source_catalog SET api_request_config=$1::jsonb WHERE id='treatment-feed'",
+        [
+          JSON.stringify({
+            endpoint: sourceFixture.url,
+            request: sourceFixture.request,
+          }),
+        ],
+      );
+    }
+  });
 });
