@@ -232,6 +232,14 @@ export function parseBeekeeperPlanPage(input: unknown): {
         isUpdated === true ? acreage?.planDateUpdate : acreage?.planDate;
       const endDate =
         isUpdated === true ? acreage?.planDateEndUpdate : acreage?.planDateEnd;
+      const parsedStartAt = unixSeconds(startDate);
+      const parsedEndAt = unixSeconds(endDate);
+      // A contradictory interval is unusable as a schedule. Retain its raw
+      // source evidence rather than failing the entire PostGIS page transaction.
+      const reversedPeriod =
+        parsedStartAt !== null &&
+        parsedEndAt !== null &&
+        parsedStartAt > parsedEndAt;
       // In the supplied offline sample allPatList already contains the effective
       // products (patIdsUpdate for revisions, patIds otherwise). Do not merge
       // both lists or synthesize product claims from the ID strings.
@@ -244,8 +252,8 @@ export function parseBeekeeperPlanPage(input: unknown): {
         isUpdated,
         contractorName: optionalText(acreage?.contractorName),
         cadastralNumber: optionalText(acreage?.cadNum),
-        startAt: unixSeconds(startDate),
-        endAt: unixSeconds(endDate),
+        startAt: reversedPeriod ? null : parsedStartAt,
+        endAt: reversedPeriod ? null : parsedEndAt,
         publishedAt: unixSeconds(acreage?.datePublishing),
         geometry: parsedGeometry.success ? parsedGeometry.data : null,
         treatments: products.flatMap((rawProduct: unknown) => {
