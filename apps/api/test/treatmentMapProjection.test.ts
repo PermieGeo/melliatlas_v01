@@ -51,6 +51,37 @@ describe("stored treatment map response validation", () => {
     expect(JSON.stringify(records)).not.toContain("not-public");
   });
 
+  it("uses record-level publication evidence and ignores malformed persisted dates", async () => {
+    const documentPublishedAt = new Date("2026-07-01T00:00:00.000Z");
+    const row = {
+      id: "observation-published",
+      name: "Source",
+      canonical_url: "https://example.org/plans",
+      retrieved_at: new Date("2026-11-03T00:00:00.000Z"),
+      published_at: documentPublishedAt,
+      start_at: null,
+      end_at: null,
+      attributes: { publishedAt: "2026-07-02T13:05:20.000Z", treatments: [] },
+      geometry,
+      review_status: "pending" as const,
+    };
+    const db = {
+      query: async () => ({
+        rows: [
+          row,
+          { ...row, id: "fallback", attributes: { publishedAt: "invalid" } },
+          { ...row, id: "missing", published_at: null, attributes: {} },
+        ],
+      }),
+    } as unknown as Pick<Pool, "query">;
+    const records = await listStoredMapTreatments(db, "treatment-feed", false);
+    expect(records.map((item) => item.publishedAt)).toEqual([
+      "2026-07-02T13:05:20.000Z",
+      documentPublishedAt.toISOString(),
+      null,
+    ]);
+  });
+
   it("returns no treatment claims for a malformed persisted array", async () => {
     const db = {
       query: async () => ({

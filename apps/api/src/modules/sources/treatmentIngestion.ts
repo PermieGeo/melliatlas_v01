@@ -414,6 +414,7 @@ export class TreatmentIngestionService {
             externalId: plan.externalId,
             planId: plan.planId,
             isUpdated: plan.isUpdated,
+            publishedAt: plan.publishedAt,
             contractorName: plan.contractorName,
             cadastralNumber: plan.cadastralNumber,
             treatments: plan.treatments,
