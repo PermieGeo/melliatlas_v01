@@ -844,4 +844,188 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       );
     }
   });
+
+  it("keeps a mixed-geometry page while preventing invalid polygons from publication or verification", async () => {
+    const validFieldId = "993501";
+    const intersectingFieldId = "993502";
+    const degenerateFieldId = "993503";
+    const sourcePage = {
+      content: [
+        {
+          beeAcreage: {
+            id: Number(validFieldId),
+            planId: 993500,
+            planDate: 1793505600,
+            planDateEnd: 1793592000,
+            geo: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [32.1, 54.1],
+                  [32.3, 54.1],
+                  [32.3, 54.3],
+                  [32.1, 54.1],
+                ],
+              ],
+            },
+          },
+          allPatList: [{ patName: "Valid field product" }],
+        },
+        {
+          beeAcreage: {
+            id: Number(intersectingFieldId),
+            planId: 993500,
+            geo: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [33, 54],
+                  [33.2, 54.2],
+                  [33.2, 54],
+                  [33, 54.2],
+                  [33, 54],
+                ],
+              ],
+            },
+          },
+          allPatList: [{ patName: "Intersecting field product" }],
+        },
+        {
+          beeAcreage: {
+            id: Number(degenerateFieldId),
+            planId: 993500,
+            geo: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [34, 54],
+                  [34, 54],
+                  [34, 54],
+                  [34, 54],
+                ],
+              ],
+            },
+          },
+          allPatList: [{ patName: "Degenerate field product" }],
+        },
+      ],
+      number: 0,
+      size: 3,
+      numberOfElements: 3,
+      totalElements: 3,
+      totalPages: 1,
+      last: true,
+    };
+    await pool.query(
+      `UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb,
+         api_request_config=$1::jsonb WHERE id='treatment-feed'`,
+      [
+        JSON.stringify({
+          endpoint: sourceFixture.url,
+          request: {
+            ...sourceFixture.request,
+            parameters: { pageNumber: 0, pageSize: 3 },
+          },
+        }),
+      ],
+    );
+    try {
+      const service = new TreatmentIngestionService(
+        pool,
+        {
+          fetch: async () => ({
+            canonicalUrl: sourceFixture.url,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(sourcePage)),
+          }),
+        },
+        evidenceTestGate,
+      );
+      expect(await service.syncOnePage()).toMatchObject({
+        pageNumber: 0,
+        received: 3,
+        stored: 3,
+        nextPage: 0,
+      });
+      const rows = await pool.query<{
+        external_id: string;
+        observation_id: string;
+        geometry_available: boolean;
+        spatial_precision: string;
+        review_status: string;
+        raw_json: typeof sourcePage;
+      }>(
+        `SELECT o.attributes->>'externalId' AS external_id,
+           o.id AS observation_id, (o.geometry IS NOT NULL) AS geometry_available,
+           o.spatial_precision, o.review_status, d.raw_json
+         FROM source_observations o
+         JOIN source_documents d ON d.id=o.source_document_id
+         WHERE o.attributes->>'externalId' IN ($1, $2, $3)
+         ORDER BY external_id`,
+        [validFieldId, intersectingFieldId, degenerateFieldId],
+      );
+      expect(rows.rows).toHaveLength(3);
+      expect(
+        rows.rows.map((row) => [
+          row.external_id,
+          row.geometry_available,
+          row.spatial_precision,
+          row.review_status,
+        ]),
+      ).toEqual([
+        [validFieldId, true, "exact_polygon", "pending"],
+        [intersectingFieldId, false, "text_only", "pending"],
+        [degenerateFieldId, false, "text_only", "pending"],
+      ]);
+      const originals = rows.rows[0]!.raw_json.content;
+      expect(originals).toHaveLength(3);
+      expect(originals[1]!.beeAcreage.geo).toEqual(
+        sourcePage.content[1]!.beeAcreage.geo,
+      );
+      expect(originals[2]!.beeAcreage.geo).toEqual(
+        sourcePage.content[2]!.beeAcreage.geo,
+      );
+      const observedIds = new Set(rows.rows.map((row) => row.observation_id));
+      const visible = (await service.published([31, 53, 35, 56])).filter(
+        (item) => observedIds.has(item.id),
+      );
+      const preview = (await service.preview()).filter((item) =>
+        observedIds.has(item.id),
+      );
+      expect(visible.map((item) => item.id)).toEqual([
+        rows.rows[0]!.observation_id,
+      ]);
+      expect(preview.map((item) => item.id)).toEqual([
+        rows.rows[0]!.observation_id,
+      ]);
+      await expect(
+        service.review(
+          rows.rows[1]!.observation_id,
+          "verified",
+          "Test reviewer",
+          "The source boundary is self-intersecting and cannot be verified.",
+        ),
+      ).rejects.toMatchObject({ code: "REVIEW_UNAVAILABLE" });
+      const decisions = await pool.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM source_observation_reviews
+         WHERE observation_id=$1`,
+        [rows.rows[1]!.observation_id],
+      );
+      expect(decisions.rows[0]?.count).toBe("0");
+      const cursor = await pool.query<{
+        source_cursor: { pageNumber: number };
+      }>(`SELECT source_cursor FROM source_catalog WHERE id='treatment-feed'`);
+      expect(cursor.rows[0]?.source_cursor.pageNumber).toBe(0);
+    } finally {
+      await pool.query(
+        "UPDATE source_catalog SET api_request_config=$1::jsonb WHERE id='treatment-feed'",
+        [
+          JSON.stringify({
+            endpoint: sourceFixture.url,
+            request: sourceFixture.request,
+          }),
+        ],
+      );
+    }
+  });
 });
