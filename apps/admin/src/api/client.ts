@@ -221,3 +221,16 @@ export async function loadOperatorSaturnDistricts(
     ),
   );
 }
+
+/** Refresh a registered provider's district directory only after an operator click. */
+export async function refreshOperatorSaturnDistricts(
+  regionCode: string,
+): Promise<SaturnDistrictCatalogResponse> {
+  return saturnDistrictCatalogResponseSchema.parse(
+    await operatorRequest(
+      "/api/v1/operator/provider/viewport/districts/refresh",
+      "POST",
+      { regionCode },
+    ),
+  );
+}

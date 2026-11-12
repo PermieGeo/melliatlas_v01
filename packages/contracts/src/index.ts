@@ -1,4 +1,4 @@
-// Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
+// Feature IDs: SOURCES.DOCUMENT_HISTORY, SOURCES.CATALOG, SOURCES.PROVIDER_CONFIGURATION, NOTICES.MAP_OVERLAY
 import { z } from "zod";
 
 export const coordinatesSchema = z
@@ -84,6 +84,35 @@ export type Coordinates = z.infer<typeof coordinatesSchema>;
 export type InspectionResponse = z.infer<typeof inspectionResponseSchema>;
 export type SourceCatalogEntry = z.infer<typeof sourceCatalogEntrySchema>;
 export type SourceCatalogResponse = z.infer<typeof sourceCatalogResponseSchema>;
+
+// Read-only map navigation: opaque territorial references, not source-specific HTTP fields.
+export const territoryRegionsResponseSchema = z
+  .object({
+    regions: z.array(
+      z.object({ id: z.string().min(1), name: z.string().min(1) }).strict(),
+    ),
+  })
+  .strict();
+export const territoryDistrictsResponseSchema = z
+  .object({
+    regionId: z.string().min(1),
+    districts: z.array(
+      z
+        .object({
+          id: z.string().min(1),
+          name: z.string().min(1),
+          center: coordinatesSchema,
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type TerritoryRegionsResponse = z.infer<
+  typeof territoryRegionsResponseSchema
+>;
+export type TerritoryDistrictsResponse = z.infer<
+  typeof territoryDistrictsResponseSchema
+>;
 
 // Feature IDs: SOURCES.PROVIDER_CONFIGURATION
 const providerParameterNameSchema = z

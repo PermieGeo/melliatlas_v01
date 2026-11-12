@@ -1,6 +1,15 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/territories/**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ regions: [] }),
+    }),
+  );
+});
+
 const forecast = (lat: number, lon: number) => ({
   point: { lat, lon },
   weather: {
@@ -192,54 +201,52 @@ test("beekeeper help loads the external guide and switches languages", async ({
   expect(requested.every((url) => !url.includes("/operator/"))).toBe(true);
 });
 
-test("local district pilot loads only after an explicit beekeeper click", async ({
+test("territory navigation never initiates source retrieval", async ({
   page,
 }) => {
-  let fetches = 0;
+  const requests: string[] = [];
   await page.route("**/api/v1/notices**", (route) =>
     route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ notices: [] }),
     }),
   );
-  await page.route("**/api/v1/map/saturn-viewport/**", (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/next")) fetches++;
-    const payload = path.endsWith("/regions")
-      ? { regions: [{ code: "55", name: "Смоленская область" }] }
-      : path.endsWith("/districts") || path.endsWith("/districts/refresh")
-        ? {
-            regionCode: "55",
-            enabled: true,
-            districts: [
-              {
-                id: 1477,
-                name: "Ярцевский район",
-                latitude: 55.06,
-                longitude: 32.68,
-              },
-            ],
-            retrievedAt: null,
-          }
-        : path.endsWith("/district-points")
-          ? { centers: [], totalKnown: 0 }
-          : { enabled: true, progress: null, cachedCenters: [] };
+  await page.route("**/api/v1/territories/**", (route) => {
+    requests.push(route.request().url());
+    const regions = route.request().url().endsWith("/regions");
     return route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(
+        regions
+          ? { regions: [{ id: "55", name: "Example region" }] }
+          : {
+              regionId: "55",
+              districts: [
+                {
+                  id: "1477",
+                  name: "Example district",
+                  center: { lat: 55.06, lon: 32.68 },
+                },
+              ],
+            },
+      ),
     });
   });
+  const retiredCalls: string[] = [];
+  await page.route("**/api/v1/map/saturn-viewport/**", async (route) => {
+    retiredCalls.push(route.request().url());
+    await route.fulfill({ status: 404 });
+  });
   await page.goto("/");
-  expect(fetches).toBe(0);
-  await page
-    .getByRole("combobox", { name: "Район выбранного региона" })
-    .selectOption("1477");
-  expect(fetches).toBe(0);
+  await page.getByRole("combobox", { name: "Регион" }).selectOption("55");
+  await page.getByRole("combobox", { name: "Район" }).selectOption("1477");
   await expect(
-    page.getByRole("button", { name: "Получить ещё до 10 записей" }),
-  ).toBeEnabled();
-  await page
-    .getByRole("button", { name: "Получить ещё до 10 записей" })
-    .click();
-  await expect.poll(() => fetches).toBe(1);
+    page.getByRole("heading", { name: "Карта обработок" }),
+  ).toBeVisible();
+  expect(new Set(requests.map((url) => new URL(url).pathname))).toEqual(
+    new Set(["/api/v1/territories/regions", "/api/v1/territories/districts"]),
+  );
+  expect(retiredCalls).toHaveLength(0);
+  expect(requests.every((url) => url.includes("/territories/"))).toBe(true);
+  expect(requests.every((url) => !url.includes("/operator/"))).toBe(true);
 });

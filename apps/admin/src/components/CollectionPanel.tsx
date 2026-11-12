@@ -70,16 +70,13 @@ export function CollectionPanel({
         <p className="text-xs text-emerald-900">
           {text("viewportGuideLimits")}
         </p>
-        <a
-          href="http://127.0.0.1:5173"
-          className="inline-block rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-950 underline"
-        >
-          {text("viewportGuideOpen")}
-        </a>
       </div>
       <ViewportCacheHistoryPanel locale={locale} />
       <SaturnRequestLogPanel locale={locale} />
-      <details className="space-y-3 rounded-lg border border-slate-200 p-3">
+      <details
+        open
+        className="space-y-3 rounded-lg border border-slate-200 p-3"
+      >
         <summary className="cursor-pointer font-semibold">
           {text("viewportAdvanced")}
         </summary>

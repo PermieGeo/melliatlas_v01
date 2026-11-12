@@ -8,7 +8,7 @@ See [Modules](MODULES.md) for the current directory map, concrete responsibiliti
 
 ## Information providers and analysis
 
-Source adapters are independently switchable. Open-Meteo currently produces attributed forecast responses. The legacy configured treatment-feed parser can ingest one explicitly requested bounded page into immutable `source_documents` and reviewable `source_observations`. The Saturn adapter separately supports an explicit local **viewport map-index** pilot and cached district names/center points.
+Source adapters are independently switchable. Open-Meteo currently produces attributed forecast responses. The legacy configured treatment-feed parser can ingest one explicitly requested bounded page into immutable `source_documents` and reviewable `source_observations`. The Saturn adapter separately supports an explicit operator-only **viewport map-index** pilot and cached district names/center points.
 
 `core` registers the weather adapter and a **read-only** Saturn persisted-index status adapter. `AnalysisGraph` can run trusted nodes labelled `provider`, `algorithm`, `statistics`, `ml` or `llm` sequentially, with dependency and schema checks. No real ML/LLM executor, background run, multi-source forecast synthesis or apiary migration recommendation is connected. Further executors must preserve evidence lineage and bounded access.
 
@@ -33,3 +33,5 @@ Provider transport rejects unapproved destinations, unsafe redirects/addresses, 
 The [umbrella specification](specs/active/spec-umbrella-melliatlas.md) defines private apiaries, controlled source-reading AI with citations, land-cover/phenology evidence, monitored areas and mobile maturity. User-discussed multi-source migration suggestions (candidate points and dates) and a date/region-based community hazard board are promising **design directions**, not implemented or normative requirements. Add testable specifications and a linked plan before treating them as product contracts.
 
 See [Modules](MODULES.md) for current code ownership, [Features](FEATURES.md) for capability status, and the [active specifications](specs/README.md) for delivery scope and order.
+
+The beekeeper map has no write or fetch capability for upstream source records. `GET /api/v1/territories/*` adapts previously stored provider territory names and centers into a source-neutral read-only navigation DTO; it is not a canonical administrative-boundary registry. `GET /api/v1/notices` remains a PostGIS-only visible-viewport query. Operator routes own all explicit external retrieval and directory refresh.

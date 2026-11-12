@@ -1,9 +1,5 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, WEATHER.POINT_FORECAST, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
-import type {
-  Coordinates,
-  MapTreatment,
-  ViewportIndexCenter,
-} from "@melliatlas/contracts";
+import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { Layers3, MapPin, RefreshCw, Info, CircleHelp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { inspectLocation, loadMapTreatments } from "./api/client";
@@ -11,7 +7,7 @@ import { MapCanvas } from "./components/MapCanvas";
 import { WeatherPanel, type WeatherState } from "./components/WeatherPanel";
 import { TreatmentDetailsPanel } from "./components/TreatmentDetailsPanel";
 import { HelpPage } from "./components/HelpPage";
-import { DistrictViewportPanel } from "./components/DistrictViewportPanel";
+import { TerritorySelector } from "./components/TerritorySelector";
 import { translate, type Locale, type MessageKey } from "./i18n";
 import mapDefaults from "../config/map-defaults.json";
 
@@ -43,7 +39,6 @@ export default function App() {
   const [layers, setLayers] = useState<LayerState>({ status: "loading" });
   const [weather, setWeather] = useState<WeatherState>({ status: "idle" });
   const [showTreatments, setShowTreatments] = useState(true);
-  const [cachedCenters, setCachedCenters] = useState<ViewportIndexCenter[]>([]);
   const [selectedTreatment, setSelectedTreatment] =
     useState<MapTreatment | null>(null);
   const [viewport, setViewport] = useState<
@@ -173,12 +168,7 @@ export default function App() {
                 {t("refresh")}
               </button>
             </div>
-            <DistrictViewportPanel
-              locale={locale}
-              viewport={viewport}
-              onFocusDistrict={focusOnDistrict}
-              onCachedCentersChange={setCachedCenters}
-            />
+            <TerritorySelector locale={locale} onFocus={focusOnDistrict} />
             <div className="grid gap-4 lg:grid-cols-[210px_minmax(0,1fr)_300px]">
               <aside
                 aria-label={t("layers")}
@@ -272,7 +262,6 @@ export default function App() {
                   radiusKm={radius}
                   onSelect={setPoint}
                   onViewportChange={onViewportChange}
-                  cachedCenters={cachedCenters}
                   onSelectTreatment={setSelectedTreatment}
                   selectedTreatmentId={selectedTreatment?.id ?? null}
                   treatments={

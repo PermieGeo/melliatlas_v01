@@ -3,7 +3,13 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ViewportCollectionPanel } from "./ViewportCollectionPanel";
 
-const { check, fetchNext } = vi.hoisted(() => ({
+const { check, fetchNext, refreshDirectory } = vi.hoisted(() => ({
+  refreshDirectory: vi.fn(async () => ({
+    regionCode: "55",
+    enabled: true,
+    retrievedAt: "2026-11-12T00:00:00Z",
+    districts: [{ id: 22, name: "New district", latitude: 54, longitude: 32 }],
+  })),
   check: vi.fn(async () => ({ enabled: true, progress: null })),
   fetchNext: vi.fn(async () => ({
     enabled: true,
@@ -23,6 +29,7 @@ const { check, fetchNext } = vi.hoisted(() => ({
 vi.mock("../api/client", () => ({
   loadViewportProgress: check,
   fetchViewportNextPage: fetchNext,
+  refreshOperatorSaturnDistricts: refreshDirectory,
   loadOperatorSaturnRegions: vi.fn(async () => ({
     regions: [{ code: "55", name: "Smolensk" }],
   })),
@@ -97,3 +104,20 @@ it.each([
     expect(screen.getByText(label)).toBeTruthy();
   },
 );
+
+it("refreshes the district directory only after an operator click", async () => {
+  render(<ViewportCollectionPanel locale="ru" />);
+  await screen.findByRole("option", { name: "Smolensk" });
+  expect(refreshDirectory).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Регион источника"), {
+    target: { value: "55" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Обновить справочник районов" }),
+  );
+  expect(
+    await screen.findByRole("option", { name: "New district" }),
+  ).toBeTruthy();
+  expect(refreshDirectory).toHaveBeenCalledWith("55");
+  expect(fetchNext).not.toHaveBeenCalled();
+});

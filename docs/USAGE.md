@@ -22,7 +22,7 @@ Stop app servers with `Ctrl+C`; `docker compose stop db` stops the database with
 
 Select a location and viewing radius to inspect attributed Open-Meteo conditions. Toggle the treatment layer and select a polygon for source, dates, preparations and review status. The radius is a visual aid, **not** a safety calculation. `pending` source polygons are explicitly unverified; missing polygons are not evidence that no treatments occurred. Map movement reads local evidence only and never downloads a provider page. The **Help** view provides RU/EN guidance.
 
-The experimental **Load district data** panel may show blue Saturn **center points** from a local index. These are neither treatment polygons nor proof of application. See the opt-in workflow below.
+The region/district selectors use saved navigation catalogs. Selecting a district recenters the map; it does not filter by administrative boundary, request upstream records, or imply complete district coverage. Empty catalogs require operator setup.
 
 ## Local operator workflow
 
@@ -31,7 +31,7 @@ The experimental **Load district data** panel may show blue Saturn **center poin
 3. In **Map and analysis**, inspect sourced polygon previews. Review **Sources** and **Record review** before independently verifying or rejecting candidates; a source-reported pesticide hazard class is not a scientific safety verdict.
 4. Use **Help** for localized field explanations and the distinction between cache, index, source document and reviewed notice.
 
-For **full polygon-bearing Saturn records**, use the configured `/planapplybees` treatment-feed through this operator-controlled one-page action. To select its provider district and date range, see [Direct Saturn treatment pages](CONFIGURATION.md#direct-saturn-treatment-pages). The Web `/query` layer remains a separate center-only map index; the HAR inspector below is optional research, **not** a prerequisite for direct treatment ingestion. Neither a saved page nor a displayed polygon establishes a completed treatment or full district coverage.
+For **full polygon-bearing Saturn records**, use the configured `/planapplybees` treatment-feed through this operator-controlled one-page action. To select its provider district and date range, see [Direct Saturn treatment pages](CONFIGURATION.md#direct-saturn-treatment-pages). The operator-only `/query` index remains a separate center-only diagnostic; the HAR inspector below is optional research, **not** a prerequisite for direct treatment ingestion. Neither a saved page nor a displayed polygon establishes a completed treatment or full district coverage.
 
 You can initialize the candidate treatment-feed preset after migrations:
 
@@ -53,9 +53,7 @@ The JSON preset is editable and currently contains only the provider region code
 
 Initial map centers are presentation-only presets in `apps/web/config/map-defaults.json` and `apps/admin/config/map-defaults.json`; they do not restrict the registered provider regions or allowable WGS84 viewport selections.
 
-Only after reviewing external source access conditions, start the backend with `SATURN_VIEWPORT_LIVE_ENABLED=true` in its environment. In the local Web map, select a registered Saturn region and one of its cached districts, zoom to a viewport no larger than **1° × 1°**, choose an `UpdateMap` period of at most **124 days** and explicitly click **Fetch up to 10 more records**. A request shares the backend's **20-second** minimum source-wide interval; wait before another action. Cache checks and map panning do not contact Saturn.
-
-Admin → **Data collection** exposes saved viewport queries, per-page history and a sanitized request log. Completion of an index request establishes neither full district coverage nor treatment dates or pesticide safety. Disable the flag to stop future live pilot requests without removing stored index evidence.
+Only after reviewing source access conditions, enable `SATURN_VIEWPORT_LIVE_ENABLED=true` for the local operator API. In **Admin → Data collection**, select a registered provider region, explicitly refresh its district directory and, if useful, request one bounded `/query` index page with a viewport and UpdateMap window of at most 124 days. This is not treatment geometry. For full treatment polygons, use the separate operator one-page `/planapplybees` ingestion described above. The shared provider throttle remains in effect. Public Web only reads stored PostGIS polygons and navigates cached territory centers; map navigation does not start provider traffic.
 
 ### Optional HAR diagnostics for the map index (research only)
 

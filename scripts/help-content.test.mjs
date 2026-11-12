@@ -43,10 +43,22 @@ for (const [app, sectionId] of [
   ["web", "local-viewport-index"],
   ["admin", "local-beekeeper-collection"],
 ]) {
-  test(`${app} describes registered provider regions without a fixed pilot district`, async () => {
+  test(`${app} describes registered regions without a fixed pilot district`, async () => {
     for (const [locale, regionTerm, districtTerm, obsoleteDistrict] of [
-      ["en", /registered provider region/, /district/, /Yartsevo/i],
-      ["ru", /зарегистрированный регион/, /район/, /Ярцев/i],
+      [
+        "en",
+        app === "web" ? /register regions/ : /registered provider region/,
+        /district/,
+        /Yartsevo/i,
+      ],
+      [
+        "ru",
+        app === "web"
+          ? /зарегистрировать регионы/
+          : /зарегистрированный регион/,
+        /район/,
+        /Ярцев/i,
+      ],
     ]) {
       const document = await documentFor(app, locale);
       const section = document.sections.find((entry) => entry.id === sectionId);
@@ -55,6 +67,7 @@ for (const [app, sectionId] of [
       assert.match(content, regionTerm);
       assert.match(content, districtTerm);
       assert.doesNotMatch(content, obsoleteDistrict);
+      if (app === "web") assert.doesNotMatch(content, /Saturn/i);
     }
   });
 }

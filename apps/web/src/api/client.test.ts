@@ -4,8 +4,8 @@ import {
   ApiRequestError,
   inspectLocation,
   loadMapTreatments,
-  loadDistrictViewportProgress,
-  fetchDistrictViewportPage,
+  loadTerritoryRegions,
+  loadTerritoryDistricts,
 } from "./client";
 
 const point = { lat: 54.78, lon: 32.05 };
@@ -68,35 +68,39 @@ it("requests only the visible viewport from local stored notices", async () => {
   );
 });
 
-it("sends an explicit bounded viewport index request through the non-operator client boundary", async () => {
+it("only reads saved territories and rejects malformed catalogs", async () => {
   const fetcher = vi.fn(
-    async (_url: string, _options?: RequestInit) =>
-      new Response(JSON.stringify({ enabled: true, progress: null })),
+    async (url: string, _options?: RequestInit) =>
+      new Response(
+        JSON.stringify(
+          url.includes("/regions")
+            ? { regions: [{ id: "55", name: "Region One" }] }
+            : {
+                regionId: "55",
+                districts: [
+                  {
+                    id: "1477",
+                    name: "District One",
+                    center: { lat: 55, lon: 32 },
+                  },
+                ],
+              },
+        ),
+      ),
   );
   vi.stubGlobal("fetch", fetcher);
-  const selected = {
-    regionCode: "55",
-    districtId: 1477 as const,
-    bbox: { west: 32.41, south: 54.93, east: 33.03, north: 55.21 },
-    fromDate: "2026-08-01",
-    toDate: "2026-11-30",
-  };
-  expect(await loadDistrictViewportProgress(selected)).toEqual({
-    enabled: true,
-    progress: null,
-  });
-  expect(await fetchDistrictViewportPage(selected)).toEqual({
-    enabled: true,
-    progress: null,
-  });
-  expect(fetcher.mock.calls.map((call) => call[0])).toEqual([
-    "/api/v1/map/saturn-viewport/status",
-    "/api/v1/map/saturn-viewport/next",
+  const signal = new AbortController().signal;
+  expect((await loadTerritoryRegions(signal)).regions[0]?.name).toBe(
+    "Region One",
+  );
+  expect(
+    (await loadTerritoryDistricts("55", signal)).districts[0]?.center,
+  ).toEqual({ lat: 55, lon: 32 });
+  expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+    "/api/v1/territories/regions",
+    "/api/v1/territories/districts?regionId=55",
   ]);
   expect(
-    fetcher.mock.calls.every((call) => !String(call[0]).includes("/operator/")),
+    fetcher.mock.calls.every(([, options]) => options?.method === undefined),
   ).toBe(true);
-  const nextRequest = fetcher.mock.calls[1]?.[1] as RequestInit;
-  expect(nextRequest.method).toBe("POST");
-  expect(JSON.parse(String(nextRequest.body))).toMatchObject(selected);
 });

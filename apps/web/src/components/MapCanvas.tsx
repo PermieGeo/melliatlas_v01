@@ -1,15 +1,10 @@
 // Feature IDs: MAP.POINT_SELECTION, UX.MOBILE_MAP, NOTICES.MAP_OVERLAY, SOURCES.DOCUMENT_HISTORY
-import type {
-  Coordinates,
-  MapTreatment,
-  ViewportIndexCenter,
-} from "@melliatlas/contracts";
+import type { Coordinates, MapTreatment } from "@melliatlas/contracts";
 import { useEffect } from "react";
 import { translate, type Locale, type MessageKey } from "../i18n";
 import {
   Circle,
   CircleMarker,
-  Tooltip,
   Polygon,
   MapContainer,
   TileLayer,
@@ -28,7 +23,6 @@ type MapCanvasProps = {
   selectedTreatmentId?: string | null;
   onViewportChange?(bbox: [number, number, number, number]): void;
   treatments?: MapTreatment[];
-  cachedCenters?: ViewportIndexCenter[];
 };
 
 function ClickSelection({ onSelect }: Pick<MapCanvasProps, "onSelect">) {
@@ -81,7 +75,6 @@ export function MapCanvas({
   selectedTreatmentId,
   onViewportChange,
   treatments = [],
-  cachedCenters = [],
 }: MapCanvasProps) {
   const t = (key: MessageKey) => translate(locale, key);
   return (
@@ -124,24 +117,6 @@ export function MapCanvas({
           />
         ));
       })}
-      {cachedCenters.map((center) => (
-        <CircleMarker
-          key={`index-${center.featureId}`}
-          center={[center.centerY, center.centerX]}
-          radius={5}
-          pathOptions={{
-            color: "#1d4ed8",
-            fillColor: "#93c5fd",
-            fillOpacity: 0.8,
-            weight: 2,
-            bubblingMouseEvents: false,
-          }}
-        >
-          <Tooltip>
-            {t("districtPointTooltip")}: {center.featureId}
-          </Tooltip>
-        </CircleMarker>
-      ))}
       {selected && (
         <>
           <Circle
