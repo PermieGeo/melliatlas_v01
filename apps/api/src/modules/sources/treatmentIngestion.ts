@@ -70,7 +70,18 @@ export function nextTreatmentPageNumber(
   const offset = requestedPage * requestedSize;
   const count = page.plans.length;
   const total = page.totalElements;
+  // Some Spring responses omit totalElements but still provide totalPages.
+  // Never treat a reported last page as an unbounded continuation.
+  const invalidPageCount =
+    totalPages !== null &&
+    (totalPages === 0
+      ? requestedPage !== 0 || count !== 0 || last === false
+      : requestedPage >= totalPages ||
+        count === 0 ||
+        (requestedPage < totalPages - 1 && count < requestedSize) ||
+        (last !== null && last !== (requestedPage === totalPages - 1)));
   const incompatible =
+    invalidPageCount ||
     (number !== null && number !== requestedPage) ||
     (size !== null && size !== requestedSize) ||
     (numberOfElements !== null && numberOfElements !== count) ||
@@ -93,6 +104,10 @@ export function nextTreatmentPageNumber(
   }
   if (total !== null)
     return offset + requestedSize >= total ? 0 : requestedPage + 1;
+  if (totalPages !== null)
+    return totalPages === 0 || requestedPage === totalPages - 1
+      ? 0
+      : requestedPage + 1;
   if (last !== null) return last ? 0 : requestedPage + 1;
   return count < requestedSize ? 0 : requestedPage + 1;
 }
