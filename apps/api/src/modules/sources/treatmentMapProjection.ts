@@ -18,6 +18,16 @@ export type MapTreatment = {
   reviewStatus?: "pending" | "verified";
 };
 
+/** Accept only canonical UTC timestamps stored by the treatment parser. */
+function storedPublicationDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) &&
+    new Date(timestamp).toISOString() === value
+    ? value
+    : null;
+}
+
 /** Drop malformed persisted treatment attributes instead of trusting a JSONB type assertion. */
 function sanitizeStoredTreatments(value: unknown): BeekeeperPlan["treatments"] {
   if (!Array.isArray(value)) return [];
@@ -95,7 +105,10 @@ export async function listStoredMapTreatments(
         : r.name,
     sourceUrl: r.canonical_url,
     retrievedAt: r.retrieved_at.toISOString(),
-    publishedAt: r.published_at?.toISOString() ?? null,
+    publishedAt:
+      storedPublicationDate(r.attributes.publishedAt) ??
+      r.published_at?.toISOString() ??
+      null,
     startAt: r.start_at?.toISOString() ?? null,
     endAt: r.end_at?.toISOString() ?? null,
     contractorName:

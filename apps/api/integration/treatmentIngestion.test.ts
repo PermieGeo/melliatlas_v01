@@ -403,4 +403,133 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       latestRun: { status: "failed", errorCode: "INCONSISTENT_SOURCE_PAGE" },
     });
   });
+
+  it("projects separate same-plan polygons and source publication dates after PostGIS ingestion", async () => {
+    const firstPublished = 1785000000;
+    const secondPublished = 1785100000;
+    const originalStart = 1785200000;
+    const revisedStart = 1785300000;
+    const sourcePage = {
+      content: [
+        {
+          beeAcreage: {
+            id: 88101,
+            planId: 99191,
+            datePublishing: firstPublished,
+            planDate: originalStart,
+            planDateEnd: originalStart,
+            geo: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [30.1, 54.1],
+                  [30.3, 54.1],
+                  [30.3, 54.3],
+                  [30.1, 54.1],
+                ],
+              ],
+            },
+          },
+          allPatList: [{ patName: "Product A", patProductDangerClassBee: 2 }],
+        },
+        {
+          beeAcreage: {
+            id: 88102,
+            planId: 99191,
+            isUpdated: true,
+            datePublishing: secondPublished,
+            planDate: originalStart,
+            planDateEnd: originalStart,
+            planDateUpdate: revisedStart,
+            planDateEndUpdate: revisedStart,
+            geo: {
+              type: "MultiPolygon",
+              coordinates: [
+                [
+                  [
+                    [34.1, 54.1],
+                    [34.3, 54.1],
+                    [34.3, 54.3],
+                    [34.1, 54.1],
+                  ],
+                ],
+              ],
+            },
+          },
+          allPatList: [{ patName: "Product B", patProductDangerClassBee: 3 }],
+        },
+      ],
+      number: 0,
+      size: 2,
+      numberOfElements: 2,
+      totalElements: 2,
+      totalPages: 1,
+      last: true,
+    };
+    await pool.query(
+      `UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb,
+         api_request_config=$1::jsonb WHERE id='treatment-feed'`,
+      [
+        JSON.stringify({
+          endpoint: sourceFixture.url,
+          request: {
+            ...sourceFixture.request,
+            parameters: { pageNumber: 0, pageSize: 2 },
+          },
+        }),
+      ],
+    );
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => ({
+          canonicalUrl: sourceFixture.url,
+          contentType: "application/json",
+          bytes: Buffer.from(JSON.stringify(sourcePage)),
+        }),
+      },
+      evidenceTestGate,
+    );
+    expect(await service.syncOnePage()).toMatchObject({
+      pageNumber: 0,
+      received: 2,
+      stored: 2,
+      nextPage: 0,
+    });
+    const rows = await pool.query<{
+      id: string;
+      external_id: string;
+      plan_id: string;
+      published_at: string | null;
+    }>(
+      `SELECT id, attributes->>'externalId' AS external_id,
+         attributes->>'planId' AS plan_id,
+         attributes->>'publishedAt' AS published_at
+       FROM source_observations
+       WHERE attributes->>'externalId' IN ('88101', '88102')
+       ORDER BY attributes->>'externalId'`,
+    );
+    expect(
+      rows.rows.map((row) => [row.external_id, row.plan_id, row.published_at]),
+    ).toEqual([
+      ["88101", "99191", new Date(firstPublished * 1000).toISOString()],
+      ["88102", "99191", new Date(secondPublished * 1000).toISOString()],
+    ]);
+    const displayed = await service.published([30, 53, 36, 56]);
+    const byId = new Map(displayed.map((item) => [item.id, item]));
+    expect(byId.get(rows.rows[0]!.id)).toMatchObject({
+      publishedAt: new Date(firstPublished * 1000).toISOString(),
+      startAt: new Date(originalStart * 1000).toISOString(),
+      geometry: { type: "Polygon" },
+      treatments: [{ name: "Product A", crop: null, beeHazardClass: 2 }],
+      reviewStatus: "pending",
+    });
+    expect(byId.get(rows.rows[1]!.id)).toMatchObject({
+      publishedAt: new Date(secondPublished * 1000).toISOString(),
+      startAt: new Date(revisedStart * 1000).toISOString(),
+      geometry: { type: "MultiPolygon" },
+      treatments: [{ name: "Product B", crop: null, beeHazardClass: 3 }],
+      reviewStatus: "pending",
+    });
+  });
 });

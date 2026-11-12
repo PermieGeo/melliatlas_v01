@@ -62,6 +62,50 @@ describe("published treatment plan page parsing", () => {
     expect(page.plans[0].startAt).toMatch(/Z$/);
   });
 
+  it("preserves each field's source publication date, distinct from treatment dates", () => {
+    const firstPublication = 1785000000;
+    const secondPublication = 1785100000;
+    const parsed = parseBeekeeperPlanPage({
+      content: [
+        {
+          beeAcreage: {
+            id: 8001,
+            planId: 9001,
+            datePublishing: firstPublication,
+            planDate: 1785200000,
+            planDateEnd: 1785200000,
+          },
+        },
+        {
+          beeAcreage: {
+            id: 8002,
+            planId: 9001,
+            datePublishing: secondPublication,
+            isUpdated: true,
+            planDate: 1785200000,
+            planDateEnd: 1785200000,
+            planDateUpdate: 1785300000,
+            planDateEndUpdate: 1785300000,
+          },
+        },
+        { beeAcreage: { id: 8003, planId: 9002, datePublishing: "invalid" } },
+        { beeAcreage: { id: 8004, planId: 9002, datePublishing: 0 } },
+      ],
+    });
+    expect(parsed.plans.map((plan) => plan.publishedAt)).toEqual([
+      new Date(firstPublication * 1000).toISOString(),
+      new Date(secondPublication * 1000).toISOString(),
+      null,
+      null,
+    ]);
+    expect(parsed.plans[0]?.startAt).toBe(
+      new Date(1785200000 * 1000).toISOString(),
+    );
+    expect(parsed.plans[1]?.startAt).toBe(
+      new Date(1785300000 * 1000).toISOString(),
+    );
+  });
+
   it("reads Spring pagination metadata without coupling records to a page number", () => {
     const page = parseBeekeeperPlanPage({
       content: [{ beeAcreage: { id: 701, planId: 99 } }],
@@ -120,6 +164,7 @@ describe("published treatment plan page parsing", () => {
       cadastralNumber: null,
       startAt: null,
       endAt: null,
+      publishedAt: null,
       geometry: null,
       treatments: [{ name: null, crop: null, beeHazardClass: null }],
     });

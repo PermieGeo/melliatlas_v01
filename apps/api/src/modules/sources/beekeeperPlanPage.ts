@@ -134,6 +134,8 @@ export type BeekeeperPlan = {
   cadastralNumber: string | null;
   startAt: string | null;
   endAt: string | null;
+  /** Source-reported publication time, distinct from retrieval and treatment dates. */
+  publishedAt: string | null;
   geometry: z.infer<typeof polygon> | z.infer<typeof multiPolygon> | null;
   treatments: {
     name: string | null;
@@ -244,6 +246,7 @@ export function parseBeekeeperPlanPage(input: unknown): {
         cadastralNumber: optionalText(acreage?.cadNum),
         startAt: unixSeconds(startDate),
         endAt: unixSeconds(endDate),
+        publishedAt: unixSeconds(acreage?.datePublishing),
         geometry: parsedGeometry.success ? parsedGeometry.data : null,
         treatments: products.flatMap((rawProduct: unknown) => {
           const product = objectOrNull(rawProduct);
