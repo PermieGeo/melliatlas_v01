@@ -97,6 +97,43 @@ describe("bounded provider page advancement", () => {
     }
   });
 
+  it("enforces totalPages even when totalElements is absent", () => {
+    expect(
+      nextTreatmentPageNumber(
+        parsed({ number: 0, size: 2, totalPages: 2 }, 2),
+        0,
+        2,
+      ),
+    ).toBe(1);
+    expect(
+      nextTreatmentPageNumber(
+        parsed({ number: 1, size: 2, totalPages: 2 }, 1),
+        1,
+        2,
+      ),
+    ).toBe(0);
+    expect(
+      nextTreatmentPageNumber(
+        parseBeekeeperPlanPage({ content: [], totalPages: 0, last: true }),
+        0,
+        2,
+      ),
+    ).toBe(0);
+
+    for (const [metadata, requestedPage, count] of [
+      [{ number: 1, size: 2, totalPages: 1, last: true }, 1, 2],
+      [{ number: 0, size: 2, totalPages: 0, last: true }, 0, 1],
+      [{ number: 0, size: 2, totalPages: 2, last: true }, 0, 2],
+      [{ number: 1, size: 2, totalPages: 2, last: false }, 1, 1],
+      [{ number: 0, size: 2, totalPages: 2 }, 0, 1],
+      [{ number: 0, size: 2, totalPages: 1 }, 0, 0],
+    ] as const) {
+      expect(() =>
+        nextTreatmentPageNumber(parsed(metadata, count), requestedPage, 2),
+      ).toThrow("Provider page metadata does not match the requested page");
+    }
+  });
+
   it("rejects short nonterminal pages that would silently skip source records", () => {
     expect(() =>
       nextTreatmentPageNumber(

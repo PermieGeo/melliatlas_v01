@@ -404,6 +404,50 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     });
   });
 
+  it("rejects out-of-range totalPages-only responses without changing evidence or cursor", async () => {
+    await pool.query(
+      `UPDATE source_catalog SET lifecycle='configured',
+         source_cursor='{"pageNumber":1}'::jsonb WHERE id='treatment-feed'`,
+    );
+    const before = await pool.query<{ count: string }>(
+      "SELECT count(*) AS count FROM source_documents WHERE source_id='treatment-feed'",
+    );
+    const response = {
+      content: portalFixture.content,
+      number: 1,
+      size: 1,
+      numberOfElements: 1,
+      totalPages: 1,
+      last: true,
+    };
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => ({
+          canonicalUrl: sourceFixture.url,
+          contentType: "application/json",
+          bytes: Buffer.from(JSON.stringify(response)),
+        }),
+      },
+      evidenceTestGate,
+    );
+    await expect(service.syncOnePage()).rejects.toMatchObject({
+      statusCode: 502,
+      code: "INCONSISTENT_SOURCE_PAGE",
+    });
+    const after = await pool.query<{ count: string }>(
+      "SELECT count(*) AS count FROM source_documents WHERE source_id='treatment-feed'",
+    );
+    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+    const cursor = await pool.query<{ source_cursor: { pageNumber: number } }>(
+      "SELECT source_cursor FROM source_catalog WHERE id='treatment-feed'",
+    );
+    expect(cursor.rows[0]?.source_cursor.pageNumber).toBe(1);
+    expect(await service.status()).toMatchObject({
+      latestRun: { status: "failed", errorCode: "INCONSISTENT_SOURCE_PAGE" },
+    });
+  });
+
   it("does not replace a newer field revision when an older page is fetched again", async () => {
     await pool.query(
       "UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb WHERE id='treatment-feed'",
