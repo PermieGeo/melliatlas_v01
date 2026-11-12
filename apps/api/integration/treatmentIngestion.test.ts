@@ -404,6 +404,154 @@ describe("real PostGIS provider ingestion and publication gates", () => {
     });
   });
 
+  it("does not replace a newer field revision when an older page is fetched again", async () => {
+    await pool.query(
+      "UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb WHERE id='treatment-feed'",
+    );
+    const fieldId = "88271";
+    const dayInSeconds = 24 * 60 * 60;
+    const originalStartAt = portalFixture.content[0].beeAcreage.planDate;
+    const originalEndAt = portalFixture.content[0].beeAcreage.planDateEnd;
+    const oldPage = {
+      ...portalFixture,
+      content: [
+        {
+          ...portalFixture.content[0],
+          beeAcreage: {
+            ...portalFixture.content[0].beeAcreage,
+            id: Number(fieldId),
+            planId: 99271,
+          },
+          allPatList: [
+            { patName: "Earlier product", patProductDangerClassBee: 2 },
+          ],
+        },
+      ],
+    };
+    const revisedPage = {
+      ...oldPage,
+      content: [
+        {
+          ...oldPage.content[0],
+          beeAcreage: {
+            ...oldPage.content[0].beeAcreage,
+            isUpdated: true,
+            planDateUpdate: originalStartAt + dayInSeconds,
+            planDateEndUpdate: originalEndAt + dayInSeconds,
+          },
+          allPatList: [
+            { patName: "Revised product", patProductDangerClassBee: 3 },
+          ],
+        },
+      ],
+    };
+    const responses = [oldPage, revisedPage, oldPage];
+    let fetches = 0;
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => {
+          const response = responses[fetches++];
+          if (!response) throw new Error("Unexpected test fetch");
+          return {
+            canonicalUrl: sourceFixture.url,
+            contentType: "application/json",
+            bytes: Buffer.from(JSON.stringify(response)),
+          };
+        },
+      },
+      evidenceTestGate,
+    );
+
+    expect(await service.syncOnePage()).toMatchObject({
+      stored: 1,
+      nextPage: 0,
+    });
+    const revisions = async () =>
+      pool.query<{
+        observation_id: string;
+        document_id: string;
+        product_name: string;
+        retrieved_at: Date;
+        last_seen_at: Date;
+      }>(
+        `SELECT o.id AS observation_id, d.id AS document_id,
+           o.attributes->'treatments'->0->>'name' AS product_name,
+           d.retrieved_at, d.last_seen_at
+         FROM source_observations o
+         JOIN source_documents d ON d.id=o.source_document_id
+         WHERE o.attributes->>'externalId'=$1`,
+        [fieldId],
+      );
+    const original = (await revisions()).rows[0]!;
+    expect(original.product_name).toBe("Earlier product");
+    // Pin the two immutable snapshot creation times to remove clock-order flakiness.
+    await pool.query(
+      "UPDATE source_documents SET retrieved_at='2026-11-03T00:00:00Z', last_seen_at='2026-11-03T00:00:00Z' WHERE id=$1",
+      [original.document_id],
+    );
+
+    expect(await service.syncOnePage()).toMatchObject({
+      stored: 1,
+      nextPage: 0,
+    });
+    const updated = (await revisions()).rows.find(
+      (row) => row.document_id !== original.document_id,
+    )!;
+    expect(updated.product_name).toBe("Revised product");
+    await pool.query(
+      "UPDATE source_documents SET retrieved_at='2026-11-04T00:00:00Z', last_seen_at='2026-11-04T00:00:00Z' WHERE id=$1",
+      [updated.document_id],
+    );
+    const publishedField = async () => {
+      const rows = await service.published([31, 53, 34, 56]);
+      return rows.find((item) =>
+        [original.observation_id, updated.observation_id].includes(item.id),
+      );
+    };
+    expect(await publishedField()).toMatchObject({
+      id: updated.observation_id,
+      retrievedAt: "2026-11-04T00:00:00.000Z",
+      startAt: new Date((originalStartAt + dayInSeconds) * 1000).toISOString(),
+      treatments: [{ name: "Revised product", crop: null, beeHazardClass: 3 }],
+    });
+    await service.review(
+      updated.observation_id,
+      "verified",
+      "Test reviewer",
+      "Compared the revised pesticide and dates against source evidence.",
+    );
+
+    expect(await service.syncOnePage()).toMatchObject({
+      stored: 0,
+      nextPage: 0,
+    });
+    expect(fetches).toBe(3);
+    const finalRevisions = (await revisions()).rows;
+    expect(finalRevisions).toHaveLength(2);
+    const repeatedOld = finalRevisions.find(
+      (row) => row.document_id === original.document_id,
+    )!;
+    const unchangedNew = finalRevisions.find(
+      (row) => row.document_id === updated.document_id,
+    )!;
+    expect(repeatedOld.last_seen_at.getTime()).toBeGreaterThan(
+      unchangedNew.last_seen_at.getTime(),
+    );
+    expect(await publishedField()).toMatchObject({
+      id: updated.observation_id,
+      retrievedAt: "2026-11-04T00:00:00.000Z",
+      startAt: new Date((originalStartAt + dayInSeconds) * 1000).toISOString(),
+      reviewStatus: "verified",
+      treatments: [{ name: "Revised product", crop: null, beeHazardClass: 3 }],
+    });
+    const storedReviews = await pool.query<{ count: string }>(
+      "SELECT count(*) AS count FROM source_observation_reviews WHERE observation_id=$1",
+      [updated.observation_id],
+    );
+    expect(storedReviews.rows[0]!.count).toBe("1");
+  });
+
   it("projects separate same-plan polygons and source publication dates after PostGIS ingestion", async () => {
     const firstPublished = 1785000000;
     const secondPublished = 1785100000;
