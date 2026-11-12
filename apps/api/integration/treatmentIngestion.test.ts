@@ -1028,4 +1028,127 @@ describe("real PostGIS provider ingestion and publication gates", () => {
       );
     }
   });
+
+  it("rolls back a partly written page and retries it after a persistence failure", async () => {
+    const firstFieldId = "998801";
+    const failingFieldId = "998802";
+    const testPage = {
+      content: [
+        {
+          ...portalFixture.content[0],
+          beeAcreage: {
+            ...portalFixture.content[0].beeAcreage,
+            id: Number(firstFieldId),
+          },
+        },
+        {
+          ...portalFixture.content[0],
+          beeAcreage: {
+            ...portalFixture.content[0].beeAcreage,
+            id: Number(failingFieldId),
+          },
+        },
+      ],
+      number: 0,
+      size: 2,
+      numberOfElements: 2,
+      totalElements: 2,
+      totalPages: 1,
+      last: true,
+    };
+    await pool.query(
+      `UPDATE source_catalog SET lifecycle='configured', source_cursor='{}'::jsonb,
+         api_request_config=$1::jsonb WHERE id='treatment-feed'`,
+      [
+        JSON.stringify({
+          endpoint: sourceFixture.url,
+          request: {
+            ...sourceFixture.request,
+            parameters: { pageNumber: 0, pageSize: 2 },
+          },
+        }),
+      ],
+    );
+    const before = await pool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM source_documents WHERE source_id='treatment-feed'",
+    );
+    const service = new TreatmentIngestionService(
+      pool,
+      {
+        fetch: async () => ({
+          canonicalUrl: sourceFixture.url,
+          contentType: "application/json",
+          bytes: Buffer.from(JSON.stringify(testPage)),
+        }),
+      },
+      evidenceTestGate,
+    );
+    try {
+      await pool.query(`CREATE FUNCTION reject_synthetic_field() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.attributes->>'externalId' = '${failingFieldId}' THEN
+            RAISE EXCEPTION 'Synthetic persistence failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql`);
+      await pool.query(`CREATE TRIGGER reject_synthetic_field_trigger
+        BEFORE INSERT ON source_observations
+        FOR EACH ROW EXECUTE FUNCTION reject_synthetic_field()`);
+      await expect(service.syncOnePage()).rejects.toThrow(
+        "Synthetic persistence failure",
+      );
+      const after = await pool.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM source_documents WHERE source_id='treatment-feed'",
+      );
+      expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+      const rows = await pool.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM source_observations
+         WHERE attributes->>'externalId' IN ($1,$2)`,
+        [firstFieldId, failingFieldId],
+      );
+      expect(rows.rows[0]?.count).toBe("0");
+      const cursor = await pool.query<{
+        source_cursor: { pageNumber?: number };
+      }>("SELECT source_cursor FROM source_catalog WHERE id='treatment-feed'");
+      expect(cursor.rows[0]?.source_cursor.pageNumber ?? 0).toBe(0);
+      expect(await service.status()).toMatchObject({
+        latestRun: { status: "failed" },
+      });
+      await pool.query(
+        "DROP TRIGGER reject_synthetic_field_trigger ON source_observations",
+      );
+      await pool.query("DROP FUNCTION reject_synthetic_field()");
+
+      expect(await service.syncOnePage()).toMatchObject({
+        pageNumber: 0,
+        received: 2,
+        stored: 2,
+        nextPage: 0,
+      });
+      const afterRetry = await pool.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM source_observations
+         WHERE attributes->>'externalId' IN ($1,$2)`,
+        [firstFieldId, failingFieldId],
+      );
+      expect(afterRetry.rows[0]?.count).toBe("2");
+      expect(await service.status()).toMatchObject({
+        latestRun: { status: "succeeded", received: 2, accepted: 2 },
+      });
+    } finally {
+      await pool.query(
+        "DROP TRIGGER IF EXISTS reject_synthetic_field_trigger ON source_observations",
+      );
+      await pool.query("DROP FUNCTION IF EXISTS reject_synthetic_field()");
+      await pool.query(
+        "UPDATE source_catalog SET api_request_config=$1::jsonb WHERE id='treatment-feed'",
+        [
+          JSON.stringify({
+            endpoint: sourceFixture.url,
+            request: sourceFixture.request,
+          }),
+        ],
+      );
+    }
+  });
 });
