@@ -7,6 +7,7 @@ import { SourceRepository } from "./db/sourceRepository.js";
 import { ProviderConfigurationRepository } from "./modules/sources/providerConfiguration.js";
 import { TreatmentIngestionService } from "./modules/sources/treatmentIngestion.js";
 import { SaturnViewportCollectionService } from "./modules/sources/providers/saturn/index.js";
+import { createTerritoryDirectory } from "./modules/sources/territoryDirectory.js";
 import { DistrictCacheRepository } from "./modules/sources/districtCacheRepository.js";
 import { OpenMeteoAdapter } from "./modules/weather/openMeteo.js";
 import { createCore } from "./modules/core/index.js";
@@ -33,6 +34,7 @@ async function start(): Promise<void> {
       treatmentFeed,
       districtCache,
       viewportCollection,
+      territories: createTerritoryDirectory(viewportCollection),
       inspectLocation: (point) => core.inspectWeather(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {

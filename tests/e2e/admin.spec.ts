@@ -90,13 +90,16 @@ test("shows development-only import guidance and inline help", async ({
     "Дополнительно: ручная диагностика источника и технические координаты",
     { exact: true },
   );
-  await expect(diagnosticsDisclosure).toHaveCount(1);
+  await expect(diagnosticsDisclosure).toBeVisible();
+  const coordinatesDisclosure = dataCollection.getByText(
+    "Точные координаты и даты квадрата",
+    { exact: true },
+  );
+  await expect(coordinatesDisclosure).toBeVisible();
   await diagnosticsDisclosure.click();
-  await expect(
-    dataCollection.getByText("Точные координаты и даты квадрата", {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(coordinatesDisclosure).toBeHidden();
+  await diagnosticsDisclosure.click();
+  await expect(coordinatesDisclosure).toBeVisible();
   await expect(page.getByText("На период разработки")).toBeVisible();
   await expect(page.getByText(/Её заменит выбор района/)).toBeVisible();
   const help = page.getByRole("button", {

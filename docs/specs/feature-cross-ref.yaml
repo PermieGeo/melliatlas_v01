@@ -10,6 +10,8 @@ features:
       - SRC-R10
     code_paths:
       - apps/api/src/db/sourceRepository.ts
+      - apps/api/src/modules/sources/territoryDirectory.ts
+      - packages/contracts/src/index.ts
       - apps/api/src/app.ts
       - apps/api/src/modules/sources/contracts.ts
       - apps/api/src/modules/sources/municipalSourceRegistry.ts
@@ -17,6 +19,7 @@ features:
     test_paths:
       - apps/api/test/app.test.ts
       - apps/api/test/sourcePolicy.test.ts
+      - apps/api/test/territoryDirectory.test.ts
       - apps/api/test/municipalSourceRegistry.test.ts
       - apps/api/integration/sourceCatalogMigration.test.ts
   - id: SOURCES.PROVIDER_CONFIGURATION
@@ -95,8 +98,6 @@ features:
       - apps/api/src/modules/sources/providers/saturn/saturnViewportPageFetcher.ts
       - apps/api/src/modules/sources/providers/saturn/requestProfile.ts
       - apps/api/src/modules/sources/providers/saturn/saturnViewportOperatorRoutes.ts
-      - apps/api/src/modules/sources/providers/saturn/saturnViewportClientRoutes.ts
-      - apps/web/src/components/DistrictViewportPanel.tsx
       - apps/web/src/App.tsx
       - apps/web/src/components/MapCanvas.tsx
       - apps/web/src/api/client.ts
@@ -134,7 +135,6 @@ features:
       - apps/api/test/saturnRequestJournal.test.ts
       - apps/admin/src/components/SaturnRequestLogPanel.test.tsx
       - apps/api/test/saturnViewportClientRoutes.test.ts
-      - apps/web/src/components/DistrictViewportPanel.test.tsx
       - tests/e2e/map.spec.ts
       - apps/admin/src/components/ViewportCollectionPanel.test.tsx
       - apps/admin/src/components/ViewportCacheHistoryPanel.test.tsx
@@ -218,6 +218,8 @@ features:
       - apps/api/src/modules/sources/treatmentMapProjection.ts
       - apps/api/src/app.ts
       - apps/web/src/App.tsx
+      - apps/web/src/components/TerritorySelector.tsx
+      - apps/api/src/modules/sources/territoryDirectory.ts
       - apps/web/src/components/MapCanvas.tsx
       - apps/web/src/api/client.ts
       - packages/contracts/src/index.ts
@@ -230,6 +232,8 @@ features:
       - apps/api/test/app.test.ts
       - apps/api/integration/treatmentIngestion.test.ts
       - apps/web/src/api/client.test.ts
+      - apps/web/src/components/TerritorySelector.test.tsx
+      - apps/api/test/territoryDirectory.test.ts
       - apps/api/integration/regionalCollection.test.ts
       - tests/e2e/map.spec.ts
       - apps/admin/src/App.test.tsx
@@ -266,9 +270,11 @@ features:
       - SRC-R11
     code_paths:
       - apps/web/src/components/MapCanvas.tsx
+      - apps/web/src/components/TerritorySelector.tsx
       - apps/web/src/App.tsx
     test_paths:
       - apps/web/src/App.test.tsx
+      - apps/web/src/components/TerritorySelector.test.tsx
       - tests/e2e/map.spec.ts
   - id: APIARIES.PRIVATE_LOCATIONS
     stage_ids:

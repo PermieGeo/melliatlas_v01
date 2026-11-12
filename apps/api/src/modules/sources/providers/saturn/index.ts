@@ -4,4 +4,3 @@ export {
   createSaturnViewportOperatorRouter,
   type ViewportCollectionActions,
 } from "./saturnViewportOperatorRoutes.js";
-export { createSaturnViewportClientRouter } from "./saturnViewportClientRoutes.js";

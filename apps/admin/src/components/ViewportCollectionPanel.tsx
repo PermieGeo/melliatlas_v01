@@ -1,5 +1,5 @@
 // Feature IDs: SOURCES.DOCUMENT_HISTORY
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   viewportCollectionSelectionSchema,
   type SaturnRegionCatalogResponse,
@@ -14,6 +14,7 @@ import {
   fetchViewportNextPage,
   loadOperatorSaturnRegions,
   loadOperatorSaturnDistricts,
+  refreshOperatorSaturnDistricts,
 } from "../api/client";
 import { t, type Key, type Locale } from "../i18n";
 
@@ -33,6 +34,8 @@ const initial: ViewportCollectionSelection = {
 /** Explicit one-page live collection; never fetch on map movement or field edits. */
 export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
   const [selection, setSelection] = useState(initial);
+  const selectedRegionRef = useRef(selection.regionCode);
+  selectedRegionRef.current = selection.regionCode;
   const [regions, setRegions] = useState<
     SaturnRegionCatalogResponse["regions"]
   >([]);
@@ -41,15 +44,30 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
   >([]);
   const [result, setResult] = useState<ViewportCollectionResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+  const [regionsError, setRegionsError] = useState("");
+  const [regionsLoaded, setRegionsLoaded] = useState(false);
+  const [districtsError, setDistrictsError] = useState("");
   const [error, setError] = useState("");
   const text = (key: Key): string => t(locale, key);
   useEffect(() => {
     let active = true;
+    setRegionsError("");
+    setRegionsLoaded(false);
     void loadOperatorSaturnRegions()
       .then((value) => {
-        if (active) setRegions(value.regions);
+        if (active) {
+          setRegions(value.regions);
+          setRegionsLoaded(true);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) {
+          setRegionsError(text("viewportDirectoryFailed"));
+          setRegionsLoaded(true);
+        }
+      });
     return () => {
       active = false;
     };
@@ -57,16 +75,39 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
   useEffect(() => {
     let active = true;
     setDistricts([]);
+    setDistrictsError("");
     if (!selection.regionCode) return;
     void loadOperatorSaturnDistricts(selection.regionCode)
       .then((value) => {
         if (active) setDistricts(value.districts);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setDistrictsError(text("viewportDirectoryFailed"));
+      });
     return () => {
       active = false;
     };
   }, [selection.regionCode]);
+  async function refreshDirectory(): Promise<void> {
+    if (!selection.regionCode) return;
+    const regionCode = selection.regionCode;
+    setCatalogBusy(true);
+    setCatalogError("");
+    try {
+      const result = await refreshOperatorSaturnDistricts(regionCode);
+      if (regionCode === selectedRegionRef.current) {
+        setDistricts(result.districts);
+        setDistrictsError("");
+      }
+    } catch (cause) {
+      if (regionCode === selectedRegionRef.current)
+        setCatalogError(
+          cause instanceof Error ? cause.message : "REQUEST_FAILED",
+        );
+    } finally {
+      setCatalogBusy(false);
+    }
+  }
   const valid = viewportCollectionSelectionSchema.safeParse(selection).success;
   async function run(action: "status" | "next"): Promise<void> {
     if (!valid) return;
@@ -117,6 +158,7 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
             className="mt-1 w-full rounded border p-2"
             value={selection.regionCode}
             onChange={(event) => {
+              selectedRegionRef.current = event.target.value;
               setSelection((value) => ({
                 ...value,
                 regionCode: event.target.value,
@@ -156,6 +198,39 @@ export function ViewportCollectionPanel({ locale }: { locale: Locale }) {
           </select>
         </label>
       </div>
+      {regionsLoaded && regions.length === 0 && !regionsError && (
+        <p role="status" className="text-sm text-amber-800">
+          {text("viewportNoRegions")}
+        </p>
+      )}
+      {regionsError && (
+        <p role="alert" className="text-sm text-amber-800">
+          {regionsError}
+        </p>
+      )}
+      {districtsError && (
+        <p role="alert" className="text-sm text-amber-800">
+          {districtsError}
+        </p>
+      )}
+      {selection.regionCode && districts.length === 0 && !districtsError && (
+        <p role="status" className="text-sm text-slate-600">
+          {text("viewportNoDistricts")}
+        </p>
+      )}
+      <button
+        type="button"
+        disabled={!selection.regionCode || catalogBusy}
+        onClick={() => void refreshDirectory()}
+        className="rounded-lg border border-emerald-700 px-3 py-2 text-sm font-medium text-emerald-900 disabled:opacity-50"
+      >
+        {catalogBusy ? text("loading") : text("viewportRefreshDirectory")}
+      </button>
+      {catalogError && (
+        <p role="alert" className="text-sm text-amber-800">
+          {catalogError}
+        </p>
+      )}
       <p className="text-xs text-slate-600">{text("viewportGuideLimits")}</p>
       <details className="rounded-lg border border-slate-200 p-3">
         <summary className="cursor-pointer text-sm font-medium">

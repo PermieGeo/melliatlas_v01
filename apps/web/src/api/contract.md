@@ -1,8 +1,8 @@
-# Beekeeper HTTP Client Contract
+# Beekeeper HTTP Client
 
-**Owner:** `apps/web/src/api/`. **Public API:** exported functions in `client.ts`, validated with `@melliatlas/contracts`.
+**Owner:** `apps/web/src/api/`. **Public API:** `client.ts` exports validated `@melliatlas/contracts` responses.
 
-- Weather inspection and public notice retrieval read `/api/v1` without contacting external evidence providers from the browser.
-- Local Saturn pilot functions read cached districts, field centers and exact-filter viewport progress; directory refresh and next-page fetch require explicit user actions on separate `/api/v1/map/saturn-viewport/*` routes.
-- Responses are validated, and errors preserve server codes for localized presentation. Cached index centers are **not** treatment polygons, observations of spraying, or evidence of district coverage.
-- This client must not call `/api/v1/operator/*`, synthesize observations, or expose provider secrets. The loopback-only fetch pilot needs real authentication before any public deployment.
+- `GET /api/v1/notices?bbox=...` reads only previously persisted, source-attributed PostGIS treatment polygons (at most 200 per response); `GET /api/v1/locations/inspect` reads a weather inspection.
+- `GET /api/v1/territories/regions` and `GET /api/v1/territories/districts?regionId=...` are read-only saved navigation catalogs, not geographic boundary/filter APIs. Region and district IDs are opaque navigation keys backed by the current configured directory adapter.
+- Errors are parsed without leaking source bodies; empty catalogs, failed reads and empty treatment layers are separate states.
+- Web never invokes `/api/v1/operator/*` or `/api/v1/map/saturn-viewport/*`; fetching, directory refresh and all source diagnostics belong to Admin.

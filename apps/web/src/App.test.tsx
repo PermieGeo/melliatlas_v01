@@ -10,6 +10,9 @@ import { afterEach, expect, it, vi } from "vitest";
 import { useEffect } from "react";
 import App from "./App";
 
+vi.mock("./components/TerritorySelector", () => ({
+  TerritorySelector: () => <div data-testid="territory-navigation" />,
+}));
 vi.mock("./components/MapCanvas", () => ({
   MapCanvas: ({
     onSelect,

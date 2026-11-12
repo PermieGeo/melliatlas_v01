@@ -1,56 +1,18 @@
 export const messages = {
   ru: {
-    districtRefreshCatalog: "Получить все районы из Сатурна",
-    districtCatalogUpdated: "Справочник районов сохранён",
-    districtCatalogCount: "Районов в списке",
-    districtCatalogMissing:
-      "Для выбранного региона справочник районов пока не загружен. Нажмите «Получить все районы».",
-    districtArchiveCount: "Уникальных центров полей в общем кэше района",
-    districtArchiveNote:
-      "Синие точки показывают ранее сохранённый индекс, независимо от выбранных дат и квадрата. Это не сведения о выполненных обработках.",
-    districtPanelTitle: "Загрузить данные по району",
-    districtSteps:
-      "1. Один раз получите справочник районов. 2. Выберите район и нужную часть карты. 3. Укажите период до 124 дней и нажмите «Получить ещё до 10 записей».",
-    districtRegion: "Регион источника",
-    districtRegionChoose: "Выберите регион…",
-    districtSelect: "Район выбранного региона",
-    districtChoose: "Выберите район…",
-    districtFrom: "Обновления карты с",
-    districtTo: "Обновления карты по",
-    districtCheck: "Проверить кэш",
-    districtFetch: "Получить ещё до 10 записей",
-    districtBusy: "Загружаем…",
-    districtHint:
-      "Запрос касается только видимой части карты. За одно нажатие загружается одна страница (до 10 записей). Повторное нажатие продолжит загрузку. Это индекс точек полей, не полигоны и не подтверждённые обработки.",
-    districtBoundsHint:
-      "Выберите регион и район, приблизьте карту: квадрат не больше 1° × 1°, период до 124 дней.",
-    districtDisabled:
-      "Загрузка выключена на сервере. Администратор должен разрешить пилотный доступ к источнику.",
-    districtLocalOnly:
-      "Загрузка доступна только в локальном пилотном приложении.",
-    districtThrottle:
-      "Сатурн: пауза между запросами не меньше 20 секунд. Повторите позже.",
-    districtLoadFailed:
-      "Не удалось получить страницу. Сохранённый прогресс не удалён.",
-    districtNoPages: "Для выбранного квадрата пока нет сохранённых страниц.",
-    districtPageCount: "Страниц",
-    districtItemsCount: "Записей индекса",
-    districtComplete:
-      "Все страницы этого квадрата получены; полнота района неизвестна.",
-    districtPartial:
-      "Загрузка квадрата не завершена. Следующая порция сохраняется по явному нажатию после паузы источника.",
-    districtDatesInvalid:
-      "Недопустимый период: даты должны быть корректны, начальная дата — не позже конечной, интервал не более 124 дней. Весь год пока загружается отдельными периодами.",
-    districtLimitDates: "Оставить последние 124 дня периода",
-    districtCacheSaved:
-      "Данные сохранены в PostgreSQL и повторно читаются из общего кэша.",
-    districtCachedPreview: "Синих точек центров полей на карте (максимум 100)",
-    districtCacheKeyNote:
-      "Кэш зависит от точных границ карты и периода. При их изменении это другой запрос; ранее сохранённые данные остаются в БД и видны в Admin → Загрузка данных. Синие точки — индекс полей, не места обработки.",
-    districtStaleRevision:
-      "Версия источника изменилась. Старые записи доступны для просмотра, но продолжение этого запроса заблокировано.",
-    districtPointTooltip: "Центр поля из кэша Сатурна, ID",
-
+    territoryTitle: "Выбор территории",
+    territoryExplanation:
+      "Выберите регион и район, чтобы перейти к ним на карте. Отображаются только сохранённые в базе полигоны обработок в видимой области. Загрузка источников выполняется администратором; список районов не подтверждает полноту данных.",
+    territoryRegion: "Регион",
+    territoryDistrict: "Район",
+    territoryChooseRegion: "Выберите регион…",
+    territoryChooseDistrict: "Все районы / выберите район…",
+    territoryLoading: "Загружаем территории…",
+    territoryEmptyRegions:
+      "Список регионов пока пуст. Администратору нужно зарегистрировать регионы в базе данных.",
+    territoryEmptyDistricts:
+      "Для этого региона районы пока не загружены. Администратор может обновить справочник.",
+    territoryLoadError: "Не удалось прочитать сохранённые территории.",
     navigation: "Навигация",
     mapNav: "Карта",
     help: "Помощь",
@@ -106,7 +68,7 @@ export const messages = {
     noPoint: "Точка не выбрана",
     radius: "Радиус обзора",
     radiusVisualizationOnly:
-      "Пока круг только обозначает область: поиск в Сатурн по радиусу ещё не подключён.",
+      "Круг только для отображения, он не фильтрует сохранённые полигоны обработок.",
     selected: "Выбрано",
     unverified: "Не проверено. Не является оценкой безопасности.",
     verified: "Проверено оператором. Не является оценкой безопасности.",
@@ -119,57 +81,19 @@ export const messages = {
     pilot: "Пилотная территория",
   },
   en: {
-    districtRefreshCatalog: "Fetch all districts from Saturn",
-    districtCatalogUpdated: "District directory saved",
-    districtCatalogCount: "Districts in selector",
-    districtCatalogMissing:
-      "The district directory for this region is not downloaded yet. Fetch the directory first.",
-    districtArchiveCount: "Unique cached field centers in this district",
-    districtArchiveNote:
-      "Blue markers show previously cached index points across all saved filters. They are not evidence of pesticide application.",
-    districtPanelTitle: "Load district data",
-    districtSteps:
-      "1. Fetch the district directory once. 2. Choose a district and date range. 3. Zoom in and load the next batch of up to 10 fields.",
-    districtRegion: "Provider region",
-    districtRegionChoose: "Select a region…",
-    districtSelect: "District in selected region",
-    districtChoose: "Select a district…",
-    districtFrom: "Map updates from",
-    districtTo: "Map updates through",
-    districtCheck: "Check cache",
-    districtFetch: "Fetch up to 10 more records",
-    districtBusy: "Loading…",
-    districtHint:
-      "Only the visible map rectangle is requested. Each click loads one page (up to 10 index entries); another click resumes. These are field centers, not polygons or confirmed treatments.",
-    districtBoundsHint:
-      "Choose a region and district, then zoom in: the maximum rectangle is 1° × 1°, and the period is at most 124 days.",
-    districtDisabled:
-      "Server-side collection is disabled. An operator must enable authorized pilot access.",
-    districtLocalOnly:
-      "Collection is available only in the local pilot application.",
-    districtThrottle:
-      "Saturn: wait at least 20 seconds between upstream requests and try again.",
-    districtLoadFailed:
-      "Unable to fetch the page. Previously saved progress is retained.",
-    districtNoPages: "No saved pages for this rectangle yet.",
-    districtPageCount: "Pages",
-    districtItemsCount: "Index entries",
-    districtComplete:
-      "All pages of this rectangle loaded; district completeness is unknown.",
-    districtPartial:
-      "This rectangle is not yet complete. Fetch the next batch explicitly after the provider cooldown.",
-    districtDatesInvalid:
-      "Invalid dates: the start must not exceed the end and a single window is limited to 124 days. Split a year into separate windows.",
-    districtLimitDates: "Keep the last 124 days of this range",
-    districtCacheSaved:
-      "Saved in PostgreSQL; repeat reads use the shared cache.",
-    districtCachedPreview: "Blue cached field-center points shown (up to 100)",
-    districtCacheKeyNote:
-      "The cache key includes exact map bounds and dates. Changing either creates a different request; earlier entries remain in PostgreSQL under Admin → Data collection. Blue dots are a field index, not spraying locations.",
-    districtStaleRevision:
-      "The source revision changed. Saved records remain readable, but this request cannot resume.",
-    districtPointTooltip: "Cached Saturn field center, ID",
-
+    territoryTitle: "Browse territories",
+    territoryExplanation:
+      "Select a region and district to navigate the map. Only stored treatment polygons within the visible map area are shown. Providers are collected through Admin; the district list does not establish complete coverage.",
+    territoryRegion: "Region",
+    territoryDistrict: "District",
+    territoryChooseRegion: "Choose region…",
+    territoryChooseDistrict: "All districts / choose a district…",
+    territoryLoading: "Loading territories…",
+    territoryEmptyRegions:
+      "No regions are registered. An operator must register regions in the database.",
+    territoryEmptyDistricts:
+      "No saved district directory exists for this region. An operator can refresh it.",
+    territoryLoadError: "Unable to load saved territories.",
     navigation: "Navigation",
     mapNav: "Map",
     help: "Help",
@@ -224,7 +148,7 @@ export const messages = {
     noPoint: "No point selected",
     radius: "View radius",
     radiusVisualizationOnly:
-      "The circle is visual only: radius-filtered Saturn retrieval is not yet connected.",
+      "The circle is visual only; it does not filter the stored treatment layer.",
     selected: "Selected",
     unverified: "Unverified. Not a safety assessment.",
     verified: "Operator reviewed. Not a safety assessment.",

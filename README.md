@@ -8,9 +8,9 @@ The product is designed for **multiple information providers**, not for a single
 
 ## What works today
 
-- **Beekeeper map:** point/radius selection, attributed Open-Meteo weather, and stored source-backed field polygons with explicit `verified` or structured `pending` review status.
+- **Beekeeper map:** read-only region/district navigation from saved catalogs, point/radius selection, attributed Open-Meteo weather, and stored PostGIS field polygons with explicit `verified` or structured `pending` review status. A territory selector moves the viewport; it is not an administrative boundary filter.
 - **Local operator workspace:** editable treatment-feed connection, explicit one-page `/planapplybees` ingestion of source-linked polygons and products, original evidence, human review, and a separate preview map. Configured district/date filters require separate source-contract verification.
-- **Experimental Saturn viewport index:** cached provider district names/centers, exact-filter index progress, bounded field-center display and one-page manual retrieval behind a server flag. Centers are **not** treatment polygons; collection is disabled by default and does not imply complete district coverage.
+- **Experimental Saturn viewport index:** cached provider district names/centers, exact-filter index progress and operator-only one-page retrieval behind a server flag. Centers are **not** treatment polygons; collection is disabled by default and does not imply complete district coverage.
 - **Backend foundation:** PostgreSQL/PostGIS, restricted source retrieval, immutable document history, a typed provider registry, and a sequential, code-defined DAG runner.
 
 **Not implemented:** private apiary accounts, automatic district refresh, complete agricultural-notice coverage, flowering prediction, hazard assessment, AI-generated relocation points/dates, alerts, or a regional community safety board. These are product directions, not shipped capabilities. The [umbrella specification](docs/specs/active/spec-umbrella-melliatlas.md) and selected [source-ingestion specification](docs/specs/active/subspecs/source-ingestion.md) define the currently approved scope; the broader multi-source migration-planning and community-sharing concepts still require dedicated specifications.
@@ -67,7 +67,7 @@ flowchart TD
     Evidence -. "future graph input" .-> Orchestrator
 ```
 
-Map navigation and ordinary notice reads **never start provider downloads**. The current treatment-polygon layer reads stored PostGIS evidence, outside the orchestration scaffold. An operator may explicitly import one bounded treatment page; the opt-in local Saturn pilot may request one map-index page. Future analysis must distinguish raw reports, verified evidence, model inference and missing coverage. Indexed centers are not proof of spraying or safety.
+Map navigation and ordinary notice reads **never start provider downloads**. The current treatment-polygon layer reads stored PostGIS evidence, outside the orchestration scaffold. An operator may explicitly import one bounded treatment page; only local Admin may explicitly request a map-index page. Future analysis must distinguish raw reports, verified evidence, model inference and missing coverage. Indexed centers are not proof of spraying or safety.
 
 ## Quick start
 

@@ -15,12 +15,12 @@ import express, { type ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { ApiFailure } from "./lib/errors.js";
+import type { TerritoryDirectory } from "./modules/sources/territoryDirectory.js";
 import type { RegionCollectionActions } from "./modules/sources/regionOperatorRoutes.js";
 import { createRegionOperatorRouter } from "./modules/sources/regionOperatorRoutes.js";
 import {
   createSaturnViewportOperatorRouter,
   type ViewportCollectionActions,
-  createSaturnViewportClientRouter,
 } from "./modules/sources/providers/saturn/index.js";
 
 export type ApiServices = {
@@ -65,6 +65,7 @@ export type ApiServices = {
   regionCollection?: RegionCollectionActions;
   districtCache?: { list(): Promise<unknown[]> };
   viewportCollection?: ViewportCollectionActions;
+  territories?: TerritoryDirectory;
   providerConfiguration?: {
     get(): Promise<ProviderConfiguration>;
     update(input: ProviderConfigurationEdit): Promise<ProviderConfiguration>;
@@ -275,11 +276,51 @@ export function createApp(services: ApiServices): express.Express {
     createSaturnViewportOperatorRouter(services.viewportCollection),
   );
 
-  // The local beekeeper pilot can explicitly request one bounded index page.
-  app.use(
-    "/api/v1/map/saturn-viewport",
-    createSaturnViewportClientRouter(services.viewportCollection),
-  );
+  // Public navigation is read-only; no map route can start provider retrieval.
+  app.get("/api/v1/territories/regions", async (_req, res, next) => {
+    if (!services.territories)
+      return next(
+        new ApiFailure(
+          503,
+          "TERRITORIES_UNAVAILABLE",
+          "Territory catalog unavailable",
+        ),
+      );
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await services.territories.regions());
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.get("/api/v1/territories/districts", async (req, res, next) => {
+    if (!services.territories)
+      return next(
+        new ApiFailure(
+          503,
+          "TERRITORIES_UNAVAILABLE",
+          "Territory catalog unavailable",
+        ),
+      );
+    const regionId = req.query.regionId;
+    if (typeof regionId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(regionId))
+      return next(
+        new ApiFailure(400, "INVALID_TERRITORY_REGION", "Invalid region"),
+      );
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await services.territories.districts(regionId));
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "TERRITORY_REGION_NOT_FOUND"
+      )
+        return next(
+          new ApiFailure(404, "TERRITORY_REGION_NOT_FOUND", "Unknown region"),
+        );
+      next(error);
+    }
+  });
 
   // District refresh stays disabled until the provider district/filter request is verified.
   app.get(

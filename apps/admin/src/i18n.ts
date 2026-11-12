@@ -2,14 +2,21 @@ import { cacheHistoryMessages } from "./cacheHistoryMessages";
 
 export const messages = {
   ru: {
+    viewportNoRegions:
+      "Нет зарегистрированных регионов. Администратор должен выполнить seed из config/saturn-demo-regions.json; импорт не начинается автоматически.",
+    viewportNoDistricts:
+      "Нет сохранённого списка районов. Обновите справочник по явному нажатию, если доступ к источнику разрешён.",
+    viewportDirectoryFailed:
+      "Не удалось прочитать справочник регионов или районов.",
+    viewportRefreshDirectory: "Обновить справочник районов",
     ...cacheHistoryMessages.ru,
     viewportGuideTitle: "Как загружать данные — три шага",
     viewportGuideOne:
-      "1. На карте пчеловода выберите зарегистрированный регион, получите его справочник районов и выберите район.",
+      "1. Зарегистрируйте регион через seed, выберите его здесь и обновите справочник районов при разрешённом доступе.",
     viewportGuideTwo:
-      "2. Приблизьте нужные поля и задайте период обновлений карты (это не даты фактических обработок).",
+      "2. Укажите границы квадрата и период UpdateMap (это не даты фактической обработки).",
     viewportGuideThree:
-      "3. Нажмите «Получить ещё до 10 записей». Данные сохраняются на сервере. Каждое следующее нажатие продолжит загрузку после паузы источника.",
+      "3. Явно нажмите кнопку получения страницы. Для полных полигонов используйте отдельную загрузку /planapplybees в этом разделе.",
     viewportGuideOpen: "Перейти к карте пчеловода",
     viewportGuideLimits:
       "Все районы берутся из серверного справочника Сатурна. Загружаем только индекс центров полей, не контуры и не препараты. Нет гарантии полноты района.",
@@ -203,14 +210,20 @@ export const messages = {
     revision: "Ревизия",
   },
   en: {
+    viewportNoRegions:
+      "No regions are registered. An operator must run the region seed from config/saturn-demo-regions.json; ingestion never starts automatically.",
+    viewportNoDistricts:
+      "No cached districts. Explicitly refresh the provider directory only if access has been approved.",
+    viewportDirectoryFailed: "Unable to read the region or district directory.",
+    viewportRefreshDirectory: "Refresh district directory",
     ...cacheHistoryMessages.en,
     viewportGuideTitle: "How to load data — three steps",
     viewportGuideOne:
-      "1. On the beekeeper map, select a registered region, fetch its Saturn district directory and select a district.",
+      "1. Seed a registered region, select it here and explicitly refresh the saved directory when access permits.",
     viewportGuideTwo:
-      "2. Zoom to the fields and choose a map-update period (not actual treatment dates).",
+      "2. Set a bounded viewport and UpdateMap period (not actual application dates).",
     viewportGuideThree:
-      "3. Select Load page. Entries are saved on the server; each later click resumes after the source cooldown.",
+      "3. Explicitly fetch a page. Complete treatment polygons use the separate /planapplybees import in this operator workspace.",
     viewportGuideOpen: "Open beekeeper map",
     viewportGuideLimits:
       "All districts are loaded from the provider directory. Only field-center summaries are available, not treatment polygons, products or verified district coverage.",
