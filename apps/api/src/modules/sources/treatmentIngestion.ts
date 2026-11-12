@@ -214,6 +214,7 @@ export class TreatmentIngestionService {
   }> {
     const client = await this.pool.connect();
     let locked = false;
+    let operationFailed = false;
     let runId: string | undefined;
     try {
       const result = await client.query<{ acquired: boolean }>(
@@ -495,12 +496,36 @@ export class TreatmentIngestionService {
           ? new ApiFailure(503, code, "Source fetch unavailable")
           : error;
       }
+    } catch (error) {
+      operationFailed = true;
+      throw error;
     } finally {
-      if (locked)
-        await client.query(
-          "SELECT pg_advisory_unlock(hashtext(current_schema()), hashtext('melliatlas_treatment_ingestion'))",
+      let unlockFailed = false;
+      let unlockError: unknown;
+      if (locked) {
+        try {
+          await client.query(
+            "SELECT pg_advisory_unlock(hashtext(current_schema()), hashtext('melliatlas_treatment_ingestion'))",
+          );
+        } catch (error) {
+          unlockFailed = true;
+          unlockError = error;
+        }
+      }
+      // Discard a connection whose session lock could not be released.
+      // Preserve the original ingestion failure instead of masking it with cleanup.
+      try {
+        client.release(
+          unlockFailed
+            ? unlockError instanceof Error
+              ? unlockError
+              : new Error("Ingestion session cleanup failed")
+            : undefined,
         );
-      client.release();
+      } catch (error) {
+        if (!operationFailed) throw error;
+      }
+      if (unlockFailed && !operationFailed) throw unlockError;
     }
   }
 

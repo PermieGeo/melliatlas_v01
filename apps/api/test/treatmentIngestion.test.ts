@@ -1,8 +1,10 @@
 // Feature IDs: NOTICES.EXTRACTION, NOTICES.MAP_OVERLAY, NOTICES.SPATIAL_PRECISION
-import { describe, expect, it } from "vitest";
+import type { Pool } from "pg";
+import { describe, expect, it, vi } from "vitest";
 import {
   nextTreatmentPageNumber,
   safePlanGeometry,
+  TreatmentIngestionService,
 } from "../src/modules/sources/treatmentIngestion.js";
 import { parseBeekeeperPlanPage } from "../src/modules/sources/beekeeperPlanPage.js";
 
@@ -184,5 +186,51 @@ describe("bounded provider page advancement", () => {
     expect(nextTreatmentPageNumber(parsed({ last: false }, 2), 0, 2)).toBe(1);
     expect(nextTreatmentPageNumber(parsed({ last: true }), 0, 2)).toBe(0);
     expect(nextTreatmentPageNumber(parsed({}), 0, 2)).toBe(0);
+  });
+});
+
+describe("treatment ingestion database session recovery", () => {
+  it("releases a broken session and preserves the original read failure", async () => {
+    const readFailure = new Error("Synthetic catalog read failure");
+    const unlockFailure = new Error("Synthetic connection failure");
+    const release = vi.fn();
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("pg_try_advisory_lock"))
+        return { rows: [{ acquired: true }] };
+      if (sql.includes("UPDATE ingestion_runs")) return { rows: [] };
+      if (sql.includes("FROM source_catalog")) throw readFailure;
+      if (sql.includes("pg_advisory_unlock")) throw unlockFailure;
+      throw new Error("Unexpected SQL statement");
+    });
+    const pool = {
+      connect: vi.fn(async () => ({ query, release })),
+    } as unknown as Pool;
+    const service = new TreatmentIngestionService(pool);
+
+    await expect(service.syncOnePage()).rejects.toBe(readFailure);
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledWith(unlockFailure);
+    expect(
+      query.mock.calls.filter(([sql]) => sql.includes("pg_advisory_unlock")),
+    ).toHaveLength(1);
+  });
+
+  it("releases an unlocked session when an ingestion is already running", async () => {
+    const release = vi.fn();
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("pg_try_advisory_lock"))
+        return { rows: [{ acquired: false }] };
+      throw new Error("Unexpected SQL after a denied lock");
+    });
+    const pool = {
+      connect: vi.fn(async () => ({ query, release })),
+    } as unknown as Pool;
+
+    await expect(
+      new TreatmentIngestionService(pool).syncOnePage(),
+    ).rejects.toMatchObject({ code: "INGEST_BUSY" });
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledWith(undefined);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 });
