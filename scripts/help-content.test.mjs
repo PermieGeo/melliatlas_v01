@@ -47,14 +47,16 @@ for (const [app, sectionId] of [
     for (const [locale, regionTerm, districtTerm, obsoleteDistrict] of [
       [
         "en",
-        app === "web" ? /register regions/ : /registered provider region/,
+        app === "web"
+          ? /Smolensk pilot region is registered locally/
+          : /registered provider region/,
         /district/,
         /Yartsevo/i,
       ],
       [
         "ru",
         app === "web"
-          ? /зарегистрировать регионы/
+          ? /Смоленская область добавляется/
           : /зарегистрированный регион/,
         /район/,
         /Ярцев/i,

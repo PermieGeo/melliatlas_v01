@@ -74,9 +74,9 @@ it("only reads saved territories and rejects malformed catalogs", async () => {
       new Response(
         JSON.stringify(
           url.includes("/regions")
-            ? { regions: [{ id: "55", name: "Region One" }] }
+            ? { regions: [{ id: "ru-smolensk", name: "Region One" }] }
             : {
-                regionId: "55",
+                regionId: "ru-smolensk",
                 districts: [
                   {
                     id: "1477",
@@ -94,11 +94,11 @@ it("only reads saved territories and rejects malformed catalogs", async () => {
     "Region One",
   );
   expect(
-    (await loadTerritoryDistricts("55", signal)).districts[0]?.center,
+    (await loadTerritoryDistricts("ru-smolensk", signal)).districts[0]?.center,
   ).toEqual({ lat: 55, lon: 32 });
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
     "/api/v1/territories/regions",
-    "/api/v1/territories/districts?regionId=55",
+    "/api/v1/territories/districts?regionId=ru-smolensk",
   ]);
   expect(
     fetcher.mock.calls.every(([, options]) => options?.method === undefined),

@@ -9,7 +9,7 @@ export const messages = {
     territoryChooseDistrict: "Все районы / выберите район…",
     territoryLoading: "Загружаем территории…",
     territoryEmptyRegions:
-      "Список регионов пока пуст. Администратору нужно зарегистрировать регионы в базе данных.",
+      "Список регионов пока пуст. Проверьте, что миграции базы данных выполнены.",
     territoryEmptyDistricts:
       "Для этого региона районы пока не загружены. Администратор может обновить справочник.",
     territoryLoadError: "Не удалось прочитать сохранённые территории.",
@@ -90,7 +90,7 @@ export const messages = {
     territoryChooseDistrict: "All districts / choose a district…",
     territoryLoading: "Loading territories…",
     territoryEmptyRegions:
-      "No regions are registered. An operator must register regions in the database.",
+      "No regions are configured. Check that database migrations have been applied.",
     territoryEmptyDistricts:
       "No saved district directory exists for this region. An operator can refresh it.",
     territoryLoadError: "Unable to load saved territories.",

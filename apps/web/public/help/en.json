@@ -35,7 +35,7 @@
       "title": "Choosing a region and district",
       "paragraphs": [
         "The controls above the map navigate saved region and district catalogs. A district selection centers the map, but does not filter polygons by an administrative boundary. Only previously saved PostGIS records within the visible map are displayed.",
-        "If the region list is empty, an operator must register regions in the database. A missing district list can be refreshed in Admin. A catalog read error is displayed separately from an empty catalog.",
+        "The Smolensk pilot region is registered locally by the database migration; if the region list is empty, check the migrations. A missing district list can be refreshed in Admin. A catalog read error is displayed separately from an empty catalog.",
         "Source collection, including full treatment geometry through /planapplybees, is operator-only. The beekeeper map never starts import and does not assert complete territorial coverage."
       ]
     },

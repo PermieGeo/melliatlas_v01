@@ -20,6 +20,7 @@ features:
       - apps/api/test/app.test.ts
       - apps/api/test/sourcePolicy.test.ts
       - apps/api/test/territoryDirectory.test.ts
+      - apps/api/integration/territoryDirectory.test.ts
       - apps/api/test/municipalSourceRegistry.test.ts
       - apps/api/integration/sourceCatalogMigration.test.ts
   - id: SOURCES.PROVIDER_CONFIGURATION

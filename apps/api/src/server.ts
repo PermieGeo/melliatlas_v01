@@ -34,7 +34,14 @@ async function start(): Promise<void> {
       treatmentFeed,
       districtCache,
       viewportCollection,
-      territories: createTerritoryDirectory(viewportCollection),
+      territories: createTerritoryDirectory(
+        pool,
+        async (providerKey, externalCode) => {
+          if (providerKey !== "saturn")
+            throw new Error("Unsupported cached territory provider");
+          return (await viewportCollection.districts(externalCode)).districts;
+        },
+      ),
       inspectLocation: (point) => core.inspectWeather(point),
       listSources: () => sources.list(),
       checkReadiness: async () => {

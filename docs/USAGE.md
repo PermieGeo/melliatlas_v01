@@ -43,13 +43,15 @@ Re-running preserves customized provider settings. The preset does not call Satu
 
 ## Optional Saturn viewport pilot
 
-After `pnpm db:migrate`, explicitly register demo regions in PostgreSQL (this makes **no external requests**):
+`pnpm db:migrate` now registers the pilot **Smolensk Oblast** navigation region in the local `territory_regions` catalog, with the internal ID `ru-smolensk`. Migration 017 also adds the observed Saturn region code `55` to the **separate operator allowlist**; neither action makes an external request or enables provider access. Run the migration after upgrading an existing database. Check the public region API with `curl http://127.0.0.1:3001/api/v1/territories/regions`.
+
+For other provider codes, the operator-only seed command remains available:
 
 ```bash
 pnpm --dir apps/api saturn:regions:seed config/saturn-demo-regions.json
 ```
 
-The JSON preset is editable and currently contains only the provider region code observed in the Smolensk pilot. Other regions require independently checked Saturn provider codes before registration. Seeding is repeatable and does not erase cached directories. A new region starts with an empty district catalog; use **Fetch all districts** explicitly once permitted.
+This command registers provider-specific codes for Admin, **not** new public geographic regions. Adding a public region requires a verified local territory entry and provider-code mapping in a subsequent migration. A new region or empty saved district cache does not imply district coverage; use **Refresh district directory** explicitly in Admin only when source access is permitted.
 
 Initial map centers are presentation-only presets in `apps/web/config/map-defaults.json` and `apps/admin/config/map-defaults.json`; they do not restrict the registered provider regions or allowable WGS84 viewport selections.
 
