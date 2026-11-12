@@ -8,7 +8,7 @@ The product is designed for **multiple information providers**, not for a single
 
 ## What works today
 
-- **Beekeeper map:** read-only region/district navigation from saved catalogs, point/radius selection, attributed Open-Meteo weather, and stored PostGIS field polygons with explicit `verified` or structured `pending` review status. A territory selector moves the viewport; it is not an administrative boundary filter.
+- **Beekeeper map:** read-only pilot region navigation from the local territory registry and saved district centers, point/radius selection, attributed Open-Meteo weather, and stored PostGIS field polygons with explicit `verified` or structured `pending` review status. A territory selector moves the viewport; it is not an administrative boundary filter.
 - **Local operator workspace:** editable treatment-feed connection, explicit one-page `/planapplybees` ingestion of source-linked polygons and products, original evidence, human review, and a separate preview map. Configured district/date filters require separate source-contract verification.
 - **Experimental Saturn viewport index:** cached provider district names/centers, exact-filter index progress and operator-only one-page retrieval behind a server flag. Centers are **not** treatment polygons; collection is disabled by default and does not imply complete district coverage.
 - **Backend foundation:** PostgreSQL/PostGIS, restricted source retrieval, immutable document history, a typed provider registry, and a sequential, code-defined DAG runner.

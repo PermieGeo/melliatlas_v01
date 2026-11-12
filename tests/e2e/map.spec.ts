@@ -218,9 +218,9 @@ test("territory navigation never initiates source retrieval", async ({
       contentType: "application/json",
       body: JSON.stringify(
         regions
-          ? { regions: [{ id: "55", name: "Example region" }] }
+          ? { regions: [{ id: "ru-smolensk", name: "Example region" }] }
           : {
-              regionId: "55",
+              regionId: "ru-smolensk",
               districts: [
                 {
                   id: "1477",
@@ -238,7 +238,9 @@ test("territory navigation never initiates source retrieval", async ({
     await route.fulfill({ status: 404 });
   });
   await page.goto("/");
-  await page.getByRole("combobox", { name: "Регион" }).selectOption("55");
+  await page
+    .getByRole("combobox", { name: "Регион" })
+    .selectOption("ru-smolensk");
   await page.getByRole("combobox", { name: "Район" }).selectOption("1477");
   await expect(
     page.getByRole("heading", { name: "Карта обработок" }),

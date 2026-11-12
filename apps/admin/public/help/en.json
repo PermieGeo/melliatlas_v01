@@ -41,11 +41,11 @@
     },
     {
       "id": "local-beekeeper-collection",
-      "title": "Beekeeper map download (pilot)",
+      "title": "Beekeeper map and operator-only collection",
       "paragraphs": [
-        "The primary workflow is on the local beekeeper map at http://127.0.0.1:5173. Select a registered provider region and a district from its saved directory, zoom, set an UpdateMap period and press Fetch up to 10 more records. An empty district list requires an explicitly permitted directory refresh. Panning the map never starts provider collection.",
-        "Each received page is saved in the shared PostGIS index behind a source-wide cooldown. Admin keeps local diagnostic controls, while low-level coordinates are folded into advanced details.",
-        "Index data is not a complete treatment record or verified polygon. Source access must be explicitly enabled on the backend after permission review, and local Origin restrictions are not sufficient for Internet deployment."
+        "The beekeeper Web application at http://127.0.0.1:5173 reads only persisted PostGIS treatment polygons. The Smolensk region appears in its navigation list after the database migration. Selecting a district moves the map; it neither starts collection nor guarantees complete district coverage.",
+        "In Admin → Data collection, select a registered provider region. When source access is permitted, an operator may explicitly refresh the saved district directory, request one bounded /query index page or use the separate /planapplybees importer for complete treatment records. Field-center indexes are not treatment polygons.",
+        "Every source request remains throttled and requires separately reviewed source-access settings. Technical coordinates stay in operator diagnostics; Origin restrictions are not Internet authentication."
       ]
     },
     {

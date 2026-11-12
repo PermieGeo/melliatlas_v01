@@ -13,8 +13,8 @@ import { TerritorySelector } from "./TerritorySelector";
 const { regions, districts } = vi.hoisted(() => ({
   regions: vi.fn(async () => ({
     regions: [
-      { id: "55", name: "Test region" },
-      { id: "77", name: "Other region" },
+      { id: "ru-smolensk", name: "Test region" },
+      { id: "ru-other", name: "Other region" },
     ],
   })),
   districts: vi.fn(async (id: string) => ({
@@ -33,8 +33,8 @@ afterEach(() => {
   vi.resetAllMocks();
   regions.mockResolvedValue({
     regions: [
-      { id: "55", name: "Test region" },
-      { id: "77", name: "Other region" },
+      { id: "ru-smolensk", name: "Test region" },
+      { id: "ru-other", name: "Other region" },
     ],
   });
   districts.mockImplementation(async (id: string) => ({
@@ -50,17 +50,17 @@ it("navigates using read-only territory lists without invoking ingestion", async
   render(<TerritorySelector locale="ru" onFocus={focus} />);
   await screen.findByRole("option", { name: "Test region" });
   fireEvent.change(screen.getByRole("combobox", { name: "Регион" }), {
-    target: { value: "55" },
+    target: { value: "ru-smolensk" },
   });
-  await screen.findByRole("option", { name: "55 district" });
+  await screen.findByRole("option", { name: "ru-smolensk district" });
   fireEvent.change(screen.getByRole("combobox", { name: "Район" }), {
     target: { value: "1477" },
   });
   expect(focus).toHaveBeenCalledWith({ lat: 55, lon: 32 });
   fireEvent.change(screen.getByRole("combobox", { name: "Регион" }), {
-    target: { value: "77" },
+    target: { value: "ru-other" },
   });
-  await screen.findByRole("option", { name: "77 district" });
+  await screen.findByRole("option", { name: "ru-other district" });
   expect(
     (screen.getByRole("combobox", { name: "Район" }) as HTMLSelectElement)
       .value,
@@ -110,15 +110,15 @@ it("ignores an obsolete district response after switching regions", async () => 
   render(<TerritorySelector locale="en" onFocus={() => {}} />);
   await screen.findByRole("option", { name: "Test region" });
   fireEvent.change(screen.getByRole("combobox", { name: "Region" }), {
-    target: { value: "55" },
+    target: { value: "ru-smolensk" },
   });
   fireEvent.change(screen.getByRole("combobox", { name: "Region" }), {
-    target: { value: "77" },
+    target: { value: "ru-other" },
   });
-  await screen.findByRole("option", { name: "77 district" });
+  await screen.findByRole("option", { name: "ru-other district" });
   await act(async () =>
     resolveOld?.({
-      regionId: "55",
+      regionId: "ru-smolensk",
       districts: [
         { id: "1", name: "Old district", center: { lat: 1, lon: 1 } },
       ],

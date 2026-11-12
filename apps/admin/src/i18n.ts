@@ -3,7 +3,7 @@ import { cacheHistoryMessages } from "./cacheHistoryMessages";
 export const messages = {
   ru: {
     viewportNoRegions:
-      "Нет зарегистрированных регионов. Администратор должен выполнить seed из config/saturn-demo-regions.json; импорт не начинается автоматически.",
+      "Нет зарегистрированных регионов источника. Проверьте миграции базы данных; другие регионы можно добавить через операторский seed.",
     viewportNoDistricts:
       "Нет сохранённого списка районов. Обновите справочник по явному нажатию, если доступ к источнику разрешён.",
     viewportDirectoryFailed:
@@ -12,7 +12,7 @@ export const messages = {
     ...cacheHistoryMessages.ru,
     viewportGuideTitle: "Как загружать данные — три шага",
     viewportGuideOne:
-      "1. Зарегистрируйте регион через seed, выберите его здесь и обновите справочник районов при разрешённом доступе.",
+      "1. Выберите зарегистрированный регион и явно обновите справочник районов при разрешённом доступе.",
     viewportGuideTwo:
       "2. Укажите границы квадрата и период UpdateMap (это не даты фактической обработки).",
     viewportGuideThree:
@@ -211,7 +211,7 @@ export const messages = {
   },
   en: {
     viewportNoRegions:
-      "No regions are registered. An operator must run the region seed from config/saturn-demo-regions.json; ingestion never starts automatically.",
+      "No provider regions are registered. Check database migrations; additional provider codes may require the operator seed.",
     viewportNoDistricts:
       "No cached districts. Explicitly refresh the provider directory only if access has been approved.",
     viewportDirectoryFailed: "Unable to read the region or district directory.",
@@ -219,7 +219,7 @@ export const messages = {
     ...cacheHistoryMessages.en,
     viewportGuideTitle: "How to load data — three steps",
     viewportGuideOne:
-      "1. Seed a registered region, select it here and explicitly refresh the saved directory when access permits.",
+      "1. Select a registered provider region and explicitly refresh the saved directory when access permits.",
     viewportGuideTwo:
       "2. Set a bounded viewport and UpdateMap period (not actual application dates).",
     viewportGuideThree:
